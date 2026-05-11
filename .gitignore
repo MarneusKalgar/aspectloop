@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.eslintcache
+.env
+.env.local
+.env.development
+.env.stage

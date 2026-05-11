@@ -1,0 +1,2 @@
+echo "Linting and formatting staged files. Please wait...\r"
+npx lint-staged
