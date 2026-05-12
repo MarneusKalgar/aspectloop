@@ -491,9 +491,10 @@ The MVP needs frontend auth flow for both JWT-based auth and OAuth2 / OpenID Con
 
 Recommended split:
 
-- Local MVP default: simple JWT login against the backend, using access token in memory and optional refresh cookie.
+- Local MVP default: simple JWT signup/signin against the backend, using an access token in memory.
 - OIDC-ready mode: `react-oidc-context` obtains an access token from an identity provider and passes it as `Authorization: Bearer <token>` to GraphQL.
 - Backend accepts bearer tokens through a guard abstraction so JWT-local and OIDC validation can be swapped without changing resolvers.
+- Refresh token flow is deferred. Phase 1 only needs short-lived access tokens and explicit re-login.
 
 Reuse from `rd_shop`:
 
@@ -512,137 +513,124 @@ Simplify from `rd_shop`:
 
 ## 11. Monorepo Setup
 
-Preferred setup: npm workspaces + Turborepo.
+Current repo setup uses plain npm workspaces. Turborepo was evaluated early and intentionally dropped because the current repository size does not justify another orchestration layer yet.
 
-Recommended structure:
+Current structure:
 
 ```text
 apps/
   api/
-    src/
-    Dockerfile
+    .env.example
+    .env.local
+    Dockerfile.dev
     compose.local.yml
-    compose.stage.yml
+    nest-cli.json
+    package.json
+    scripts/docker/
+    src/
   web/
+    .env.example
+    .env.local
+    package.json
     src/
-packages/
-  contracts/
+    vite.config.ts
+mocks/
+  persistence-service/
+    Dockerfile.dev
+    package.json
     src/
-  eslint-config/
-  tsconfig/
 docs/
-  requirements-raw.md
   general-plan.md
-turbo.json
+  phase-0-project-setup-plan.md
+  phase-1-backend-foundation-plan.md
+  requirements-raw.md
 package.json
 package-lock.json
+tsconfig.base.json
 ```
 
-Root scripts:
+Current root scripts are intentionally limited to shared repository tooling only:
 
 ```json
 {
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "type-check": "turbo run type-check",
-    "test": "turbo run test",
-    "api:local": "npm --workspace apps/api run docker:local",
-    "web:local": "npm --workspace apps/web run dev"
+    "format": "prettier --write \"{apps,mocks,docs}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
+    "lint": "eslint \"apps/**/*.{ts,tsx,js}\" --fix",
+    "lint:ci": "eslint \"apps/**/*.{ts,tsx,js}\"",
+    "prepare": "husky"
   }
 }
 ```
 
-Pros:
+Workspace ownership is explicit:
 
-- One repository for FE, BE, contracts, and docs.
-- Shared generated GraphQL types and correction event contracts.
-- Easier local-first development.
-- One PR can evolve API contract and UI together.
-- Turborepo caching keeps quality gates reasonable.
+- `apps/api` owns NestJS dev/build/database/Docker scripts.
+- `apps/web` owns Vite dev/build/preview scripts.
+- `mocks/persistence-service` stays local-only and is only used by the backend Docker stack.
 
-Cons and mitigations:
+Recommended path forward:
 
-- FE/BE can become too coupled. Mitigate by sharing only contracts, generated types, and test fixtures.
-- Root tooling can become noisy. Mitigate with `apps/api` and `apps/web` scripts that work independently.
-- CI can become slow. Mitigate with Turborepo affected/cached tasks and per-stack workflow jobs.
-- Deployment can become confused. Mitigate with separate Dockerfiles, compose files, stage jobs, and image names per stack.
-
-Alternative if npm workspaces + Turborepo becomes too much:
-
-- Plain npm workspaces without Turborepo for Phase 0.
-- Add Turborepo once FE and BE packages exist and repeated CI time becomes a real problem.
-- Do not split into separate repos for MVP; contract churn will be too high.
+- Keep plain npm workspaces until cross-workspace orchestration becomes painful.
+- Add a shared package only once GraphQL contracts or shared event types actually stabilize.
+- Revisit Turborepo later only if CI/runtime coordination becomes a real bottleneck.
 
 ## 12. P0/P1/P2 Priorities
 
 ### Backend
 
-P0:
+P0 (completed baseline):
 
-- NestJS monolith app setup.
-- GraphQL module with correction query/mutation.
-- JWT bearer auth guard for GraphQL.
-- Environment validation.
-- Pino logging.
-- PostgreSQL + TypeORM entities and migrations.
-- Document type registry.
-- Flatten service.
-- Merge service.
-- Optimistic version checking.
-- Persistence HTTP client with local stub.
-- RabbitMQ publisher for corrected document events.
-- Local Docker Compose for API, Postgres, RabbitMQ, and persistence stub.
+- NestJS monolith scaffold with Nest CLI.
+- Environment validation and app-local env files.
+- Pino logger wiring.
+- CORS helper and health endpoint.
+- TypeORM module/data-source bootstrap and local DB CLI scripts.
+- Local Docker Compose stack for API, PostgreSQL, RabbitMQ, and persistence mock.
+- Persistence mock container baseline.
 
-P1:
+P1 (current next phase):
 
-- Correction analytics event outbox.
-- Replay/reprocess command publishing.
-- Better conflict response schema.
-- Health checks for DB and RabbitMQ.
-- Request-scoped DataLoader if nested GraphQL resolution becomes expensive.
-- Socket.IO document status events.
+- Schema-first GraphQL module.
+- First SDL files and generated TypeScript definitions.
+- Document registry config loading and startup validation.
+- Persistence HTTP client interface plus in-memory mock read/write behavior.
+- RabbitMQ connection wrapper module.
+- Local JWT signup/signin plus `me` query.
+- `User` and `correction_session` migrations.
+- Correction-session open/save-draft foundation.
 
 P2:
 
-- Redis-backed Socket.IO scaling.
-- Field-level collaborative editing.
-- Advanced observability and metrics.
-- Complex multi-document-type test matrix.
-- Production deployment hardening.
+- Correction query/mutation flow.
+- Flatten and merge services.
+- Optimistic version enforcement for correction edits.
+- Audit trail and outbox/event publishing.
+- Replay/reprocess orchestration.
 
 ### Frontend
 
-P0:
+P0 (completed baseline):
 
-- App shell with auth provider.
-- Apollo Client setup.
-- Correction page route.
-- Dynamic form renderer.
-- Header, line-item, and nested-row sections.
-- react-hook-form integration.
-- Metadata-driven client validation.
-- Inline error display.
-- Submit confirmation dialog.
-- Basic loading, empty, error, and conflict states.
+- Vite app shell.
+- React Router shell.
+- Material UI baseline layout.
+- App-local env files.
+- Local dev/build workflow.
 
 P1:
 
-- Provenance badges.
-- Edit history popover.
-- Better top-level validation banner.
-- Storybook coverage for field components.
-- Integration tests for correction page.
-- Processing status display from polling or Socket.IO.
+- Apollo Client setup.
+- Auth provider for JWT/OIDC modes.
+- Correction route shell backed by the first stable API contract.
+- Loading, empty, error, unauthorized, and conflict states.
 
 P2:
 
-- Multi-user presence.
-- Rich table keyboard navigation.
-- Bulk edit operations.
-- Offline draft support.
-- Visual document/PDF side-by-side review.
+- Metadata-driven dynamic form renderer.
+- Header, line-item, and nested-row sections.
+- react-hook-form integration and submit flow.
+- Provenance and edit-history UI.
+- Component/integration coverage for shipped correction UI.
 
 ## 13. Deferred Features
 
@@ -723,7 +711,7 @@ Auth:
 Users:
 
 - `apps/shop/src/users/user.entity.ts` is a useful reference for UUID entity style, indexes, timestamps, roles, scopes.
-- For Elemika, a smaller `User` shape is enough: `id`, `email`, `displayName`, `roles`, `scopes`, timestamps. If using external OIDC only, users may be provisioned lazily from token claims.
+- For Elemika, the Phase 1 `User` entity should include `id`, `email`, `passwordHash`, `displayName`, `roles`, `scopes`, timestamps. If OIDC later becomes primary, external identity fields can be added without changing the exposed GraphQL `User` shape.
 
 Common/config/core:
 
@@ -776,125 +764,107 @@ GitHub Actions:
 
 This is a planning sequence, not a task checklist.
 
-Phase 0 - Project setup:
+Phase 0 - Project setup (completed):
 
-- Create npm workspaces + Turborepo.
-- Create `apps/api` and `apps/web`.
-- Add backend Dockerfile and local backend compose with Postgres, RabbitMQ, and a health-only persistence mock.
-- Do not create FE Docker/Compose in Phase 0; run the frontend with Vite.
-- Add placeholder backend migrate/seed scripts that run successfully without real DB schema.
-- Add baseline lint, format, type-check, and test scripts.
-- Confirm both FE and BE run locally.
+- Plain npm workspaces with pinned Node/npm versions.
+- `apps/api` and `apps/web` established with app-local env files.
+- Nest CLI based API scaffold with config validation, Pino, TypeORM bootstrap, health, and local Docker stack.
+- Vite frontend shell with React Router and Material UI.
+- Local persistence mock container that exposes health only.
 
-Phase 1 - Backend foundation:
+Reference: `docs/phase-0-project-setup-plan.md`.
 
-- Build NestJS monolith foundation with config validation, Pino, TypeORM, schema-first GraphQL, health, and auth guard.
-- Add the first real DB migrations once entity design is known.
-- Add document registry config loading and validation.
-- Add persistence HTTP client interface and local mock read/write behavior.
+Phase 1 - Backend foundation (next step):
+
+- Add schema-first GraphQL foundation.
+- Add first SDL files and generated resolver types.
+- Add document registry loading and startup validation.
+- Add persistence HTTP client boundary plus an in-memory mock service with read/write behavior.
+- Add RabbitMQ wrapper module.
+- Add local JWT signup/signin flow, `me` query, and GraphQL auth types/resolvers.
+- Add first real migrations for `user` and `correction_session`.
+- Add correction-session open/save-draft foundation backed by `correction_session`.
+
+Reference: `docs/phase-1-backend-foundation-plan.md`.
 
 Phase 2 - Backend correction flow:
 
-- Add shared correction contracts package if still needed.
-- Implement load correction document query.
-- Implement flatten service.
-- Implement submit correction mutation.
-- Implement merge service, audit stamps, optimistic locking.
-- Publish corrected-document event to RabbitMQ.
+- Implement `correctionDocument` and `submitCorrections` boundaries.
+- Add flatten/merge services.
+- Add optimistic locking, audit records, and first publish flow.
 
 Phase 3 - Frontend foundation:
 
-- Build React app shell, auth provider, Apollo Client, routing, and correction page shell.
-- Add generated GraphQL types.
-- Add loading, error, empty, unauthorized, and conflict surfaces.
+- Add Apollo Client.
+- Add auth provider.
+- Add API-backed correction route shell.
+- Add generated GraphQL client types and first loading/error surfaces.
 
 Phase 4 - Frontend correction UX:
 
-- Build dynamic field renderer.
-- Build header, line-item, and nested-row sections.
-- Add react-hook-form metadata validation.
-- Add inline errors, validation banner, and submit confirmation.
-- Add provenance badges and edit history if backend data is ready.
+- Build metadata-driven form rendering.
+- Add header, line-item, and nested-row sections.
+- Add submit flow, validation banner, provenance, and edit-history UI.
 
 Phase 5 - Integration hardening:
 
-- Connect FE to BE locally.
-- Add integration tests for GraphQL correction flow.
-- Add frontend component tests and Storybook.
-- Add minimal Playwright happy path.
-- Add stage-oriented CI artifacts and per-stack Docker image builds.
+- Connect FE and BE against the real local GraphQL contract.
+- Add API integration tests and frontend component/integration tests.
+- Add a minimal Playwright happy path.
+- Add stage packaging and smoke checks.
 
 Phase 6 - Deferred enhancements:
 
-- Add replay/reprocess flow.
-- Add Socket.IO status events.
-- Add Redis adapter if API is scaled to multiple instances.
-- Add richer conflict reconciliation.
+- Replay/reprocess orchestration.
+- Socket.IO status events.
+- Redis adapter if multi-instance scaling is introduced.
+- Conflict reconciliation improvements.
 
 Should BE and FE be implemented together?
 
-- Build BE first through the GraphQL contract and a local persistence stub.
-- Start FE shortly after the first stable `correctionDocument` query shape exists.
-- Do not wait for all BE internals before FE starts; use mocked GraphQL responses or seeded local API data for dynamic form development.
-- Keep submit/merge work BE-led because the frontend depends on version/conflict semantics.
+- Phase 1 remains backend-first because the first stable GraphQL contract, persistence boundary, and registry model do not exist yet.
+- The frontend already has a running shell, so frontend foundation work can begin as soon as the first stable GraphQL query shape is available.
+- Once the initial query contract is stable, backend and frontend can proceed in parallel without waiting for the full correction workflow.
 
 ## 16. CI/CD Strategy
 
-No production pipeline for MVP; target only PR checks and stage.
+No production pipeline is needed yet; target PR checks first and a later stage deployment.
 
 ### PR checks
 
 Use one workflow with separate jobs:
 
-- Install dependencies with npm cache.
-- Lint root/workspaces.
-- Type-check `apps/api`, `apps/web`, and `packages/contracts`.
-- Unit tests:
-  - API: Nest services/resolvers.
-  - Web: Vitest + React Testing Library.
-  - Contracts: type-only/build check.
-- API integration tests with Postgres and RabbitMQ services or Testcontainers.
-- Web build and Storybook build.
-- Docker preview build:
-  - `apps/api/Dockerfile`.
-  - `apps/web/Dockerfile`.
-- Final sentinel job: `all-checks-passed`.
+- `npm ci` with the pinned root toolchain.
+- `npm run lint:ci`.
+- `npm --workspace apps/api run build`.
+- `npm --workspace apps/web run build`.
+- API unit/integration tests once Phase 1/2 add them.
+- Web unit/component tests once Phase 3/4 add them.
+- Docker preview build for `apps/api/Dockerfile.dev`.
+- Optional preview build for `mocks/persistence-service/Dockerfile.dev` to catch local mock regressions.
 
 ### Stage build
 
 On merge to `development`:
 
-- Build API image.
-- Build web image.
-- Tag both with immutable `sha-<commit>`.
-- Upload a release manifest:
-
-```json
-{
-  "commit": "git-sha",
-  "ref": "development",
-  "services": {
-    "api": { "image": "registry/elemika-api:sha-git-sha" },
-    "web": { "image": "registry/elemika-web:sha-git-sha" }
-  }
-}
-```
+- Build and tag the API container image.
+- Build the web static bundle from `apps/web`.
+- Publish a release manifest that points to the API image and web static artifact.
 
 ### Stage deploy
 
 Keep stage deployment simple:
 
-- Manual or automatic deploy from the release manifest.
-- Run API migrations before starting the new API.
-- Deploy API and web independently.
+- Run API migrations before the new API container starts.
+- Deploy the API container independently.
+- Upload the web static build to the chosen stage hosting target (S3 + CloudFront remains the preferred path).
 - Run smoke checks:
   - API `/health`.
-  - API `/graphql` introspection only if enabled for stage.
-  - Web route loads.
-  - Correction happy-path smoke against seeded/stubbed document.
+  - GraphQL endpoint availability once Phase 1 introduces it.
+  - Web root route loads.
 
 ### Per-stack separation
 
-- API has its own Dockerfile, compose files, env examples, image, build job, deploy job, and smoke checks.
-- Web has its own Dockerfile, compose files, env examples, image, build job, deploy job, and smoke checks.
-- Shared packages are built and tested by both stack workflows, but are not deployed independently.
+- API owns its own env files, Docker image, migration job, and smoke checks.
+- Web owns its own env files and static build artifact flow.
+- The persistence mock remains local-development only and should not be part of the stage deployment surface.

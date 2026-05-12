@@ -2,6 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSourceOptions } from 'typeorm';
 
+import { CorrectionSession } from '../correction-sessions/correction-session.entity';
+import { User } from '../users/user.entity';
+
 interface TypeOrmConfig {
   databaseUrl: string;
   nodeEnv?: string;
@@ -13,6 +16,7 @@ export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOp
   const { migrations } = getTypeOrmPaths(config.nodeEnv);
 
   return {
+    entities: [User, CorrectionSession],
     extra: {
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
@@ -45,11 +49,13 @@ function getTypeOrmPaths(nodeEnv?: string) {
 
   if (isRuntimeBuild) {
     return {
+      entities: ['dist/**/*.entity.js'],
       migrations: ['dist/db/migrations/*.js'],
     };
   }
 
   return {
+    entities: [`src/**/*.entity{.ts,.js}`],
     migrations: ['src/db/migrations/*{.ts,.js}'],
   };
 }

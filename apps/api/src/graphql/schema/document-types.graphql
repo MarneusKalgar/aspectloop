@@ -1,0 +1,9 @@
+type DocumentTypeSummary {
+  type: String!
+  version: Int!
+  label: String!
+}
+
+extend type Query {
+  correctionDocumentTypes: [DocumentTypeSummary!]!
+}

@@ -9,6 +9,7 @@ import { setupCors } from './core/setupCors';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  app.enableShutdownHooks();
 
   setupCors(app);
 

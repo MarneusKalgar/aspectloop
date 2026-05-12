@@ -84,3 +84,6 @@ extract cors setup into setupCors function (get usage example from rd_shop)
 in #sym:origin use CORS_ALLOWED_ORIGINS env var (get usage sxample from rd_shop)
 
 I don't see any DB config . db folder contains only migrate/seed. use rd_shop to get proper DB config
+
+test2@test.com
+pass1234
