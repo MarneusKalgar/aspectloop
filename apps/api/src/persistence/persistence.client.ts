@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { PersistenceDocumentStore } from './interfaces';
 import { PersistenceDocument, SavePersistenceDocumentInput } from './persistence.types';
-import { parsePersistenceResponse } from './utils/index';
+import { parsePersistenceResponse } from './utils';
 
 @Injectable()
 export class PersistenceClient implements PersistenceDocumentStore {

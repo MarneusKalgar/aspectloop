@@ -2,13 +2,13 @@
 
 A local-first monorepo for reviewing, correcting, and eventually submitting structured data extracted from supplier documents.
 
-The current repository contains a completed Phase 0 scaffold:
+The current repository contains the Phase 0 scaffold plus the in-progress Phase 1 backend foundation:
 
 - NestJS API scaffold in `apps/api`
 - React + Vite frontend shell in `apps/web`
 - Local Docker Compose backend dependency stack
 - PostgreSQL and RabbitMQ local dependencies
-- Health-only persistence-service mock
+- File-backed persistence-service mock with durable per-document storage
 
 ## Features
 
@@ -19,6 +19,8 @@ The current repository contains a completed Phase 0 scaffold:
 - Pino logger integration
 - TypeORM bootstrap and CLI `DataSource`
 - Extracted CORS setup and `/health` endpoint
+- Schema-first GraphQL API foundation with JWT auth and correction-session flows
+- File-backed persistence-service mock with durable per-document JSON storage
 - React Router + Material UI frontend shell
 - Backend Docker Compose stack for API, PostgreSQL, RabbitMQ, and persistence mock
 - Husky, lint-staged, ESLint, and Prettier root tooling
@@ -173,6 +175,17 @@ Services included:
 - `migrate` (profiled one-off container)
 - `seed` (profiled one-off container)
 
+The persistence mock now stores each document in its own JSON file and the Docker stack mounts a named volume for that data.
+
+## Persistence Mock Storage
+
+The local persistence mock stores one JSON file per document.
+
+- Direct mock execution defaults to `mocks/persistence-service/data/documents`.
+- Docker Compose uses a named volume and mounts it at `/data/documents` inside the persistence-mock container.
+- Docker Compose also bind-mounts `mocks/persistence-service/src` into the container, so source changes take effect after container restart without rebuilding the image.
+- To reset local mock data, delete `mocks/persistence-service/data` for direct runs or remove the Docker named volume for the compose stack.
+
 Docker development images currently use:
 
 - `apps/api/Dockerfile.dev`
@@ -217,13 +230,6 @@ tsconfig.base.json
 
 Phase 0 is complete.
 
-The next planned implementation step is Phase 1 backend foundation:
+Phase 1 backend foundation is in progress and already includes schema-first GraphQL, local JWT auth, document registry loading, correction-session draft persistence, and a durable file-backed persistence mock.
 
-- Schema-first GraphQL
-- Document registry
-- Persistence boundary
-- RabbitMQ wrapper
-- Auth guard skeleton
-- First real migration if entity scope is agreed
-
-See `docs/phase-1-backend-foundation-plan.md` for the detailed breakdown.
+See `docs/phase-1-backend-foundation-plan.md` for the current execution plan and verification steps.

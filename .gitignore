@@ -8,3 +8,4 @@ coverage
 .env.local
 .env.development
 .env.stage
+mocks/persistence-service/data

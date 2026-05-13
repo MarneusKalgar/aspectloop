@@ -15,9 +15,9 @@ import {
   SaveCorrectionSessionDraftInput,
 } from '../graphql/graphql.types';
 import { PersistenceClient } from '../persistence/persistence.client';
-import { isRecord } from '../persistence/utils/index';
+import { isRecord } from '../persistence/utils';
 import { CorrectionSession } from './correction-session.entity';
-import { ensureSessionAccess } from './utils/index';
+import { ensureSessionAccess } from './utils';
 
 @Injectable()
 export class CorrectionSessionsService {
@@ -44,14 +44,6 @@ export class CorrectionSessionsService {
   ): Promise<CorrectionSession> {
     this.documentRegistryService.getDocumentTypeOrThrow(input.documentType);
 
-    const document = await this.persistenceClient.getDocument(input.documentId);
-
-    if (document.documentType !== input.documentType) {
-      throw new BadRequestException(
-        `Document ${input.documentId} belongs to type ${document.documentType}, not ${input.documentType}`,
-      );
-    }
-
     const existingSession = await this.correctionSessionsRepository.findOne({
       relations: {
         lockedBy: true,
@@ -60,9 +52,23 @@ export class CorrectionSessionsService {
     });
 
     if (existingSession) {
+      if (existingSession.documentType !== input.documentType) {
+        throw new BadRequestException(
+          `Document ${input.documentId} belongs to type ${existingSession.documentType}, not ${input.documentType}`,
+        );
+      }
+
       ensureSessionAccess(existingSession, authUser.sub);
       this.logger.log(`Reusing correction session ${existingSession.id} for ${input.documentId}`);
-      return existingSession;
+      return this.findSessionOrThrow(existingSession.id);
+    }
+
+    const document = await this.persistenceClient.getDocument(input.documentId);
+
+    if (document.documentType !== input.documentType) {
+      throw new BadRequestException(
+        `Document ${input.documentId} belongs to type ${document.documentType}, not ${input.documentType}`,
+      );
     }
 
     const session = this.correctionSessionsRepository.create({

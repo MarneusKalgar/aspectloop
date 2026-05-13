@@ -12,7 +12,7 @@ Phase 1 should establish the backend building blocks that later phases depend on
 - Local JWT signup/signin.
 - `User` and `correction_session` persistence.
 - Registry-driven document metadata.
-- Persistence service boundary backed locally by an in-memory mock.
+- Persistence service boundary backed locally by a file-backed mock with durable per-document storage.
 - RabbitMQ connection wrapper.
 
 Phase 1 is still not the full correction workflow. It should stop at auth, document-type discovery, session creation/loading, and draft persistence.
@@ -42,7 +42,7 @@ Phase 1 must deliver:
 - Local JWT signup/signin flow with `me` query.
 - Document registry config loading and startup validation.
 - Persistence HTTP client interface.
-- In-memory persistence mock with document read/write behavior.
+- File-backed persistence mock with document read/write behavior.
 - Correction-session open/load/save-draft foundation backed by `correction_session`.
 - RabbitMQ wrapper module with connection lifecycle only.
 
@@ -66,9 +66,9 @@ Phase 1 is complete when all of the following are true:
 - Resolver typings are generated from SDL.
 - `signUp`, `signIn`, and `me` work with local JWT access tokens.
 - `correctionDocumentTypes` returns registry-backed data.
-- The persistence mock stores documents in memory and supports read/write round-trips.
+- The persistence mock stores documents in per-document JSON files and supports read/write round-trips across mock restarts.
 - `openCorrectionSession` can create or load a session for a document.
-- `saveCorrectionSessionDraft` updates both session metadata and the in-memory document payload.
+- `saveCorrectionSessionDraft` writes the external document payload first, then updates session metadata.
 - Real migrations exist for `user` and `correction_session`.
 - RabbitMQ wrapper can connect successfully, even if no correction-specific publisher exists yet.
 
@@ -95,7 +95,7 @@ flowchart LR
   SessionResolver --> SessionService[Correction Session Service]
   SessionService --> SessionRepo[(correction_session table)]
   SessionService --> PersistenceClient[Persistence HTTP Client]
-  PersistenceClient --> MockStore[(in-memory persistence mock)]
+  PersistenceClient --> MockStore[(file-backed persistence mock)]
 
   SessionService -. foundation only .-> RabbitMQ[RabbitMQ wrapper]
 ```
@@ -110,9 +110,9 @@ The Phase 1 backend should work like this:
 4. Auth-protected resolvers use a GraphQL JWT guard to resolve the current user.
 5. The web app asks for available document types from the registry.
 6. The web app opens a correction session for a document id and document type.
-7. The API validates the requested document type, loads the current document payload from the persistence mock, and creates or reuses a `correction_session` row.
+7. The API validates the requested document type, tries to reuse an existing `correction_session`, and only fetches the external document payload when a new session must be created.
 8. The API returns session metadata plus the current draft/source payload needed by the frontend shell.
-9. When the user saves a draft, the API updates the `correction_session` row, increments the session version, and writes the latest document payload back to the in-memory persistence mock.
+9. When the user saves a draft, the API writes the latest document payload to the file-backed persistence mock first. After that succeeds, it updates the `correction_session` row and increments the session version.
 10. RabbitMQ is initialized and available, but no correction-specific publish flow is required yet.
 
 ### Sequence 1: signup/signin
@@ -152,11 +152,16 @@ sequenceDiagram
   FE->>API: openCorrectionSession(documentId, documentType)
   API->>API: Resolve current user from JWT access token
   API->>REG: Validate documentType
-  API->>PS: GET /documents/:documentId
-  PS-->>API: Current document payload
   API->>SES: Create or load session
-  SES->>DB: Upsert/load correction_session row
-  SES-->>API: Session metadata + draft payload
+  SES->>DB: Load correction_session by documentId
+  alt Existing session found
+    SES-->>API: Existing session metadata + draft payload
+  else No existing session
+    SES->>PS: GET /documents/:documentId
+    PS-->>SES: Current document payload
+    SES->>DB: Create correction_session row
+    SES-->>API: New session metadata + draft payload
+  end
   API-->>FE: CorrectionSession
 ```
 
@@ -175,9 +180,9 @@ sequenceDiagram
   FE->>API: saveCorrectionSessionDraft(sessionId, expectedVersion, draftPayload)
   API->>API: Resolve current user from JWT access token
   API->>SES: Validate ownership/lock and expectedVersion
-  SES->>DB: Update correction_session row and increment version
   SES->>PS: PUT /documents/:documentId
   PS-->>SES: Stored document payload + new external version
+  SES->>DB: Update correction_session row and increment version
   SES-->>API: Updated session
   API-->>FE: Updated session
 ```
@@ -366,7 +371,7 @@ Why registry types live in config files in Phase 1:
 - Config files are the simplest way to version, review, and test document-type definitions alongside the code that uses them.
 - If the business later needs tenant-managed or admin-managed document types, the registry can move to database-backed storage without changing the meaning of `documentType` as an external key.
 
-## Task 3: Persistence Boundary + In-Memory Mock
+## Task 3: Persistence Boundary + Durable Mock Storage
 
 **Goal:** establish the HTTP integration boundary and make the local mock useful for the session flow.
 
@@ -384,12 +389,14 @@ Why registry types live in config files in Phase 1:
 - `GET /documents/:documentId`
 - `PUT /documents/:documentId`
 
-**Recommended in-memory model:**
+**Recommended storage model:**
 
-- Store documents in a process-local `Map<string, StoredDocument>`.
-- Seed one or more known documents at service startup.
+- Store each document as its own JSON file under a configurable data directory.
+- Seed one or more known documents at service startup only when their files are missing.
 - Return `404` when the requested document does not exist.
 - Increment an external document version on every `PUT`.
+- Use atomic writes, for example temp file plus rename, so partial writes do not corrupt the canonical document snapshot.
+- Expose the storage root through `PERSISTENCE_MOCK_DATA_DIR`.
 
 **Recommended stored shape:**
 
@@ -405,8 +412,49 @@ type StoredDocument = {
 
 **Phase 1 constraint:**
 
-- The mock should behave like a tiny in-memory document store.
+- The mock should behave like a tiny file-backed document store.
 - It should not try to emulate the full external persistence service.
+
+## Phase 1 Adjustment: Durable Mock Storage Decision
+
+**Problem statement:**
+
+- `correction_session` rows survive in PostgreSQL, but a process-local mock document store loses document payloads on restart.
+- Reopening an existing correction session should not depend on the persistence mock still holding its last in-memory state.
+
+**Options considered:**
+
+1. Single `documents.json` file
+
+- Pros: simplest bootstrap and easiest to inspect.
+- Cons: rewrites the full store on every update, makes corruption all-or-nothing, and is awkward for per-document resets.
+
+2. One JSON file per document
+
+- Pros: best match for `GET /documents/:documentId` and `PUT /documents/:documentId`, no new dependency, isolated corruption, easy reseed behavior, easy local inspection.
+- Cons: requires safe file naming and atomic writes, and does not provide querying/history by itself.
+
+3. One file per document-session pair or per revision
+
+- Pros: useful when audit/history becomes a first-class requirement.
+- Cons: the Phase 1 API is document-scoped, not session-scoped, and Phase 1 keeps one working session per document, so this is not a good canonical read model yet.
+
+4. SQLite
+
+- Pros: transactional and durable, with a natural upgrade path for richer local behavior.
+- Cons: adds a dependency, schema management, and more operational weight than the mock currently needs.
+
+5. Reuse PostgreSQL
+
+- Pros: durable and operationally realistic.
+- Cons: collapses the mock boundary into the correction database and adds migration coupling to a service that is meant to stay lightweight.
+
+**Phase 1 decision:**
+
+- Use one JSON file per document as the canonical mock storage model.
+- Keep optional history/revision storage as a later enhancement instead of the primary read path.
+- Reuse existing `correction_session` rows before calling the persistence mock so session reopen is resilient to mock cold starts.
+- Mount a named Docker volume for the persistence mock so document files survive container recreation during local development.
 
 ## Task 4: RabbitMQ Foundation Module
 
@@ -534,8 +582,9 @@ Phase 1 validation should include all of the following:
 - GraphQL endpoint starts locally.
 - `signUp`, `signIn`, and `me` work locally.
 - `correctionDocumentTypes` returns registry-backed data.
-- `openCorrectionSession` returns a session for a seeded in-memory document.
-- `saveCorrectionSessionDraft` updates both Postgres session state and the in-memory mock document.
+- `openCorrectionSession` returns a session for a seeded persisted mock document.
+- `saveCorrectionSessionDraft` updates the persisted mock document before the Postgres session row.
+- The updated mock document survives a persistence-mock restart.
 - `npm --workspace apps/api run db:migrate:local` succeeds.
 - RabbitMQ wrapper connects successfully in the local stack.
 
@@ -616,9 +665,9 @@ curl -s http://localhost:8080/graphql \
   --data-raw '{"query":"mutation Open($input: OpenCorrectionSessionInput!) { openCorrectionSession(input: $input) { id documentId documentType status version draftPayload } }","variables":{"input":{"documentId":"demo-invoice-001","documentType":"supplier_invoice"}}}'
 ```
 
-Expected result: a session is created or reused, the version is `1`, and `draftPayload` matches the current mock payload.
+Expected result: a session is created or reused, the version is `1`, and `draftPayload` matches the current persisted mock payload.
 
-### 7. Verify draft save flow and persistence round-trip
+### 7. Verify draft save flow, persistence round-trip, and restart durability
 
 Save an updated payload using the returned `sessionId`:
 
@@ -635,7 +684,14 @@ Then confirm the persistence mock returns the updated document:
 curl -s http://localhost:8090/documents/demo-invoice-001
 ```
 
-Expected result: the GraphQL mutation returns version `2`, and the persistence mock returns the updated payload plus an incremented external version.
+If you are running the Docker stack, restart only the persistence mock and query the document again:
+
+```bash
+docker compose -f apps/api/compose.local.yml restart persistence-mock
+curl -s http://localhost:8090/documents/demo-invoice-001
+```
+
+Expected result: the GraphQL mutation returns version `2`, the persistence mock returns the updated payload plus an incremented external version, and the same document is still available after the mock restarts.
 
 ### 8. Verify RabbitMQ connectivity
 
@@ -648,7 +704,7 @@ Expected result: no connection exception during API startup, and the wrapper ini
 1. Add GraphQL dependencies and module wiring.
 2. Implement `User` entity, auth service, auth resolver, and JWT guard.
 3. Implement document registry and `correctionDocumentTypes`.
-4. Extend the persistence mock into an in-memory document store.
+4. Extend the persistence mock into a file-backed document store with restart-safe storage.
 5. Implement `correction_session` entity plus session service/resolver.
 6. Add RabbitMQ wrapper module.
 7. Validate the whole flow locally and update docs with actual delivered behavior.

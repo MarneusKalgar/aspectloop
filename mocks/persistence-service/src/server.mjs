@@ -1,32 +1,18 @@
 import http from 'node:http';
 
+import { createDocumentStore } from './storage/document-store.mjs';
+import { createSeedDocuments } from './storage/seed-documents.mjs';
 import { getDocumentId, isRecord, readJsonBody } from './utils/index.mjs';
 
 const port = Number(process.env.PERSISTENCE_MOCK_PORT ?? 8090);
+const documentStore = createDocumentStore();
 
-const documents = new Map([
-  [
-    'demo-invoice-001',
-    {
-      documentId: 'demo-invoice-001',
-      documentType: 'supplier_invoice',
-      version: 1,
-      payload: {
-        header: {
-          invoiceDate: '2026-05-01',
-          invoiceNumber: 'INV-2026-001',
-          supplierName: 'Acme Supplies',
-        },
-        totals: {
-          grossAmount: 1250.42,
-          netAmount: 1000.34,
-          taxAmount: 250.08,
-        },
-      },
-      updatedAt: new Date().toISOString(),
-    },
-  ],
-]);
+try {
+  await documentStore.seedDocuments(createSeedDocuments());
+} catch (error) {
+  console.error('Failed to initialize persistence mock storage', error);
+  process.exit(1);
+}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${port}`);
@@ -41,22 +27,40 @@ const server = http.createServer(async (req, res) => {
   const documentId = getDocumentId(url.pathname);
 
   if (req.method === 'GET' && documentId) {
-    const document = documents.get(documentId);
+    try {
+      const document = await documentStore.readDocument(documentId);
 
-    if (!document) {
-      res.statusCode = 404;
-      res.end(JSON.stringify({ message: `Document ${documentId} was not found` }));
+      if (!document) {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ message: `Document ${documentId} was not found` }));
+        return;
+      }
+
+      res.end(JSON.stringify(document));
+      return;
+    } catch (error) {
+      respondWithServerError(res, error);
       return;
     }
-
-    res.end(JSON.stringify(document));
-    return;
   }
 
   if (req.method === 'PUT' && documentId) {
+    let body;
+
     try {
-      const body = await readJsonBody(req);
-      const existingDocument = documents.get(documentId);
+      body = await readJsonBody(req);
+    } catch (error) {
+      res.statusCode = 400;
+      res.end(
+        JSON.stringify({
+          message: error instanceof Error ? error.message : 'Invalid JSON payload',
+        }),
+      );
+      return;
+    }
+
+    try {
+      const existingDocument = await documentStore.readDocument(documentId);
       const nextDocumentType = body.documentType ?? existingDocument?.documentType;
 
       if (typeof nextDocumentType !== 'string' || !nextDocumentType) {
@@ -79,16 +83,11 @@ const server = http.createServer(async (req, res) => {
         version: (existingDocument?.version ?? 0) + 1,
       };
 
-      documents.set(documentId, storedDocument);
+      await documentStore.writeDocument(documentId, storedDocument);
       res.end(JSON.stringify(storedDocument));
       return;
     } catch (error) {
-      res.statusCode = 400;
-      res.end(
-        JSON.stringify({
-          message: error instanceof Error ? error.message : 'Invalid JSON payload',
-        }),
-      );
+      respondWithServerError(res, error);
       return;
     }
   }
@@ -98,5 +97,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Persistence mock listening on ${port}`);
+  console.log(`Persistence mock listening on ${port}; data dir ${documentStore.dataDir}`);
 });
+
+function respondWithServerError(res, error) {
+  console.error('Persistence mock storage error', error);
+  res.statusCode = 500;
+  res.end(
+    JSON.stringify({
+      message: error instanceof Error ? error.message : 'Persistence mock storage error',
+    }),
+  );
+}

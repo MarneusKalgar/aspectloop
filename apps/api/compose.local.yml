@@ -62,8 +62,13 @@ services:
     init: true
     env_file:
       - ../../apps/api/.env.local
+    environment:
+      PERSISTENCE_MOCK_DATA_DIR: ${PERSISTENCE_MOCK_DATA_DIR:-/data/documents}
     ports:
       - '${PERSISTENCE_MOCK_PORT:-8090}:${PERSISTENCE_MOCK_PORT:-8090}'
+    volumes:
+      - ../../mocks/persistence-service/src:/app/src
+      - elemika_api_persistence_mock_data:/data
 
   migrate:
     image: ${COMPOSE_PROJECT_NAME:-elemika_api_local}_migrate_tmp
@@ -103,3 +108,4 @@ services:
 
 volumes:
   elemika_api_postgres_data:
+  elemika_api_persistence_mock_data:
