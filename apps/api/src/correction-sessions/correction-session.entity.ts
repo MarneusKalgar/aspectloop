@@ -45,6 +45,12 @@ export class CorrectionSession {
   @Column({ name: 'locked_by', nullable: true, type: 'uuid' })
   lockedById!: null | string;
 
+  @Column({ name: 'source_payload', type: 'jsonb' })
+  sourcePayload!: Record<string, unknown>;
+
+  @Column({ name: 'source_provenance', nullable: true, type: 'jsonb' })
+  sourceProvenance!: null | Record<string, unknown>;
+
   @Column({ default: () => "'draft'", type: 'text' })
   status!: string;
 

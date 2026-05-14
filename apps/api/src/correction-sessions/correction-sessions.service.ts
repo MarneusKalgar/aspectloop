@@ -9,6 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { AuthUser } from '../auth/types/auth-user';
+import { STORED_CORRECTION_STATUS_DRAFT } from '../corrections/correction-flow.types';
+import { getValueAtPath, setValueAtPath } from '../corrections/utils/document-paths';
 import { DocumentRegistryService } from '../document-registry/document-registry.service';
 import {
   OpenCorrectionSessionInput,
@@ -17,9 +19,20 @@ import {
 import { PersistenceClient } from '../persistence/persistence.client';
 import { isRecord } from '../persistence/utils';
 import { CorrectionSession } from './correction-session.entity';
-import { ensureSessionAccess } from './utils';
+import * as correctionSessionUtils from './utils';
+
+const correctionSessionHelpers = correctionSessionUtils;
+
+export interface CorrectionSessionSnapshots {
+  draftPayload: Record<string, unknown>;
+  sourcePayload: Record<string, unknown>;
+  sourceProvenance: null | Record<string, unknown>;
+}
 
 @Injectable()
+/**
+ * Manages correction-session lifecycle, ownership checks, and snapshot shaping.
+ */
 export class CorrectionSessionsService {
   private readonly logger = new Logger(CorrectionSessionsService.name);
 
@@ -30,14 +43,35 @@ export class CorrectionSessionsService {
     private readonly persistenceClient: PersistenceClient,
   ) {}
 
+  /**
+   * Loads a session and verifies that the current user owns the session lock.
+   */
   async getSession(sessionId: string, authUser: AuthUser): Promise<CorrectionSession> {
     const session = await this.findSessionOrThrow(sessionId);
 
-    ensureSessionAccess(session, authUser.sub);
+    correctionSessionHelpers.ensureSessionAccess(session, authUser.sub);
 
     return session;
   }
 
+  /**
+   * Returns the immutable source snapshot, mutable draft snapshot, and provenance map
+   * used by correction-document flattening.
+   */
+  getSessionSnapshots(session: CorrectionSession): CorrectionSessionSnapshots {
+    const normalizedSession = this.normalizeSessionPayloads(session);
+
+    return {
+      draftPayload: normalizedSession.draftPayload,
+      sourcePayload: normalizedSession.sourcePayload,
+      sourceProvenance: normalizedSession.sourceProvenance,
+    };
+  }
+
+  /**
+   * Opens a new correction session from the external document payload or reuses an
+   * existing session when the same user already owns it.
+   */
   async openSession(
     input: OpenCorrectionSessionInput,
     authUser: AuthUser,
@@ -58,7 +92,7 @@ export class CorrectionSessionsService {
         );
       }
 
-      ensureSessionAccess(existingSession, authUser.sub);
+      correctionSessionHelpers.ensureSessionAccess(existingSession, authUser.sub);
       this.logger.log(`Reusing correction session ${existingSession.id} for ${input.documentId}`);
       return this.findSessionOrThrow(existingSession.id);
     }
@@ -71,13 +105,20 @@ export class CorrectionSessionsService {
       );
     }
 
+    const normalizedDocumentPayload = this.normalizePayloadForDocumentType(
+      input.documentType,
+      document.payload,
+    );
+
     const session = this.correctionSessionsRepository.create({
       createdById: authUser.sub,
       documentId: input.documentId,
       documentType: input.documentType,
-      draftPayload: document.payload,
+      draftPayload: normalizedDocumentPayload,
       lockedById: authUser.sub,
-      status: 'draft',
+      sourcePayload: normalizedDocumentPayload,
+      sourceProvenance: null,
+      status: STORED_CORRECTION_STATUS_DRAFT,
       submittedAt: null,
       version: 1,
     });
@@ -88,13 +129,16 @@ export class CorrectionSessionsService {
     return this.findSessionOrThrow(session.id);
   }
 
+  /**
+   * Persists the latest draft snapshot while preserving the immutable source snapshot.
+   */
   async saveDraft(
     input: SaveCorrectionSessionDraftInput,
     authUser: AuthUser,
   ): Promise<CorrectionSession> {
     const session = await this.findSessionOrThrow(input.sessionId);
 
-    ensureSessionAccess(session, authUser.sub);
+    correctionSessionHelpers.ensureSessionAccess(session, authUser.sub);
 
     if (session.version !== input.expectedVersion) {
       throw new ConflictException(
@@ -106,12 +150,17 @@ export class CorrectionSessionsService {
       throw new BadRequestException('draftPayload must be a JSON object');
     }
 
+    const normalizedDraftPayload = this.normalizePayloadForDocumentType(
+      session.documentType,
+      input.draftPayload,
+    );
+
     await this.persistenceClient.saveDocument(session.documentId, {
       documentType: session.documentType,
-      payload: input.draftPayload,
+      payload: normalizedDraftPayload,
     });
 
-    session.draftPayload = input.draftPayload;
+    session.draftPayload = normalizedDraftPayload;
     session.lockedById = authUser.sub;
     session.version += 1;
 
@@ -121,6 +170,9 @@ export class CorrectionSessionsService {
     return this.findSessionOrThrow(session.id);
   }
 
+  /**
+   * Loads the full session graph needed by the correction APIs or raises not found.
+   */
   private async findSessionOrThrow(sessionId: string): Promise<CorrectionSession> {
     const session = await this.correctionSessionsRepository.findOne({
       relations: {
@@ -133,6 +185,62 @@ export class CorrectionSessionsService {
     if (!session) {
       throw new NotFoundException(`Correction session ${sessionId} was not found`);
     }
+
+    return this.normalizeSessionPayloads(session);
+  }
+
+  /**
+   * Rewrites legacy flat payloads into the current registry-driven nested document shape.
+   *
+   * This keeps old sessions readable while the runtime and frontend operate on stable
+   * field paths such as header.invoiceNumber.
+   */
+  private normalizePayloadForDocumentType(
+    documentType: string,
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const config = this.documentRegistryService.getDocumentTypeOrThrow(documentType);
+    const normalizedPayload = structuredClone(payload);
+
+    for (const section of config.sections) {
+      if (section.repeatable) {
+        continue;
+      }
+
+      for (const field of section.fields) {
+        if (getValueAtPath(normalizedPayload, field.path) !== undefined) {
+          continue;
+        }
+
+        const legacyValue = correctionSessionHelpers.findLegacyFieldValue(
+          normalizedPayload,
+          field.id,
+          field.path,
+        );
+
+        if (legacyValue === undefined) {
+          continue;
+        }
+
+        setValueAtPath(normalizedPayload, field.path, legacyValue);
+      }
+    }
+
+    return normalizedPayload;
+  }
+
+  /**
+   * Normalizes both source and draft snapshots before they are exposed to callers.
+   */
+  private normalizeSessionPayloads(session: CorrectionSession): CorrectionSession {
+    session.draftPayload = this.normalizePayloadForDocumentType(
+      session.documentType,
+      session.draftPayload,
+    );
+    session.sourcePayload = this.normalizePayloadForDocumentType(
+      session.documentType,
+      session.sourcePayload,
+    );
 
     return session;
   }

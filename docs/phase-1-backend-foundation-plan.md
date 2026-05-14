@@ -718,3 +718,5 @@ When Phase 1 is complete, Phase 2 should be able to start immediately on:
 - `submitCorrections` mutation.
 - Merge and audit modeling.
 - Outbox/event publishing.
+
+Reference: `docs/phase-2-backend-correction-flow-plan.md`.

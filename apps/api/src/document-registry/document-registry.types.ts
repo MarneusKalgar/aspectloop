@@ -1,9 +1,20 @@
 export interface DocumentFieldConfig {
+  codeListKey?: string;
   id: string;
   inputType: 'code-list' | 'date' | 'number' | 'text';
   label: string;
   path: string;
   required?: boolean;
+  validation?: DocumentFieldValidationConfig;
+}
+
+export interface DocumentFieldValidationConfig {
+  max?: number;
+  maxLength?: number;
+  min?: number;
+  minLength?: number;
+  pattern?: string;
+  scale?: number;
 }
 
 export interface DocumentSectionConfig {

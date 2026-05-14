@@ -1,5 +1,6 @@
 import {
   DocumentFieldConfig,
+  DocumentFieldValidationConfig,
   DocumentSectionConfig,
   DocumentTypeConfig,
 } from './document-registry.types';
@@ -39,6 +40,10 @@ function isDocumentFieldInputType(value: unknown): value is DocumentFieldConfig[
   return ['code-list', 'date', 'number', 'text'].includes(String(value));
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -59,7 +64,7 @@ function validateDocumentFieldConfig(
     );
   }
 
-  const { id, inputType, label, path, required } = value;
+  const { codeListKey, id, inputType, label, path, required, validation } = value;
 
   if (!isNonEmptyString(id) || !isNonEmptyString(label) || !isNonEmptyString(path)) {
     throw new Error(
@@ -79,12 +84,89 @@ function validateDocumentFieldConfig(
     );
   }
 
+  if (codeListKey !== undefined && !isNonEmptyString(codeListKey)) {
+    throw new Error(
+      `Field "${id}" in section "${sectionId}" for document type "${documentType}" has invalid "codeListKey"`,
+    );
+  }
+
   return {
+    codeListKey,
     id,
     inputType,
     label,
     path,
     required,
+    validation:
+      validation === undefined
+        ? undefined
+        : validateDocumentFieldValidationConfig(validation, documentType, sectionId, id),
+  };
+}
+
+function validateDocumentFieldValidationConfig(
+  value: unknown,
+  documentType: string,
+  sectionId: string,
+  fieldId: string,
+): DocumentFieldValidationConfig {
+  if (!isRecord(value)) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid "validation"`,
+    );
+  }
+
+  const { max, maxLength, min, minLength, pattern, scale } = value;
+
+  if (max !== undefined && !isFiniteNumber(max)) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.max`,
+    );
+  }
+
+  if (min !== undefined && !isFiniteNumber(min)) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.min`,
+    );
+  }
+
+  if (
+    maxLength !== undefined &&
+    (!Number.isInteger(maxLength) || typeof maxLength !== 'number' || maxLength < 0)
+  ) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.maxLength`,
+    );
+  }
+
+  if (
+    minLength !== undefined &&
+    (!Number.isInteger(minLength) || typeof minLength !== 'number' || minLength < 0)
+  ) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.minLength`,
+    );
+  }
+
+  if (pattern !== undefined && !isNonEmptyString(pattern)) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.pattern`,
+    );
+  }
+
+  if (scale !== undefined && (!Number.isInteger(scale) || typeof scale !== 'number' || scale < 0)) {
+    throw new Error(
+      `Field "${fieldId}" in section "${sectionId}" for document type "${documentType}" has invalid validation.scale`,
+    );
+  }
+
+  return {
+    max,
+    maxLength,
+    min,
+    minLength,
+    pattern,
+    scale,
   };
 }
 
