@@ -36,7 +36,10 @@ export class RabbitmqService implements OnModuleDestroy, OnModuleInit {
       input.queueName,
       Buffer.isBuffer(input.message) ? input.message : Buffer.from(input.message),
       {
+        contentType: input.options?.contentType,
+        messageId: input.options?.messageId,
         persistent: input.options?.persistent ?? true,
+        type: input.options?.type,
       },
     );
 

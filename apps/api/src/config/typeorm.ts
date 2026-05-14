@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSourceOptions } from 'typeorm';
 
 import { CorrectionSession } from '../correction-sessions/correction-session.entity';
+import { CorrectionEdit, CorrectionEventOutbox } from '../corrections/correction-edit.entity';
 import { User } from '../users/user.entity';
 
 interface TypeOrmConfig {
@@ -16,7 +17,7 @@ export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOp
   const { migrations } = getTypeOrmPaths(config.nodeEnv);
 
   return {
-    entities: [User, CorrectionSession],
+    entities: [User, CorrectionSession, CorrectionEdit, CorrectionEventOutbox],
     extra: {
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,

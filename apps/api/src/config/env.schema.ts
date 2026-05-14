@@ -12,6 +12,10 @@ export class EnvironmentVariables {
   @IsOptional()
   BCRYPT_SALT_ROUNDS?: number = 10;
 
+  @IsNumber()
+  @IsOptional()
+  CORRECTION_OUTBOX_FLUSH_INTERVAL_MS?: number = 5000;
+
   @IsString()
   CORS_ALLOWED_ORIGINS = 'http://localhost:5173';
 

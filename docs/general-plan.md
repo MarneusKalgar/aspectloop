@@ -14,7 +14,7 @@ The MVP should work locally first. Deployment, production observability, advance
 flowchart LR
   User["Correction user"] --> Web["React web app"]
   Web --> GQL["NestJS GraphQL API"]
-  GQL --> Auth["JWT / OIDC auth"]
+  GQL --> Auth["JWT auth / later external auth"]
   GQL --> Registry["Document type registry"]
   GQL --> Flatten["Flatten service"]
   GQL --> Merge["Merge service"]
@@ -28,7 +28,7 @@ flowchart LR
 
 Recommended local dependency split:
 
-- FE stack: `apps/web` with React, Material UI, react-hook-form, Apollo Client, react-oidc-context, Vitest, React Testing Library, Storybook, Playwright.
+- FE stack: `apps/web` with React, Material UI, react-hook-form, Apollo Client, Vitest, React Testing Library, Storybook, Playwright.
 - BE stack: `apps/api` with NestJS, GraphQL, TypeORM, PostgreSQL, amqplib, Pino, Docker.
 - Shared contracts: `packages/contracts` for generated GraphQL types, shared correction event types, and document metadata TypeScript types.
 - Local infrastructure: keep FE and BE local stacks separate, as requested:
@@ -487,13 +487,17 @@ export type FieldViewModel = {
 
 ## 10. Auth Flow
 
-The MVP needs frontend auth flow for both JWT-based auth and OAuth2 / OpenID Connect.
+The correction-flow critical path only needs local JWT auth.
+
+External provider auth is intentionally moved to a later dedicated phase after the backend correction flow, frontend correction UX, and FE-BE integration are already stable.
+
+Reference: `docs/phase-6-google-oidc-auth-plan.md`.
 
 Recommended split:
 
 - Local MVP default: simple JWT signup/signin against the backend, using an access token in memory.
-- OIDC-ready mode: `react-oidc-context` obtains an access token from an identity provider and passes it as `Authorization: Bearer <token>` to GraphQL.
-- Backend accepts bearer tokens through a guard abstraction so JWT-local and OIDC validation can be swapped without changing resolvers.
+- Later external-auth phase: start with Google-only sign-in and keep GraphQL on Elemika-issued JWTs.
+- Keep the backend auth guard abstraction clean so local JWT and later external-auth entrypoints can still converge on the same GraphQL user context.
 - Refresh token flow is deferred. Phase 1 only needs short-lived access tokens and explicit re-login.
 
 Reuse from `rd_shop`:
@@ -620,7 +624,7 @@ P0 (completed baseline):
 P1:
 
 - Apollo Client setup.
-- Auth provider for JWT/OIDC modes.
+- Auth provider for local JWT mode.
 - Correction route shell backed by the first stable API contract.
 - Loading, empty, error, unauthorized, and conflict states.
 
@@ -793,6 +797,8 @@ Phase 2 - Backend correction flow:
 - Add flatten/merge services.
 - Add optimistic locking, audit records, and first publish flow.
 
+Reference: `docs/phase-2-backend-correction-flow-plan.md`.
+
 Phase 3 - Frontend foundation:
 
 - Add Apollo Client.
@@ -813,8 +819,17 @@ Phase 5 - Integration hardening:
 - Add a minimal Playwright happy path.
 - Add stage packaging and smoke checks.
 
-Phase 6 - Deferred enhancements:
+Phase 6 - Google external auth:
 
+- Deliver only after the full correction flow is stable end to end.
+- Add Google sign-in through backend-managed OAuth/OIDC code exchange.
+- Keep GraphQL on Elemika-issued JWTs.
+
+Reference: `docs/phase-6-google-oidc-auth-plan.md`.
+
+Phase 7 - Deferred enhancements:
+
+- Consumer-side idempotency with `processed_message` once a real worker/replay flow exists.
 - Replay/reprocess orchestration.
 - Socket.IO status events.
 - Redis adapter if multi-instance scaling is introduced.

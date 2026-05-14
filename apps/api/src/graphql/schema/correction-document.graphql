@@ -1,0 +1,160 @@
+type CorrectionDocument {
+  sessionId: ID!
+  documentId: ID!
+  documentType: String!
+  version: Int!
+  status: CorrectionStatus!
+  publishStatus: CorrectionPublishStatus!
+  schema: CorrectionSchema!
+  fields: [CorrectionField!]!
+  audit: [CorrectionAuditEntry!]!
+  updatedAt: DateTime!
+}
+
+type CorrectionSchema {
+  documentType: String!
+  version: Int!
+  sections: [CorrectionSection!]!
+}
+
+type CorrectionSection {
+  id: String!
+  label: String!
+  path: String!
+  repeatable: Boolean!
+  fields: [CorrectionFieldMetadata!]!
+}
+
+type CorrectionFieldMetadata {
+  id: String!
+  path: String!
+  label: String!
+  inputType: FieldInputType!
+  required: Boolean!
+  codeListKey: String
+  validation: FieldValidation
+}
+
+type CorrectionField {
+  id: ID!
+  path: String!
+  sectionId: String!
+  rowPath: String
+  label: String!
+  value: JSON
+  originalValue: JSON
+  inputType: FieldInputType!
+  required: Boolean!
+  codeList: [CodeListOption!]
+  validation: FieldValidation
+  provenance: FieldProvenance
+}
+
+type FieldValidation {
+  min: Float
+  max: Float
+  minLength: Int
+  maxLength: Int
+  pattern: String
+  scale: Int
+}
+
+type FieldProvenance {
+  source: ProvenanceSource!
+  confidence: Float
+  page: Int
+  boundingBox: BoundingBox
+  extractionModel: String
+}
+
+type BoundingBox {
+  left: Float!
+  top: Float!
+  width: Float!
+  height: Float!
+}
+
+type CodeListOption {
+  value: String!
+  label: String!
+}
+
+type CorrectionAuditEntry {
+  id: ID!
+  fieldId: String!
+  path: String!
+  previousValue: JSON
+  newValue: JSON
+  editedBy: String!
+  editedAt: DateTime!
+  source: CorrectionSource!
+}
+
+input SubmitCorrectionsInput {
+  sessionId: ID!
+  expectedVersion: Int!
+  edits: [CorrectionEditInput!]!
+}
+
+input CorrectionEditInput {
+  fieldId: String!
+  path: String!
+  value: JSON
+}
+
+type SubmitCorrectionsPayload {
+  sessionId: ID!
+  documentId: ID!
+  version: Int!
+  status: CorrectionStatus!
+  publishStatus: CorrectionPublishStatus!
+  conflicts: [VersionConflict!]!
+}
+
+type VersionConflict {
+  path: String!
+  currentValue: JSON
+  submittedValue: JSON
+  reason: String!
+}
+
+enum CorrectionStatus {
+  DRAFT
+  SUBMITTED
+  CONFLICTED
+}
+
+enum CorrectionPublishStatus {
+  NOT_QUEUED
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+enum FieldInputType {
+  TEXT
+  DATE
+  NUMBER
+  CODE_LIST
+}
+
+enum ProvenanceSource {
+  OCR
+  EXTRACTION
+  ENRICHMENT
+  USER
+}
+
+enum CorrectionSource {
+  USER_EDIT
+  SYSTEM_MERGE
+  REPROCESS
+}
+
+extend type Query {
+  correctionDocument(sessionId: ID!): CorrectionDocument!
+}
+
+extend type Mutation {
+  submitCorrections(input: SubmitCorrectionsInput!): SubmitCorrectionsPayload!
+}

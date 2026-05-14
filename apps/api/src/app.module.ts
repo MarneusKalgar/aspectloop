@@ -9,6 +9,7 @@ import { getPinoLoggerConfig } from './config/logger.config';
 import { getTypeOrmModuleOptions } from './config/typeorm';
 import { getEnvFilePaths } from './core/environment';
 import { CorrectionSessionsModule } from './correction-sessions/correction-sessions.module';
+import { CorrectionsModule } from './corrections/corrections.module';
 import { DocumentRegistryModule } from './document-registry/document-registry.module';
 import { GraphqlApiModule } from './graphql/graphql.module';
 import { HealthController } from './health/health.controller';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     DocumentRegistryModule,
     PersistenceModule,
     CorrectionSessionsModule,
+    CorrectionsModule,
     RabbitmqModule,
   ],
 })
