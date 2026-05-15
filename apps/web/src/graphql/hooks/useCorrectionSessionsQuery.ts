@@ -19,16 +19,6 @@ const correctionSessionsQueryDocument = graphql(`
   }
 `);
 
-// TODO move to mock runtime
-export interface CorrectionSessionSummary {
-  documentId: string;
-  documentType: string;
-  id: string;
-  status: string;
-  updatedAt: string;
-  version: number;
-}
-
 export function useCorrectionSessionsQuery(): GraphqlOperationState<
   CorrectionSessionsQuery['correctionSessions']
 > {

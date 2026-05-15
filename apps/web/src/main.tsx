@@ -10,6 +10,9 @@ async function bootstrap() {
 
     await worker.start({
       onUnhandledRequest: 'bypass',
+      serviceWorker: {
+        url: '/mockServiceWorker.js',
+      },
     });
   }
 

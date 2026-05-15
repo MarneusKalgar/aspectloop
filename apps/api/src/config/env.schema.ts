@@ -34,6 +34,10 @@ export class EnvironmentVariables {
   @IsOptional()
   DB_SLOW_QUERY_THRESHOLD_MS?: number;
 
+  @IsOptional()
+  @IsString()
+  GQL_SCHEMA_AUTH_HEADER?: string;
+
   @IsString()
   JWT_ACCESS_SECRET!: string;
 

@@ -8,6 +8,8 @@ interface CreateGraphqlClientOptions {
 }
 
 export function createGraphqlClient({ getAccessToken }: CreateGraphqlClientOptions) {
+  const graphqlUri = env.mockGraphqlRuntime ? '/graphql' : `${env.apiUrl}/graphql`;
+
   const authLink = new SetContextLink(() => {
     const token = getAccessToken();
 
@@ -23,7 +25,7 @@ export function createGraphqlClient({ getAccessToken }: CreateGraphqlClientOptio
   });
 
   const httpLink = new HttpLink({
-    uri: `${env.apiUrl}/graphql`,
+    uri: graphqlUri,
   });
 
   return new ApolloClient({

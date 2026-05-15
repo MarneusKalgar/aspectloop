@@ -7,6 +7,7 @@ import { z } from 'zod';
 const workspaceRoot = fileURLToPath(new URL('.', import.meta.url));
 const codegenMode = process.env.NODE_ENV ?? 'development';
 const localSchemaPath = './graphql/schema.graphql';
+const gqlSchemaAuthHeaderName = 'x-elemika-schema-auth';
 
 const optionalNonEmptyString = z.preprocess((value) => {
   if (typeof value !== 'string') {
@@ -45,6 +46,7 @@ const codegenEnvSchema = z
   });
 
 const loadedEnv = loadEnv(codegenMode, workspaceRoot, '');
+
 const parsedCodegenEnv = codegenEnvSchema.safeParse({
   GQL_SCHEMA_AUTH_HEADER: loadedEnv.GQL_SCHEMA_AUTH_HEADER,
   GQL_SCHEMA_URL: loadedEnv.GQL_SCHEMA_URL,
@@ -61,7 +63,7 @@ if (!parsedCodegenEnv.success) {
 
 const schemaHeaders: Record<string, string> = parsedCodegenEnv.data.GQL_SCHEMA_AUTH_HEADER
   ? {
-      Authorization: parsedCodegenEnv.data.GQL_SCHEMA_AUTH_HEADER,
+      [gqlSchemaAuthHeaderName]: parsedCodegenEnv.data.GQL_SCHEMA_AUTH_HEADER,
     }
   : {};
 
