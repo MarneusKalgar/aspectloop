@@ -1,5 +1,8 @@
 import { Alert } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 export function NotFoundPage() {
-  return <Alert severity="warning">Page not found</Alert>;
+  const { t } = useTranslation();
+
+  return <Alert severity="warning">{t('router.notFound')}</Alert>;
 }

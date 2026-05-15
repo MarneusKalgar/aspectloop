@@ -25,6 +25,11 @@ export class CorrectionSessionsResolver {
     return this.correctionSessionsService.getSession(sessionId, authUser);
   }
 
+  @Query('correctionSessions')
+  correctionSessions(@CurrentUser() authUser: AuthUser) {
+    return this.correctionSessionsService.listSessions(authUser);
+  }
+
   @Mutation('openCorrectionSession')
   openCorrectionSession(
     @Args('input') input: OpenCorrectionSessionInput,

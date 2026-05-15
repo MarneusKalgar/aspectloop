@@ -13,6 +13,15 @@ type AuthPayload {
   user: User!
 }
 
+type SignOutPayload {
+  success: Boolean!
+}
+
+type SignUpPayload {
+  success: Boolean!
+  user: User!
+}
+
 input SignUpInput {
   email: String!
   password: String!
@@ -29,6 +38,7 @@ extend type Query {
 }
 
 extend type Mutation {
-  signUp(input: SignUpInput!): AuthPayload!
+  signOut: SignOutPayload!
   signIn(input: SignInInput!): AuthPayload!
+  signUp(input: SignUpInput!): SignUpPayload!
 }

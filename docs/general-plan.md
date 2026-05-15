@@ -801,10 +801,13 @@ Reference: `docs/phase-2-backend-correction-flow-plan.md`.
 
 Phase 3 - Frontend foundation:
 
-- Add Apollo Client.
-- Add auth provider.
-- Add API-backed correction route shell.
-- Add generated GraphQL client types and first loading/error surfaces.
+- Part 1: backend auth/inbox additions plus frontend foundations.
+- Add Apollo Client, GraphQL Code Generator client preset, MSW runtime mocking, and i18next.
+- Add auth provider with sign-in, sign-up, and sign-out flows.
+- Add `/corrections` inbox foundation before the detailed workspace route.
+- Part 2: correction workspace shell, design-system mapping, and Storybook.
+
+Reference: `docs/phase-3-frontend-foundation-plan.md`.
 
 Phase 4 - Frontend correction UX:
 

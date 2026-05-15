@@ -201,7 +201,9 @@ export abstract class IMutation {
 
   abstract signIn(input: SignInInput): AuthPayload | Promise<AuthPayload>;
 
-  abstract signUp(input: SignUpInput): AuthPayload | Promise<AuthPayload>;
+  abstract signOut(): SignOutPayload | Promise<SignOutPayload>;
+
+  abstract signUp(input: SignUpInput): SignUpPayload | Promise<SignUpPayload>;
 
   abstract submitCorrections(
     input: SubmitCorrectionsInput,
@@ -217,7 +219,18 @@ export abstract class IQuery {
 
   abstract correctionSession(sessionId: string): CorrectionSession | Promise<CorrectionSession>;
 
+  abstract correctionSessions(): CorrectionSession[] | Promise<CorrectionSession[]>;
+
   abstract me(): Nullable<User> | Promise<Nullable<User>>;
+}
+
+export class SignOutPayload {
+  success: boolean;
+}
+
+export class SignUpPayload {
+  success: boolean;
+  user: User;
 }
 
 export class SubmitCorrectionsPayload {

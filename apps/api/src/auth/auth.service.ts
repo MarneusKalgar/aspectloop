@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 
 import { normalizeEmail } from '../core/utils/normalize-email';
-import { SignInInput, SignUpInput } from '../graphql/graphql.types';
+import {
+  AuthPayload,
+  SignInInput,
+  SignOutPayload,
+  SignUpInput,
+  SignUpPayload,
+} from '../graphql/graphql.types';
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
@@ -33,7 +39,7 @@ export class AuthService {
     return user;
   }
 
-  async signIn(input: SignInInput) {
+  async signIn(input: SignInInput): Promise<AuthPayload> {
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
 
@@ -61,7 +67,17 @@ export class AuthService {
     };
   }
 
-  async signUp(input: SignUpInput) {
+  async signOut(authUser: AuthUser): Promise<SignOutPayload> {
+    const user = await this.getCurrentUser(authUser);
+
+    this.logger.log(`User signed out: ${user.email}`);
+
+    return {
+      success: true,
+    };
+  }
+
+  async signUp(input: SignUpInput): Promise<SignUpPayload> {
     const email = normalizeEmail(input.email);
     const displayName = input.displayName.trim();
     const password = input.password.trim();
@@ -94,7 +110,7 @@ export class AuthService {
     this.logger.log(`User signed up: ${user.email}`);
 
     return {
-      accessToken: await this.tokenService.generateAccessToken(user),
+      success: true,
       user,
     };
   }
