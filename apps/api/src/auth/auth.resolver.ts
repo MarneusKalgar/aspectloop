@@ -22,6 +22,12 @@ export class AuthResolver {
     return this.authService.signIn(input);
   }
 
+  @Mutation('signOut')
+  @UseGuards(GqlJwtAuthGuard)
+  async signOut(@CurrentUser() authUser: AuthUser) {
+    return this.authService.signOut(authUser);
+  }
+
   @Mutation('signUp')
   async signUp(@Args('input') input: SignUpInput) {
     return this.authService.signUp(input);

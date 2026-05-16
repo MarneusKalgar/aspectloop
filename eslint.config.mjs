@@ -13,6 +13,7 @@ export default [
       'node_modules/**',
       '.husky/**',
       'eslint.config.mjs',
+      '**/public/**',
     ],
   },
   eslint.configs.recommended,

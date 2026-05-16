@@ -43,7 +43,7 @@ Reviewing the current docs uncovered four Phase 2 constraints that should be mad
 Phase 1 is now effectively complete and provides the following baseline for Phase 2:
 
 - Schema-first GraphQL wired into NestJS.
-- Local JWT signup/signin plus `me`.
+- Local JWT signup/signin plus `me` and `signOut`.
 - `User` and `correction_session` persistence.
 - Registry-driven document metadata loaded from config.
 - File-backed persistence mock with durable per-document storage.
@@ -58,6 +58,9 @@ Phase 2 must deliver:
 
 - `correctionDocument(sessionId)` query returning schema, fields, original values, current values, and audit history.
 - `submitCorrections` mutation backed by optimistic locking on `correction_session.version`.
+- `signUp` returning a success payload without `accessToken`.
+- `signOut` mutation for the frontend contract boundary.
+- `correctionSessions` inbox query for the current corrector.
 - `source_payload` support so the immutable original document state survives later edits.
 - Separate provenance JSONB storage for field-level source metadata when provenance is not embedded in the payload tree.
 - Flatten service that maps registry sections and source/draft payloads to stable field DTOs.
@@ -82,6 +85,9 @@ Phase 2 is complete when all of the following are true:
 
 - `correctionDocument(sessionId)` returns a field-oriented document view suitable for the frontend.
 - Each field includes both current draft value and original source value.
+- `signUp` no longer auto-authenticates the user.
+- `signOut` exists as an explicit backend contract for frontend logout.
+- `correctionSessions` returns the current user's inbox list.
 - `submitCorrections` enforces optimistic locking using `expectedVersion`.
 - Submitted edits are merged into the hierarchical document tree deterministically.
 - `correction_edit` rows are persisted for each submitted edit.
@@ -349,6 +355,12 @@ sequenceDiagram
 ## Human-Readable GraphQL Schema for Phase 2
 
 Phase 2 should expose a correction-focused contract built on top of the existing Phase 1 session flow.
+
+It now also owns the backend contract alignment needed for the first Phase 3 frontend foundation:
+
+- sign-up success without auto-login
+- sign-out mutation
+- corrections inbox query
 
 ```graphql
 type Query {
@@ -671,6 +683,9 @@ These checks cover the work delivered so far for the first four items in the sug
 - The GraphQL schema includes live `correctionDocument(sessionId)` and `submitCorrections(input)` boundaries.
 - The correction resolver now lives inside `apps/api/src/corrections`, matching the feature-slice structure used elsewhere in the backend.
 - `graphql.types.ts` is updated consistently with the new Phase 2 SDL without requiring a local codegen run.
+- Auth SDL now separates `signUp` success from `signIn` token issuance.
+- `signOut` exists as a protected backend mutation.
+- `correctionSessions` exists as a protected inbox query for the current user.
 - Document-registry validation supports optional `codeListKey` and field-level `validation` metadata needed by the Phase 2 contract.
 - The flatten service builds section metadata and field DTOs from registry config plus session snapshots.
 - Repeatable sections produce deterministic `rowPath` and field ids, using row object identifiers when available and array index fallback otherwise.
@@ -835,7 +850,7 @@ Expected payload highlights:
 curl -s http://localhost:8080/graphql \
   -H 'content-type: application/json' \
   --data '{
-    "query": "mutation SignUp($input: SignUpInput!) { signUp(input: $input) { accessToken user { id email displayName roles scopes } } }",
+    "query": "mutation SignUp($input: SignUpInput!) { signUp(input: $input) { success user { id email displayName roles scopes } } }",
     "variables": {
       "input": {
         "email": "corrector@example.com",
@@ -848,17 +863,11 @@ curl -s http://localhost:8080/graphql \
 
 Expected result:
 
-- `accessToken` is returned.
+- `success = true`.
 - `roles` contains `CORRECTOR`.
 - `scopes` contains `corrections:write`.
 
-Save the access token for the next steps:
-
-```bash
-export TOKEN='<paste accessToken here>'
-```
-
-### 5. Sign in again to verify the login path
+### 5. Sign in to establish the authenticated session
 
 ```bash
 curl -s http://localhost:8080/graphql \
@@ -874,7 +883,11 @@ curl -s http://localhost:8080/graphql \
   }'
 ```
 
-Optional: replace `TOKEN` with the fresh access token returned by `signIn`.
+Save the access token for the next steps:
+
+```bash
+export TOKEN='<paste accessToken here>'
+```
 
 ### 6. Verify the authenticated identity
 
@@ -890,7 +903,37 @@ Expected result:
 - The same user is returned.
 - Roles and scopes still include correction access.
 
-### 7. Discover the available document types
+### 7. Verify the corrections inbox query
+
+```bash
+curl -s http://localhost:8080/graphql \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  --data '{"query":"query CorrectionSessions { correctionSessions { id documentId documentType status version updatedAt } }"}'
+```
+
+Expected result:
+
+- The query succeeds for the authenticated corrector.
+- Before opening a session, the list may be empty.
+
+### 7a. Optional: verify the sign-out contract boundary
+
+```bash
+curl -s http://localhost:8080/graphql \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer $TOKEN" \
+  --data '{"query":"mutation SignOut { signOut { success } }"}'
+```
+
+Expected result:
+
+- `success = true`.
+- Treat this as a frontend contract and audit boundary, not as JWT revocation.
+
+If you run this step and want a fresh token for the remaining checks, repeat Step 5.
+
+### 8. Discover the available document types
 
 ```bash
 curl -s http://localhost:8080/graphql \
@@ -903,7 +946,7 @@ Expected result:
 
 - `supplier_invoice` is present.
 
-### 8. Open a correction session for the seeded document
+### 9. Open a correction session for the seeded document
 
 ```bash
 curl -s http://localhost:8080/graphql \
@@ -934,7 +977,7 @@ export SESSION_ID='<paste session id here>'
 
 In the next GraphQL examples, replace `<SESSION_ID>` with the value you exported.
 
-### 9. Load the correction document view
+### 10. Load the correction document view
 
 ```bash
 curl -s http://localhost:8080/graphql \
@@ -956,7 +999,7 @@ Expected result on a fresh reset:
 - The `invoice_number` field exists with path `header.invoiceNumber`.
 - That field has both `value` and `originalValue` equal to `INV-2026-001`.
 
-### 10. Optional: exercise the Phase 1 draft-only mutation
+### 11. Optional: exercise the Phase 1 draft-only mutation
 
 Skip this step if you want the shortest Phase 2 verification path.
 
@@ -993,7 +1036,7 @@ If you run this step:
 - The persistence mock document version also increments.
 - Use the new session version as `expectedVersion` in the next step.
 
-### 11. Submit a correction through the Phase 2 flow
+### 12. Submit a correction through the Phase 2 flow
 
 Use `expectedVersion = 1` if you skipped the draft-save step above. If you ran it, use the returned version instead.
 
@@ -1026,7 +1069,7 @@ Expected result on the happy path:
 - `version` increments by one.
 - `publishStatus` is usually `PUBLISHED` when RabbitMQ is healthy. It may briefly be `PENDING` during relay timing.
 
-### 12. Reload the correction document after submit
+### 13. Reload the correction document after submit
 
 Run the same `correctionDocument(sessionId)` query again.
 
@@ -1037,7 +1080,7 @@ Expected result after submit:
 - `audit` contains one `USER_EDIT` entry.
 - `publishStatus` matches the outbox state.
 
-### 13. Verify the persistence mock state directly
+### 14. Verify the persistence mock state directly
 
 ```bash
 curl -s http://localhost:8090/demo-invoice-001
@@ -1048,7 +1091,7 @@ Expected result:
 - `payload.header.invoiceNumber` is `INV-2026-001-CORRECTED`.
 - `version` increased compared with the initial seed state.
 
-### 14. Verify the Postgres rows
+### 15. Verify the Postgres rows
 
 ```bash
 docker exec -it elemika_api_local-postgres psql -U elemika -d elemika -c "select id, document_id, status, version, source_payload->'header'->>'invoiceNumber' as source_invoice_number, draft_payload->'header'->>'invoiceNumber' as draft_invoice_number from correction_session order by created_at desc;"
@@ -1065,7 +1108,7 @@ Expected result:
 - `correction_edit` contains one row for `invoice_number` / `header.invoiceNumber`.
 - `correction_event_outbox` contains one row with `status = PUBLISHED` on the happy path.
 
-### 15. Verify the RabbitMQ queue
+### 16. Verify the RabbitMQ queue
 
 Open RabbitMQ management UI:
 
@@ -1081,7 +1124,7 @@ Expected result:
 - A submitted correction produces a `document.corrected` message.
 - If no consumer is attached, the message remains visible as ready in the queue.
 
-### 16. Verify the optimistic-lock failure path
+### 17. Verify the optimistic-lock failure path
 
 Resubmit the same mutation from step 11 with the old `expectedVersion`.
 
@@ -1090,7 +1133,7 @@ Expected result:
 - The API returns a version-mismatch error.
 - No new `correction_edit` row is written for the rejected request.
 
-### 17. Shut the stack down when finished
+### 18. Shut the stack down when finished
 
 ```bash
 cd apps/api

@@ -12,6 +12,7 @@ export class TokenService {
 
   generateAccessToken(user: User): Promise<string> {
     const payload: JwtPayload = {
+      displayName: user.displayName,
       email: user.email,
       roles: user.roles,
       scopes: user.scopes,

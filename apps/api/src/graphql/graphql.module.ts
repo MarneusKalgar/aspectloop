@@ -6,6 +6,7 @@ import { join } from 'node:path';
 
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { JsonScalar } from './scalars/json.scalar';
+import { createIntrospectionHeaderGateRequestDidStart } from './utils/createIntrospectionHeaderGateRequestDidStart';
 
 @Module({
   imports: [
@@ -15,6 +16,11 @@ import { JsonScalar } from './scalars/json.scalar';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const nodeEnv = configService.get<string>('NODE_ENV');
+        const introspectionAuthorizationHeader =
+          configService.get<string>('GQL_SCHEMA_AUTH_HEADER');
+        const requestDidStart = createIntrospectionHeaderGateRequestDidStart(
+          introspectionAuthorizationHeader,
+        );
         const isRuntimeBuild = nodeEnv === 'production' || nodeEnv === 'stage';
         const schemaGlob = isRuntimeBuild
           ? 'dist/graphql/schema/**/*.graphql'
@@ -32,6 +38,7 @@ import { JsonScalar } from './scalars/json.scalar';
           graphiql: !isRuntimeBuild,
           introspection: !isRuntimeBuild,
           path: '/graphql',
+          plugins: requestDidStart ? [{ requestDidStart }] : [],
           sortSchema: true,
           stopOnTerminationSignals: false,
           typePaths: [join(process.cwd(), schemaGlob)],

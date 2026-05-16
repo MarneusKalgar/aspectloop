@@ -69,6 +69,26 @@ export class CorrectionSessionsService {
   }
 
   /**
+   * Lists the current user's correction sessions for the inbox route.
+   */
+  async listSessions(authUser: AuthUser): Promise<CorrectionSession[]> {
+    const sessions = await this.correctionSessionsRepository.find({
+      order: {
+        updatedAt: 'DESC',
+      },
+      relations: {
+        createdBy: true,
+        lockedBy: true,
+      },
+      where: {
+        createdById: authUser.sub,
+      },
+    });
+
+    return sessions.map((session) => this.normalizeSessionPayloads(session));
+  }
+
+  /**
    * Opens a new correction session from the external document payload or reuses an
    * existing session when the same user already owns it.
    */

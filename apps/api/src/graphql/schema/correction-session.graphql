@@ -28,6 +28,7 @@ input SaveCorrectionSessionDraftInput {
 }
 
 extend type Query {
+  correctionSessions: [CorrectionSession!]!
   correctionSession(sessionId: ID!): CorrectionSession!
 }
 

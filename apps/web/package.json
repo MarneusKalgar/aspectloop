@@ -6,20 +6,34 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
+    "graphql-codegen": "graphql-codegen --config codegen.ts",
+    "graphql-codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "preview": "vite preview --host 0.0.0.0 --port 4173"
   },
   "dependencies": {
+    "@apollo/client": "^4.1.9",
+    "@hookform/resolvers": "^5.2.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.0.1",
+    "graphql": "^16.14.0",
+    "i18next": "^26.1.0",
+    "jose": "^6.2.3",
     "react": "^19.2.6",
+    "react-cookie": "^8.1.2",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.15.0"
+    "react-hook-form": "^7.75.0",
+    "react-i18next": "^17.0.7",
+    "react-router-dom": "^7.15.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.0.0",
+    "@graphql-codegen/client-preset": "^6.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "msw": "^2.14.6",
     "vite": "^8.0.12"
   }
 }
