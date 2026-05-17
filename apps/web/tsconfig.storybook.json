@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [".storybook/**/*", "src/**/*.stories.ts", "src/**/*.stories.tsx"]
+}

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in — Elemika — Dark</title>
+<style>
+
+:root {
+  --primary:         oklch(64% 0.24 145);
+  --primary-dark:    oklch(50% 0.24 145);
+  --primary-light:   oklch(22% 0.08 145);
+  --secondary:       oklch(62% 0.22 264);
+  --secondary-light: oklch(20% 0.06 264);
+  --error:           oklch(58% 0.24 27);
+  --error-light:     oklch(18% 0.06 27);
+  --warning:         oklch(74% 0.18 65);
+  --warning-light:   oklch(20% 0.06 65);
+  --success:         oklch(64% 0.22 145);
+  --success-light:   oklch(18% 0.07 145);
+  --text-primary:    oklch(94% 0.008 258);
+  --text-secondary:  oklch(72% 0.015 258);
+  --text-disabled:   oklch(38% 0.01 255);
+  --divider:         oklch(36% 0.025 258);
+  --bg:              oklch(10% 0.025 258);
+  --surface:         oklch(21% 0.03 258);
+  --shell-bg:        oklch(7% 0.018 258);
+  --shell-surface:   oklch(11% 0.024 258);
+  --shell-border:    oklch(30% 0.022 258);
+  --shell-text:      oklch(95% 0.008 258);
+  --shell-muted:     oklch(56% 0.018 258);
+  --shadow-sm:  0 1px 2px 0 rgba(0,0,0,.4);
+  --shadow-1:   0 1px 3px 0 rgba(0,0,0,.5), 0 1px 2px -1px rgba(0,0,0,.5);
+  --shadow-2:   0 4px 6px -1px rgba(0,0,0,.5), 0 2px 4px -2px rgba(0,0,0,.5);
+  --shadow-4:   0 10px 15px -3px rgba(0,0,0,.55), 0 4px 6px -4px rgba(0,0,0,.5);
+  --shadow-8:   0 20px 25px -5px rgba(0,0,0,.65), 0 8px 10px -6px rgba(0,0,0,.5);
+  --font: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --mono: "JetBrains Mono","IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+}
+*,*::before,*::after { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; }
+body { background:var(--bg); color:var(--text-primary); font:1rem/1.5 var(--font); -webkit-font-smoothing:antialiased; }
+
+.app-bar { position:sticky;top:0;z-index:1100;background:var(--shell-bg);border-bottom:1px solid var(--shell-border);height:64px;display:flex;align-items:center;padding:0 24px;gap:16px;box-shadow:0 1px 28px rgba(0,0,0,.35); }
+.app-bar-logo { display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--shell-text); }
+.logo-mark { width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:700 1rem var(--font);box-shadow:0 0 0 2px color-mix(in oklab,var(--primary) 40%,transparent),0 4px 14px color-mix(in oklab,var(--primary) 55%,transparent); }
+.logo-name { font:700 1.1rem var(--font);letter-spacing:-.025em;color:var(--shell-text); }
+.app-bar-spacer { flex:1; }
+.app-bar-nav { display:flex;align-items:center;gap:2px; }
+.nav-item { padding:6px 12px;border-radius:var(--r);font:500 .875rem var(--font);color:var(--shell-muted);text-decoration:none;transition:background 150ms,color 150ms; }
+.nav-item:hover { background:rgba(255,255,255,.08);color:var(--shell-text); }
+.nav-item.active { color:var(--shell-text);background:rgba(255,255,255,.14); }
+.app-bar-avatar { position:relative; }
+.avatar-btn { width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font:700 .875rem var(--font);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.avatar-menu { display:none;position:absolute;top:44px;right:0;background:var(--surface);border:1px solid var(--divider);border-radius:var(--r);box-shadow:var(--shadow-8);min-width:180px;overflow:hidden;z-index:10; }
+.avatar-menu.open { display:block; }
+.avatar-menu-item { display:block;padding:10px 16px;font:400 .875rem var(--font);color:var(--text-primary);text-decoration:none;cursor:pointer;border:none;width:100%;text-align:left;background:none; }
+.avatar-menu-item:hover { background:var(--bg); }
+.avatar-menu-divider { height:1px;background:var(--divider);margin:4px 0; }
+
+.btn { display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;min-height:36px;border-radius:var(--r);font:500 .875rem/1.75 var(--font);letter-spacing:.02857em;text-transform:uppercase;cursor:pointer;border:none;text-decoration:none;transition:background 200ms,box-shadow 200ms;white-space:nowrap;user-select:none; }
+.btn-primary { background:var(--primary);color:#fff;box-shadow:var(--shadow-1); }
+.btn-primary:hover { background:var(--primary-dark);box-shadow:var(--shadow-2),0 4px 18px color-mix(in oklab,var(--primary) 38%,transparent); }
+.btn-outlined { background:transparent;color:var(--primary);border:1px solid color-mix(in oklab,var(--primary) 50%,transparent); }
+.btn-outlined:hover { background:var(--primary-light); }
+.btn-text { background:transparent;color:var(--primary);box-shadow:none;padding:6px 8px; }
+.btn-text:hover { background:var(--primary-light); }
+.btn-full { width:100%;min-height:42px;font-size:.9375rem;margin-top:8px; }
+.btn:disabled,.btn[disabled] { opacity:.38;cursor:default;box-shadow:none;pointer-events:none; }
+.btn-sm { min-height:28px;padding:4px 10px;font-size:.8125rem; }
+
+.field { position:relative;margin-bottom:20px; }
+.field-wrap { position:relative; }
+.field-wrap input,.field-wrap textarea {
+  display:block;width:100%;padding:16.5px 14px;border:1px solid rgba(255,255,255,.32);border-radius:var(--r);
+  font:1rem var(--font);color:var(--text-primary);background:transparent;outline:none;transition:border-color 150ms;
+}
+.field-wrap input:hover { border-color:var(--text-primary); }
+.field-wrap input:focus,.field-wrap textarea:focus { border:2px solid var(--primary);padding:15.5px 13px; }
+.field-wrap label {
+  position:absolute;left:14px;top:16.5px;font:1rem var(--font);color:var(--text-secondary);
+  pointer-events:none;background:var(--surface);padding:0 4px;line-height:1;
+  transition:top 150ms cubic-bezier(0,0,.2,1),font-size 150ms cubic-bezier(0,0,.2,1),color 150ms;
+}
+.field-wrap input:focus ~ label,.field-wrap input:not(:placeholder-shown) ~ label,
+.field-wrap textarea:focus ~ label,.field-wrap textarea:not(:placeholder-shown) ~ label { top:-9px;font-size:.75rem;color:var(--primary); }
+.field.err .field-wrap input,.field.err .field-wrap textarea { border-color:var(--error); }
+.field.err .field-wrap input:focus,.field.err .field-wrap textarea:focus { border:2px solid var(--error);padding:15.5px 13px; }
+.field.err .field-wrap label,.field.err .field-wrap input:not(:placeholder-shown) ~ label,.field.err .field-wrap input:focus ~ label { color:var(--error); }
+.field-helper { margin:3px 14px 0;font-size:.75rem;line-height:1.33;color:var(--text-secondary);min-height:18px; }
+.field.err .field-helper { color:var(--error); }
+.field-suffix { position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;padding:0 8px; }
+.field-suffix button { background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:50%;display:flex; }
+
+.alert { display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:var(--r);font:.875rem/1.43 var(--font);margin-bottom:16px; }
+.alert-error { background:var(--error-light);color:oklch(80% 0.18 27); }
+.alert-success { background:var(--success-light);color:oklch(80% 0.16 145); }
+.alert-warning { background:var(--warning-light);color:oklch(82% 0.14 55); }
+.alert-info { background:oklch(18% 0.04 220);color:oklch(82% 0.08 220); }
+.alert-icon { font-size:18px;flex-shrink:0;margin-top:1px; }
+.alert-body { flex:1; }
+
+.chip { display:inline-flex;align-items:center;border-radius:16px;font:600 .75rem var(--font);letter-spacing:.01em;white-space:nowrap;user-select:none;cursor:default; }
+.chip-sm { height:22px;padding:0 8px; }
+.chip-md { height:32px;padding:0 12px;font-size:.8125rem; }
+.chip-default { background:oklch(26% 0.018 255);color:var(--text-primary); }
+.chip-primary { background:color-mix(in oklab,var(--primary) 18%,white);color:var(--primary-dark); }
+.chip-error { background:var(--error-light);color:var(--error); }
+.chip-success { background:var(--success-light);color:var(--success); }
+.chip-warning { background:var(--warning-light);color:var(--warning); }
+.chip-clickable { cursor:pointer; }
+.chip-clickable:hover { filter:brightness(.94); }
+.chip-clickable.chip-active { background:var(--primary);color:#fff;box-shadow:0 2px 10px color-mix(in oklab,var(--primary) 45%,transparent); }
+
+.paper { background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-sm); }
+.paper-outlined { border:1px solid var(--divider); }
+
+.divider { border:none;border-top:1px solid var(--divider);margin:0; }
+
+table { width:100%;border-collapse:collapse;font:.875rem/1.43 var(--font); }
+thead { background:var(--bg); }
+th { padding:12px 16px;text-align:left;font:600 .75rem var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);border-bottom:2px solid var(--divider);white-space:nowrap; }
+td { padding:13px 16px;border-bottom:1px solid var(--divider);color:var(--text-primary);vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:color-mix(in oklab,var(--primary) 14%,var(--bg)); }
+tr.hidden { display:none; }
+
+.dialog-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1300;align-items:center;justify-content:center; }
+.dialog-overlay.open { display:flex; }
+.dialog { background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-8);max-width:480px;width:calc(100% - 48px);padding:28px; }
+.dialog-title { font:600 1.25rem/1.6 var(--font);margin:0 0 12px; }
+.dialog-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);margin:0 0 24px; }
+.dialog-actions { display:flex;justify-content:flex-end;gap:8px; }
+
+.empty-state { text-align:center;padding:64px 24px; }
+.empty-state-icon { font-size:40px;margin-bottom:16px;opacity:.4; }
+.empty-state-title { font:600 1.25rem/1.6 var(--font);margin:0 0 8px; }
+.empty-state-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);max-width:360px;margin:0 auto; }
+
+.t-h5 { font:600 1.5rem/1.33 var(--font);margin:0; }
+.t-body2 { font:400 .875rem/1.43 var(--font); }
+.t-caption { font:400 .75rem/1.66 var(--font);letter-spacing:.03333em; }
+.t-overline { font:400 .75rem/2.66 var(--font);letter-spacing:.08333em;text-transform:uppercase; }
+.c-muted { color:var(--text-secondary); }
+.c-primary { color:var(--primary); }
+.c-error { color:var(--error); }
+.c-success { color:var(--success); }
+.mono { font-family:var(--mono);font-variant-numeric:tabular-nums; }
+
+body { height:100vh;display:flex;flex-direction:column; }
+.auth-grid { flex:1;display:grid;grid-template-columns:460px 1fr;min-height:0; }
+.panel-left { background:linear-gradient(148deg,var(--shell-bg) 0%,oklch(10% 0.04 262) 55%,oklch(14% 0.08 145) 100%);color:#fff;padding:56px 48px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden; }
+.panel-left::before { content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 30% 80%,color-mix(in oklab,var(--primary) 20%,transparent) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.025) 39px,rgba(255,255,255,.025) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.025) 39px,rgba(255,255,255,.025) 40px);pointer-events:none; }
+.panel-eyebrow { font:.75rem var(--mono);letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 18px; }
+.panel-headline { font:600 clamp(1.75rem,3vw,2.25rem)/1.2 var(--font);letter-spacing:-.02em;margin:0 0 18px; }
+.panel-sub { font:.9375rem/1.6 var(--font);opacity:.65;margin:0 0 32px; }
+.panel-features { list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px; }
+.panel-features li { display:flex;align-items:flex-start;gap:10px;font:.875rem/1.5 var(--font);opacity:.75; }
+.panel-features li::before { content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:8px; }
+.panel-right { display:flex;align-items:center;justify-content:center;padding:32px 24px; }
+.form-box { width:100%;max-width:400px; }
+.auth-title { font:600 1.5rem/1.35 var(--font);letter-spacing:-.01em;margin:0 0 8px; }
+.auth-sub { font:.875rem/1.5 var(--font);color:var(--text-secondary);margin:0 0 24px; }
+.auth-switch { text-align:center;margin-top:20px;font:.875rem var(--font);color:var(--text-secondary); }
+.auth-switch a { color:var(--primary);text-decoration:none;font-weight:500; }
+.auth-switch a:hover { text-decoration:underline; }
+.test-hint { margin-top:24px;padding:12px;border-radius:var(--r);background:var(--bg);border:1px solid var(--divider);font:.8125rem var(--font); }
+.test-hint .label { display:block;font:.7rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px; }
+.test-hint code { font:.8rem var(--mono);background:rgba(255,255,255,.08);padding:2px 5px;border-radius:3px; }
+@media (max-width:760px) { .panel-left { display:none; } .auth-grid { grid-template-columns:1fr; } }
+
+</style>
+</head>
+<body>
+
+<header class="app-bar" data-component="MuiAppBar" data-node-id="app-bar">
+  <a href="../index.html" class="app-bar-logo" data-node-id="app-bar-logo">
+    <div class="logo-mark">E</div>
+    <span class="logo-name">Elemika</span>
+  </a>
+  <div class="app-bar-spacer"></div>
+  <a href="signup-desktop.html" class="btn btn-text" data-component="MuiButton" data-variant="text" data-node-id="appbar-create-account-btn">Create account</a>
+</header>
+
+<main class="auth-grid" data-node-id="auth-layout">
+  <div class="panel-left" data-node-id="auth-marketing-panel">
+    <p class="panel-eyebrow">Correction workbench</p>
+    <h2 class="panel-headline">Evidence-first data review, built for accuracy.</h2>
+    <p class="panel-sub">Review extracted values against source documents with field-level confidence scoring.</p>
+    <ul class="panel-features">
+      <li>Low-confidence fields surfaced first</li>
+      <li>Provenance linked to source evidence</li>
+      <li>Persistent validation status</li>
+    </ul>
+  </div>
+  <div class="panel-right">
+    <div class="form-box" data-node-id="auth-form-panel">
+      <h1 class="auth-title" data-node-id="auth-title">Review extracted data with evidence at hand</h1>
+      <p class="auth-sub" data-node-id="auth-subtitle">Sign in to open your correction inbox.</p>
+      <div id="alert-error" class="alert alert-error" data-component="MuiAlert" data-severity="error" data-node-id="auth-error-banner" style="display:none" role="alert" aria-live="polite">
+        <span class="alert-icon">&#9888;</span>
+        <div class="alert-body">Could not sign you in. Check your email and password and try again.</div>
+      </div>
+      <form id="login-form" data-node-id="login-form" novalidate>
+        <div class="field" id="field-email" data-component="MuiTextField" data-variant="outlined" data-node-id="login-email-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="email" id="email" name="email" placeholder=" " autocomplete="email" data-node-id="login-email-input">
+            <label for="email">Email</label>
+          </div>
+          <p class="field-helper" id="email-helper" data-component="MuiFormHelperText" data-node-id="login-email-helper"></p>
+        </div>
+        <div class="field" id="field-password" data-component="MuiTextField" data-variant="outlined" data-node-id="login-password-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="password" id="password" name="password" placeholder=" " autocomplete="current-password" style="padding-right:48px" data-node-id="login-password-input">
+            <label for="password">Password</label>
+            <div class="field-suffix">
+              <button type="button" id="toggle-pw" title="Show password" data-node-id="login-password-toggle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="field-helper" id="password-helper" data-component="MuiFormHelperText" data-node-id="login-password-helper"></p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" data-component="MuiButton" data-variant="contained" data-color="primary" data-node-id="login-submit-btn">Sign in</button>
+      </form>
+      <p class="auth-switch" data-node-id="auth-switch">
+        <a href="signup-desktop.html" data-component="MuiLink" data-node-id="auth-create-account-link">Create account</a>
+      </p>
+      <div class="test-hint" data-node-id="login-test-credentials">
+        <span class="label">Test credentials</span>
+        <code>reviewer@elemika.io</code> / <code>password123</code>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const emailField = document.getElementById('field-email');
+const passwordField = document.getElementById('field-password');
+const emailHelper = document.getElementById('email-helper');
+const passwordHelper = document.getElementById('password-helper');
+const errorAlert = document.getElementById('alert-error');
+const form = document.getElementById('login-form');
+const togglePw = document.getElementById('toggle-pw');
+
+if (togglePw) {
+  togglePw.addEventListener('click', () => {
+    passwordInput.type = passwordInput.type === 'text' ? 'password' : 'text';
+  });
+}
+
+function vEmail(v) { if (!v) return 'Email is required.'; if (!/^[^@]+@[^@]+\.[^@]+$/.test(v)) return 'Enter a valid email address.'; return ''; }
+function vPassword(v) { if (!v) return 'Password is required.'; return ''; }
+
+function setField(field, input, helper, err) {
+  if (err) { field.classList.add('err'); field.dataset.state = 'error'; helper.textContent = err; }
+  else { field.classList.remove('err'); field.dataset.state = input.value ? 'filled' : 'empty'; helper.textContent = ''; }
+}
+
+emailInput.addEventListener('blur', () => setField(emailField, emailInput, emailHelper, vEmail(emailInput.value)));
+passwordInput.addEventListener('blur', () => setField(passwordField, passwordInput, passwordHelper, vPassword(passwordInput.value)));
+emailInput.addEventListener('input', () => { if (emailField.dataset.state === 'error') setField(emailField, emailInput, emailHelper, vEmail(emailInput.value)); });
+passwordInput.addEventListener('input', () => { if (passwordField.dataset.state === 'error') setField(passwordField, passwordInput, passwordHelper, vPassword(passwordInput.value)); });
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const eErr = vEmail(emailInput.value);
+  const pErr = vPassword(passwordInput.value);
+  setField(emailField, emailInput, emailHelper, eErr);
+  setField(passwordField, passwordInput, passwordHelper, pErr);
+  if (eErr || pErr) return;
+  if (emailInput.value.trim() === 'reviewer@elemika.io' && passwordInput.value === 'password123') {
+    errorAlert.style.display = 'none';
+    const dest = window.location.href.includes('mobile') ? 'corrections-dashboard-mobile.html' : 'corrections-dashboard-desktop.html';
+    window.location.href = dest;
+  } else {
+    errorAlert.style.display = 'flex';
+    emailField.classList.add('err'); emailField.dataset.state = 'error';
+    passwordField.classList.add('err'); passwordField.dataset.state = 'error';
+  }
+});
+
+</script>
+</body>
+</html>

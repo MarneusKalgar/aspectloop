@@ -6,7 +6,7 @@
     "moduleResolution": "Bundler",
     "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", ".storybook/**/*.ts", ".storybook/**/*.tsx"],
   "references": [
     {
       "path": "./tsconfig.node.json"
