@@ -9,3 +9,4 @@ coverage
 .env.development
 .env.stage
 mocks/persistence-service/data
+.DS_Store

@@ -14,7 +14,8 @@
     "format": "prettier --write \"{apps,mocks,docs}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
     "lint": "eslint \"apps/**/*.{ts,tsx,js}\" --fix",
     "lint:ci": "eslint \"apps/**/*.{ts,tsx,js}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "type-check": "tsc -p apps/web/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

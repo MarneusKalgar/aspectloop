@@ -8,13 +8,15 @@
     "build": "tsc -b && vite build",
     "graphql-codegen": "graphql-codegen --config codegen.ts",
     "graphql-codegen:watch": "graphql-codegen --config codegen.ts --watch",
-    "preview": "vite preview --host 0.0.0.0 --port 4173"
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
   },
   "dependencies": {
     "@apollo/client": "^4.1.9",
-    "@hookform/resolvers": "^5.2.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@hookform/resolvers": "^5.2.2",
     "@mui/material": "^9.0.1",
     "graphql": "^16.14.0",
     "i18next": "^26.1.0",
@@ -30,10 +32,13 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^7.0.0",
     "@graphql-codegen/client-preset": "^6.0.0",
+    "@storybook/addon-a11y": "^10.4.0",
+    "@storybook/react-vite": "^10.4.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "msw": "^2.14.6",
+    "storybook": "^10.4.0",
     "vite": "^8.0.12"
   }
 }

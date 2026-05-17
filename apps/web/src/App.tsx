@@ -1,4 +1,4 @@
-import { Container } from '@mui/material';
+import { Box } from '@mui/material';
 import { CookiesProvider } from 'react-cookie';
 import { RouterProvider } from 'react-router-dom';
 
@@ -15,9 +15,9 @@ export function App() {
         <CookiesProvider>
           <ApolloAppProvider>
             <AuthProvider>
-              <Container maxWidth="lg" sx={{ py: 3 }}>
+              <Box sx={{ minHeight: '100vh' }}>
                 <RouterProvider router={router} />
-              </Container>
+              </Box>
             </AuthProvider>
           </ApolloAppProvider>
         </CookiesProvider>

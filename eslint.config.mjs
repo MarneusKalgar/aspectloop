@@ -14,6 +14,9 @@ export default [
       '.husky/**',
       'eslint.config.mjs',
       '**/public/**',
+      '**/design/**',
+      '**/.storybook/**',
+      '**/*.stories.{ts,tsx}',
     ],
   },
   eslint.configs.recommended,
@@ -33,6 +36,15 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
       sourceType: 'module',
+    },
+  },
+  {
+    files: ['apps/web/.storybook/**/*.{ts,tsx}', 'apps/web/src/**/*.stories.tsx'],
+    languageOptions: {
+      parserOptions: {
+        project: false,
+        projectService: false,
+      },
     },
   },
   {

@@ -815,6 +815,8 @@ Phase 4 - Frontend correction UX:
 - Add header, line-item, and nested-row sections.
 - Add submit flow, validation banner, provenance, and edit-history UI.
 
+Reference: `docs/phase-4-frontend-correction-ux-plan.md`.
+
 Phase 5 - Integration hardening:
 
 - Connect FE and BE against the real local GraphQL contract.

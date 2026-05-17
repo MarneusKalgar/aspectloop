@@ -1,0 +1,314 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Elemika correction flows</title>
+    <style>
+      :root {
+        --bg: oklch(98% 0.005 250);
+        --surface: oklch(100% 0 0);
+        --fg: oklch(22% 0.02 240);
+        --muted: oklch(50% 0.018 240);
+        --border: oklch(90% 0.008 240);
+        --accent: oklch(58% 0.16 145);
+        --accent-soft: color-mix(in oklab, var(--accent) 14%, white);
+        --font-display: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+        --font-body: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        background:
+          linear-gradient(to bottom, color-mix(in oklab, var(--accent) 6%, transparent), transparent 34%),
+          linear-gradient(to right, color-mix(in oklab, var(--border) 74%, transparent) 1px, transparent 1px),
+          linear-gradient(to bottom, color-mix(in oklab, var(--border) 74%, transparent) 1px, transparent 1px),
+          var(--bg);
+        background-size: auto, 24px 24px, 24px 24px, auto;
+        color: var(--fg);
+        font-family: var(--font-body);
+      }
+
+      .page {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 40px 24px 72px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--muted);
+        font: 600 12px/1.1 var(--font-mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 14px;
+        max-width: 860px;
+        font: 700 clamp(40px, 7vw, 72px) / 0.96 var(--font-display);
+        letter-spacing: -0.045em;
+      }
+
+      .lede {
+        max-width: 780px;
+        margin: 0 0 32px;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.6;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+
+      .meta-card,
+      .screen-card {
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+
+      .meta-card {
+        padding: 18px 18px 20px;
+      }
+
+      .meta-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .meta-card span {
+        font-size: 17px;
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .screen-card {
+        padding: 22px;
+      }
+
+      .screen-card h2 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        letter-spacing: -0.03em;
+      }
+
+      .screen-card p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .tag {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--fg);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .actions a {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 2px;
+        min-height: 52px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        color: var(--fg);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        line-height: 1.3;
+        padding: 8px 6px;
+      }
+
+      .actions a small {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.6;
+      }
+
+      .actions a.primary {
+        border-color: transparent;
+        background: var(--accent);
+        color: white;
+      }
+
+      .actions a.dark-variant {
+        background: oklch(14% 0.03 258);
+        border-color: oklch(26% 0.025 258);
+        color: oklch(90% 0.01 258);
+      }
+
+      .actions a.dark-variant small {
+        opacity: 0.5;
+        color: oklch(70% 0.015 258);
+      }
+
+      .actions a:hover {
+        transform: translateY(-1px);
+      }
+
+      .footer {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .meta,
+        .grid,
+        .actions {
+          grid-template-columns: 1fr;
+        }
+
+        .page {
+          padding: 24px 16px 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="eyebrow">Elemika / Phase 3 Part 2 / MUI v9.0.1</div>
+      <h1>Desktop and mobile correction flows built as an evidence-first workbench.</h1>
+      <p class="lede">
+        The screens follow the Part 2 frontend brief: light and dark precision workspaces, strong evidence
+        linkage, persistent validation surfaces, and MVP-sized auth, inbox, and correction-session
+        flows. Each screen ships in a light and dark variant — desktop and mobile — as separate HTML files.
+      </p>
+
+      <section class="meta">
+        <article class="meta-card">
+          <strong>Direction</strong>
+          <span>Tech / utility palette — light and dark. Both use the same token system with inverted surface and text tokens.</span>
+        </article>
+        <article class="meta-card">
+          <strong>Auth behavior</strong>
+          <span>Empty, invalid, and valid states are interactive through real field validation and seeded sign-in logic.</span>
+        </article>
+        <article class="meta-card">
+          <strong>Workspace posture</strong>
+          <span>Split-pane review with low-confidence prioritization, provenance, and persistent validation status.</span>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="screen-card">
+          <h2>Sign up</h2>
+          <p>Create a corrector account without auto-sign-in, with a desktop split layout and a compact mobile state.</p>
+          <div class="tags">
+            <span class="tag">Validation states</span>
+            <span class="tag">Success redirect</span>
+            <span class="tag">MUI form shell</span>
+          </div>
+          <div class="actions">
+            <a class="primary" href="screens/signup-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/signup-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/signup-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/signup-mobile-dark.html">Mobile<small>Dark</small></a>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <h2>Sign in</h2>
+          <p>Seeded reviewer login with real credential checking and a direct path into the correction inbox.</p>
+          <div class="tags">
+            <span class="tag">Error banner</span>
+            <span class="tag">Seeded credentials</span>
+            <span class="tag">Immediate inbox handoff</span>
+          </div>
+          <div class="actions">
+            <a class="primary" href="screens/login-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/login-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/login-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/login-mobile-dark.html">Mobile<small>Dark</small></a>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <h2>Corrections dashboard</h2>
+          <p>Assigned session queue with filterable rows on desktop and stacked mobile review cards for the same data.</p>
+          <div class="tags">
+            <span class="tag">Queue health</span>
+            <span class="tag">Search + filters</span>
+            <span class="tag">Session actions</span>
+          </div>
+          <div class="actions">
+            <a class="primary" href="screens/corrections-dashboard-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/corrections-dashboard-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/corrections-dashboard-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/corrections-dashboard-mobile-dark.html">Mobile<small>Dark</small></a>
+          </div>
+        </article>
+
+        <article class="screen-card">
+          <h2>Correction session</h2>
+          <p>Evidence-first supplier invoice review with low-confidence focus, provenance details, and submit confirmation.</p>
+          <div class="tags">
+            <span class="tag">Split-pane workspace</span>
+            <span class="tag">Evidence placeholder</span>
+            <span class="tag">Validation summary</span>
+          </div>
+          <div class="actions">
+            <a class="primary" href="screens/correction-session-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/correction-session-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/correction-session-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/correction-session-mobile-dark.html">Mobile<small>Dark</small></a>
+          </div>
+        </article>
+      </section>
+
+      <p class="footer">
+        Source inputs: `docs/phase-3-frontend-foundation-plan.md` Part 2, current `apps/web`
+        MUI baseline, and the requested latest MUI release.
+      </p>
+    </main>
+  </body>
+</html>
