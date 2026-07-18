@@ -98,12 +98,14 @@ export function SignUpPage() {
                 <TextField
                   {...fieldProps}
                   autoComplete="name"
+                  data-testid="display-name-input"
                   error={fieldState.invalid}
                   fullWidth
                   helperText={fieldState.error?.message}
                   inputRef={ref}
                   label={t('auth.signUp.displayName')}
                   required
+                  role="textbox"
                 />
               );
             }}
@@ -119,6 +121,7 @@ export function SignUpPage() {
                 <TextField
                   {...fieldProps}
                   autoComplete="email"
+                  data-testid="email-input"
                   error={fieldState.invalid}
                   fullWidth
                   helperText={fieldState.error?.message}
@@ -141,6 +144,7 @@ export function SignUpPage() {
                 <PasswordField
                   {...fieldProps}
                   autoComplete="new-password"
+                  data-testid="password-input"
                   error={fieldState.invalid}
                   fullWidth
                   helperText={fieldState.error?.message}
@@ -152,7 +156,13 @@ export function SignUpPage() {
             }}
           />
 
-          <Button disabled={isSubmitting} size="large" type="submit" variant="contained">
+          <Button
+            data-testid="submit-button"
+            disabled={isSubmitting}
+            size="large"
+            type="submit"
+            variant="contained"
+          >
             {t('auth.signUp.cta.primary')}
           </Button>
         </Stack>

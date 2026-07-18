@@ -90,7 +90,7 @@ export function SignInPage() {
           ) : null
         }
         footer={
-          <Button component={RouterLink} to="/signup" variant="text">
+          <Button component={RouterLink} data-testid="signup-link" to="/signup" variant="text">
             {t('auth.signIn.cta.secondary')}
           </Button>
         }

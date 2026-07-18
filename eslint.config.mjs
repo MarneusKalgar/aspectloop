@@ -39,7 +39,35 @@ export default [
     },
   },
   {
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
+    },
+  },
+  {
     files: ['apps/web/.storybook/**/*.{ts,tsx}', 'apps/web/src/**/*.stories.tsx'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      parserOptions: {
+        project: false,
+        projectService: false,
+      },
+    },
+  },
+  {
+    files: [
+      'apps/web/src/**/*.test.ts',
+      'apps/web/src/**/*.test.tsx',
+      'apps/web/src/test/**/*.{ts,tsx}',
+      'apps/web/test/integration/**/*.{ts,tsx}',
+      'apps/web/test/e2e/**/*.{ts,tsx}',
+      'apps/web/vitest.config.ts',
+      'apps/web/vitest.unit.config.ts',
+      'apps/web/vitest.integration.config.ts',
+      'apps/web/playwright.config.ts',
+    ],
+    ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       parserOptions: {
         project: false,
@@ -54,13 +82,6 @@ export default [
         ...globals.node,
       },
       sourceType: 'module',
-    },
-  },
-  {
-    rules: {
-      '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-explicit-any': 'off',
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 ];

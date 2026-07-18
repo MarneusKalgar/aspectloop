@@ -9,6 +9,13 @@
     "graphql-codegen": "graphql-codegen --config codegen.ts",
     "graphql-codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "npm run test:unit",
+    "test:unit": "vitest --config vitest.unit.config.ts",
+    "test:run": "npm run test:unit:run",
+    "test:unit:run": "vitest run --config vitest.unit.config.ts",
+    "test:integration": "vitest --config vitest.integration.config.ts",
+    "test:integration:run": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },
@@ -32,13 +39,20 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^7.0.0",
     "@graphql-codegen/client-preset": "^6.0.0",
+    "@playwright/test": "^1.60.0",
     "@storybook/addon-a11y": "^10.4.0",
     "@storybook/react-vite": "^10.4.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.1.1",
     "msw": "^2.14.6",
     "storybook": "^10.4.0",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.6"
   }
 }

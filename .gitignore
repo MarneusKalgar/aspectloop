@@ -2,6 +2,8 @@ node_modules
 dist
 build
 coverage
+playwright-report
+test-results
 .turbo
 .eslintcache
 .env
@@ -10,3 +12,7 @@ coverage
 .env.stage
 mocks/persistence-service/data
 .DS_Store
+
+
+.plan/
+.raw/

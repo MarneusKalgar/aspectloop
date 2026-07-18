@@ -24,9 +24,9 @@ const now = new Date().toISOString();
 const defaultUser: MockUserRecord = {
   createdAt: now,
   displayName: 'Correction Tester',
-  email: 'corrector@example.com',
+  email: 'reviewer@elemika.io',
   id: 'mock-user-1',
-  password: 'Passw0rd!',
+  password: 'password123',
   roles: ['CORRECTOR'],
   scopes: ['corrections:write'],
   updatedAt: now,
