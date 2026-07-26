@@ -1,235 +1,153 @@
 # Elemika Correction MVP
 
-A local-first monorepo for reviewing, correcting, and eventually submitting structured data extracted from supplier documents.
+Elemika is a local-first workspace for reviewing, correcting, and eventually
+submitting structured data extracted from supplier documents.
 
-The current repository contains the Phase 0 scaffold plus the in-progress Phase 1 backend foundation:
+The repository is in M01, the monorepo-boundary refactor. The existing product
+behavior remains in the gateway while the future extraction and correction
+runtimes are introduced as independent health-only NestJS shells.
 
-- NestJS API scaffold in `apps/api`
-- React + Vite frontend shell in `apps/web`
-- Local Docker Compose backend dependency stack
-- PostgreSQL and RabbitMQ local dependencies
-- File-backed persistence-service mock with durable per-document storage
+## Application Boundaries
 
-## Features
-
-- Plain npm workspaces monorepo
-- Node 24 / npm 11.6.1 pinned at the repository root
-- Nest CLI based API scaffold
-- Runtime env validation with `class-validator`
-- Pino logger integration
-- TypeORM bootstrap and CLI `DataSource`
-- Extracted CORS setup and `/health` endpoint
-- Schema-first GraphQL API foundation with JWT auth and correction-session flows
-- File-backed persistence-service mock with durable per-document JSON storage
-- React Router + Material UI frontend shell
-- Backend Docker Compose stack for API, PostgreSQL, RabbitMQ, and persistence mock
-- Husky, lint-staged, ESLint, and Prettier root tooling
-
-## Technology Stack
-
-### Backend
-
-- NestJS
-- TypeScript
-- TypeORM
-- PostgreSQL
-- RabbitMQ
-- nestjs-pino
-- Docker / Docker Compose
-
-### Frontend
-
-- React 19
-- Vite
-- React Router
-- Material UI
-
-### Tooling
-
-- npm workspaces
-- ESLint
-- Prettier
-- Husky
-- lint-staged
+- `@elemika/web`: React and Vite browser application.
+- `@elemika/gateway-api`: public schema-first GraphQL API, authentication, and
+  the current temporary home for correction behavior.
+- `@elemika/extraction-service`: extraction runtime shell; no extraction
+  behavior or infrastructure dependency exists yet.
+- `@elemika/correction-service`: correction runtime shell; correction behavior
+  remains in the gateway until M06.
+- `@elemika/contracts`: framework-free public boundary for contracts that are
+  genuinely shared by independent runtimes.
+- `@elemika/persistence-service-mock`: local file-backed persistence dependency.
 
 ## Prerequisites
 
-Required:
+- Node.js `24.x`
+- npm `11.14.x`
+- Docker Desktop or Docker Engine with Docker Compose v2 for the local backend
+  stack
 
-- Node.js 24.x
-- npm 11.6.x
-- Git
-
-Optional for backend local stack:
-
-- Docker Desktop or Docker Engine
-- Docker Compose v2
-
-## Installation
+Install workspace dependencies from the repository root:
 
 ```bash
-git clone <repository-url>
-cd elemika
 npm install
 ```
 
-The repository already contains app-local env templates and local development env files:
+## Environment Files
 
-- `apps/api/.env.example`
-- `apps/api/.env.local`
+The gateway and web applications use ignored `.env.local` files. Copy and adapt
+the corresponding templates for a new checkout:
+
+- `apps/gateway-api/.env.example`
 - `apps/web/.env.example`
-- `apps/web/.env.local`
+- `apps/extraction-service/.env.example`
+- `apps/correction-service/.env.example`
 
-Review and adjust them if your local ports or credentials differ.
+The gateway template supplies database, RabbitMQ, persistence-mock, JWT, CORS,
+and GraphQL introspection configuration. The service shells need only their
+port and optional log level.
 
-## Environment Configuration
+## Local Development
 
-### API
-
-Primary file:
-
-- `apps/api/.env.local`
-
-Key variables:
+Run an application directly from the repository root:
 
 ```bash
-NODE_ENV=development
-API_PORT=8080
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-DATABASE_URL=postgresql://elemika:elemika@postgres:5432/elemika
-RABBITMQ_HOST=rabbitmq
-PERSISTENCE_MOCK_PORT=8090
+npm run dev:web
+npm run dev:gateway
+npm run dev:extraction
+npm run dev:correction
 ```
 
-### Web
-
-Primary file:
-
-- `apps/web/.env.local`
-
-Key variables:
+The gateway requires PostgreSQL, RabbitMQ, and the persistence mock. Start
+those dependencies, together with the gateway, through the local Compose stack:
 
 ```bash
-WEB_PORT=5173
-VITE_API_URL=http://localhost:8080
-VITE_APP_NAME=Elemika Correction
+npm run local:up
+npm run local:migrate -- --build
+npm run local:seed -- --build
 ```
 
-## Running the Application
+Start an already-built stack with `npm run local:start`. Stop containers while
+preserving data volumes with `npm run local:down`. `npm run local:reset` also
+deletes local volumes and is intentionally explicit.
 
-### Backend Docker stack
-
-From `apps/api`:
+Generate a future gateway migration only through the human-owned wrapper:
 
 ```bash
-npm run docker:build:local
-npm run docker:migrate:local
-npm run docker:seed:local
+npm run local:db:generate:gateway -- <migration-name>
 ```
 
-To start an already-built stack:
+M01 changes no schema and therefore creates no migration.
+
+## Build And GraphQL Commands
 
 ```bash
-npm run docker:start:local
+npm run build
+npm run build:web
+npm run build:gateway
+npm run build:extraction
+npm run build:correction
+npm run build:contracts
+npm run graphql-codegen --workspace @elemika/web
 ```
 
-To stop and clean up:
+## Local Endpoints
 
-```bash
-npm run docker:down:local
-```
+| Service          | Endpoint                        | Description                                            |
+| ---------------- | ------------------------------- | ------------------------------------------------------ |
+| Gateway          | `http://localhost:8080/health`  | Gateway health endpoint                                |
+| GraphiQL         | `http://localhost:8080/graphql` | Local GraphQL IDE; unavailable in stage and production |
+| Persistence mock | `http://localhost:8090/health`  | File-backed persistence mock health endpoint           |
+| Web              | `http://localhost:5173/`        | Browser application                                    |
+| Extraction shell | `http://localhost:8081/health`  | Independent extraction runtime identity                |
+| Correction shell | `http://localhost:8082/health`  | Independent correction runtime identity                |
 
-### API directly
+GraphiQL is served at the same `/graphql` path as the gateway. Add an
+`Authorization: Bearer <token>` request header for protected operations. When
+`GQL_SCHEMA_AUTH_HEADER` is configured, also add the corresponding
+`x-elemika-schema-auth` header before using schema introspection. Do not save
+real tokens in committed queries or browser history.
 
-If PostgreSQL, RabbitMQ, and the persistence mock are already available, the API can be started directly:
+## Local Infrastructure
 
-```bash
-cd apps/api
-npm run dev
-```
+`infra/local/compose.local.yml` owns the current shared backend stack:
 
-### Web directly
-
-```bash
-cd apps/web
-npm run dev
-```
-
-### Builds
-
-```bash
-cd apps/api && npm run build
-cd apps/web && npm run build
-```
-
-## Docker Support
-
-The local backend stack is defined in `apps/api/compose.local.yml`.
-
-Services included:
-
-- `api`
+- `gateway-api`
 - `postgres`
 - `rabbitmq`
 - `persistence-mock`
-- `migrate` (profiled one-off container)
-- `seed` (profiled one-off container)
+- `migrate` and `seed` profiled one-off services
 
-The persistence mock now stores each document in its own JSON file and the Docker stack mounts a named volume for that data.
+The Compose project name and existing named volume keys remain compatible with
+the prior local stack. Extraction and correction shells are intentionally not
+Compose services yet.
 
-## Persistence Mock Storage
-
-The local persistence mock stores one JSON file per document.
-
-- Direct mock execution defaults to `mocks/persistence-service/data/documents`.
-- Docker Compose uses a named volume and mounts it at `/data/documents` inside the persistence-mock container.
-- Docker Compose also bind-mounts `mocks/persistence-service/src` into the container, so source changes take effect after container restart without rebuilding the image.
-- To reset local mock data, delete `mocks/persistence-service/data` for direct runs or remove the Docker named volume for the compose stack.
-
-Docker development images currently use:
-
-- `apps/api/Dockerfile.dev`
-- `mocks/persistence-service/Dockerfile.dev`
-
-The compose stack uses `apps/api/.env.local` as its primary env source.
-
-## Available Local Endpoints
-
-| Service          | Endpoint                       | Description                      |
-| ---------------- | ------------------------------ | -------------------------------- |
-| API              | `http://localhost:8080/health` | API health endpoint              |
-| Persistence mock | `http://localhost:8090/health` | Persistence mock health endpoint |
-| Web              | `http://localhost:5173/`       | Frontend shell                   |
-
-## Project Structure
+## Repository Layout
 
 ```text
 apps/
-  api/
   web/
-docs/
-  general-plan.md
-  phase-0-project-setup-plan.md
-  phase-1-backend-foundation-plan.md
-  requirements-raw.md
+  gateway-api/
+  extraction-service/
+  correction-service/
+infra/
+  local/
 mocks/
   persistence-service/
-package.json
-package-lock.json
-tsconfig.base.json
+packages/
+  contracts/
+docs/
+  general-plan.md
+  agent-model-conventions.md
 ```
 
-## Planning Docs
+## Planning Status
 
-- `docs/general-plan.md`
-- `docs/phase-0-project-setup-plan.md`
-- `docs/phase-1-backend-foundation-plan.md`
-- `docs/requirements-raw.md`
+`docs/general-plan.md` is the canonical architecture and milestone roadmap.
+`AGENTS.md` and `docs/agent-model-conventions.md` define the execution and
+human-verification conventions.
 
-## Current Status
-
-Phase 0 is complete.
-
-Phase 1 backend foundation is in progress and already includes schema-first GraphQL, local JWT auth, document registry loading, correction-session draft persistence, and a durable file-backed persistence mock.
-
-See `docs/phase-1-backend-foundation-plan.md` for the current execution plan and verification steps.
+M01 is implemented but not yet human-verified. The required human checks cover
+the regenerated npm lockfile, formatting, lint, type checks, builds, tests,
+Docker Compose, migrations, code generation, and endpoint smoke checks. M02
+performs the product rebrand only after those checks pass.

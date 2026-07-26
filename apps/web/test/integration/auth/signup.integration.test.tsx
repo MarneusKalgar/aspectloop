@@ -15,15 +15,17 @@ describe('sign-up integration', () => {
 
     await user.click(submitButton);
 
-    const displayNameInput = await screen.findByTestId('display-name-input');
-    const emailInput = await screen.getByTestId('email-input');
-    const passwordInput = await screen.getByTestId('password-input');
+    const displayNameInput = await screen.findByRole('textbox', { name: /^display name/i });
+    const emailInput = screen.getByRole('textbox', { name: /^email/i });
+    const passwordInput = screen.getByLabelText(/^password/i, { selector: 'input' });
 
     await user.type(displayNameInput, 'Existing Reviewer');
     await user.type(emailInput, 'reviewer@elemika.io');
     await user.type(passwordInput, 'password123');
     await user.click(screen.getByTestId('submit-button'));
 
-    expect(await screen.findByText('User with this email already exists')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'User with this email already exists',
+    );
   });
 });

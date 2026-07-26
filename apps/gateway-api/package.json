@@ -1,5 +1,5 @@
 {
-  "name": "@elemika/api",
+  "name": "@elemika/gateway-api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,13 +10,7 @@
     "db:generate:local": "npm run typeorm -- migration:generate -d ./src/data-source.ts",
     "db:migrate:local": "npm run typeorm -- migration:run -d ./src/data-source.ts",
     "db:revert:local": "npm run typeorm -- migration:revert -d ./src/data-source.ts",
-    "db:seed:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/seed/index.ts",
-    "docker:build:local": "bash scripts/docker/local-compose.sh up --build",
-    "docker:start:local": "bash scripts/docker/local-compose.sh up",
-    "docker:db:generate:local": "bash scripts/docker/local-compose.sh exec -w /app/apps/api api npm run db:generate:local --",
-    "docker:migrate:local": "bash scripts/docker/local-migrate.sh",
-    "docker:seed:local": "bash scripts/docker/local-seed.sh",
-    "docker:down:local": "bash scripts/docker/local-compose.sh down -v --remove-orphans"
+    "db:seed:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/seed/index.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.5.1",

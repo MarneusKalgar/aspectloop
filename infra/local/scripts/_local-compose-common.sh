@@ -3,8 +3,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-API_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-COMPOSE_ENV_FILE="$API_DIR/.env.local"
+REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+GATEWAY_DIR="$REPOSITORY_ROOT/apps/gateway-api"
+COMPOSE_ENV_FILE="$GATEWAY_DIR/.env.local"
 
 if [[ ! -f "$COMPOSE_ENV_FILE" ]]; then
   echo "Missing compose env file: $COMPOSE_ENV_FILE" >&2
@@ -26,7 +27,7 @@ COMPOSE=(
   --env-file
   "$COMPOSE_ENV_FILE"
   -f
-  "$API_DIR/compose.local.yml"
+  "$REPOSITORY_ROOT/infra/local/compose.local.yml"
 )
 
 cleanup_local_tool_images() {

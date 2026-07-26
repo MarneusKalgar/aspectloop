@@ -1,22 +1,19 @@
 import 'reflect-metadata';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
-import { getEnvVariable } from './core/environment';
-import { setupCors } from './core/setupCors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
 
-  setupCors(app);
-
-  const port = getEnvVariable<number>(app, 'API_PORT');
+  const port = app.get(ConfigService).getOrThrow<number>('EXTRACTION_SERVICE_PORT');
   await app.listen(port);
 
-  app.get(Logger).log(`API listening on http://localhost:${port}`);
+  app.get(Logger).log(`extraction-service listening on http://localhost:${port}`);
 }
 
 void bootstrap();
