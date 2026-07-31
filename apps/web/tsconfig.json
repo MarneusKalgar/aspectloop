@@ -7,10 +7,5 @@
     "noEmit": true
   },
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test/**/*"],
-  "include": ["src/**/*.ts", "src/**/*.tsx", ".storybook/**/*.ts", ".storybook/**/*.tsx"],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", ".storybook/**/*.ts", ".storybook/**/*.tsx"]
 }

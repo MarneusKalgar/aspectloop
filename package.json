@@ -33,7 +33,7 @@
     "lint": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\" --fix",
     "lint:ci": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\"",
     "prepare": "husky",
-    "type-check": "tsc -p apps/web/tsconfig.json --noEmit && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
+    "type-check": "npm run type-check --workspace @elemika/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

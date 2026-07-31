@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "build": "tsc -b && vite build",
+    "build": "npm run type-check && vite build",
+    "type-check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "graphql-codegen": "graphql-codegen --config codegen.ts",
     "graphql-codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
