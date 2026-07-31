@@ -1,17 +1,17 @@
 services:
-  api:
-    image: ${COMPOSE_PROJECT_NAME:-elemika_api_local}_api
-    container_name: ${COMPOSE_PROJECT_NAME:-elemika_api_local}-api
+  gateway-api:
+    image: ${COMPOSE_PROJECT_NAME:-elemika_api_local}_gateway_api
+    container_name: ${COMPOSE_PROJECT_NAME:-elemika_api_local}-gateway-api
     build:
       context: ../..
-      dockerfile: ./apps/api/Dockerfile.dev
+      dockerfile: ./apps/gateway-api/Dockerfile.dev
     init: true
     env_file:
-      - ./.env.local
+      - ../../apps/gateway-api/.env.local
     ports:
       - '${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:
-      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/gateway-api/src:/app/apps/gateway-api/src
       - /app/node_modules
     depends_on:
       postgres:
@@ -61,7 +61,7 @@ services:
       dockerfile: ./Dockerfile.dev
     init: true
     env_file:
-      - ../../apps/api/.env.local
+      - ../../apps/gateway-api/.env.local
     environment:
       PERSISTENCE_MOCK_DATA_DIR: ${PERSISTENCE_MOCK_DATA_DIR:-/data/documents}
     ports:
@@ -75,11 +75,11 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-elemika_api_local}-migrate
     build:
       context: ../..
-      dockerfile: ./apps/api/Dockerfile.dev
+      dockerfile: ./apps/gateway-api/Dockerfile.dev
     env_file:
-      - ./.env.local
+      - ../../apps/gateway-api/.env.local
     volumes:
-      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/gateway-api/src:/app/apps/gateway-api/src
       - /app/node_modules
     command: ['npm', 'run', 'db:migrate:local']
     depends_on:
@@ -93,11 +93,11 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-elemika_api_local}-seed
     build:
       context: ../..
-      dockerfile: ./apps/api/Dockerfile.dev
+      dockerfile: ./apps/gateway-api/Dockerfile.dev
     env_file:
-      - ./.env.local
+      - ../../apps/gateway-api/.env.local
     volumes:
-      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/gateway-api/src:/app/apps/gateway-api/src
       - /app/node_modules
     command: ['npm', 'run', 'db:seed:local']
     depends_on:

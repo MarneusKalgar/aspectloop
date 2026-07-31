@@ -54,6 +54,8 @@ compose*.yml
 compose*.yaml
 apps/**/compose*.yml
 apps/**/compose*.yaml
+infra/**/compose*.yml
+infra/**/compose*.yaml
 
 # CI/CD
 .github

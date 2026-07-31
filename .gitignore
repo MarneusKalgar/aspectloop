@@ -6,6 +6,7 @@ playwright-report
 test-results
 .turbo
 .eslintcache
+*.tsbuildinfo
 .env
 .env.local
 .env.development
@@ -16,3 +17,4 @@ mocks/persistence-service/data
 
 .plan/
 .raw/
+AGENTS.override.md

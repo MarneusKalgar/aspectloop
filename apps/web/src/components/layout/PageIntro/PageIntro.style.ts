@@ -17,13 +17,14 @@ export const PageIntroCopy = styled(Stack)(({ theme }) => ({
   gap: theme.spacing(0.75),
 }));
 
-export const PageIntroTitle = styled(Typography)({
+export const PageIntroTitle = styled('h1')(({ theme }) => ({
+  fontFamily: theme.typography.fontFamily,
   fontSize: 'clamp(1.5rem, 2vw, 2rem)',
   fontWeight: 600,
-  letterSpacing: '-0.02em',
+  letterSpacing: 0,
   lineHeight: 1.2,
   margin: 0,
-});
+}));
 
 export const PageIntroSubtitle = styled(Typography)(({ theme }) => ({
   color: theme.palette.text.secondary,
