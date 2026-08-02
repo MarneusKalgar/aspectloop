@@ -10,7 +10,7 @@ import { AuthUser } from '../auth/types/auth-user';
 import {
   OpenCorrectionSessionInput,
   SaveCorrectionSessionDraftInput,
-} from '../graphql/graphql.types';
+} from '../graphql/generated/graphql.types';
 import { CorrectionSessionsService } from './correction-sessions.service';
 
 @Resolver()

@@ -1,7 +1,7 @@
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
-import { SignInInput, SignUpInput } from '../graphql/graphql.types';
+import { SignInInput, SignUpInput } from '../graphql/generated/graphql.types';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { GqlJwtAuthGuard } from './guards/gql-jwt-auth.guard';

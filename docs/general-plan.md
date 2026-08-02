@@ -430,7 +430,18 @@ without reading TypeScript decorators.
 
 Contract principles:
 
-- generated TypeScript types for gateway resolvers and frontend operations;
+- handwritten SDL is the public source of truth; generated TypeScript artifacts
+  live in explicitly named generated directories and are never edited by hand;
+- generated gateway types belong to GraphQL resolvers and transport adapters;
+  application/domain services own framework-neutral commands and result views;
+- resolvers map generated inputs plus trusted request context, such as the
+  authenticated actor, into application commands rather than passing transport
+  DTOs through as service APIs;
+- generated GraphQL outputs may be returned through structural compatibility,
+  but they do not define domain models, persistence entities, internal HTTP
+  contracts, or event payloads;
+- frontend operations and types are generated independently from the same
+  gateway-owned SDL;
 - explicit resource responses with `errors`, `warnings`, `messages`, and
   `requestInfo` where partial success is meaningful;
 - optimistic-lock tokens or versions on mutable operations;
@@ -518,6 +529,9 @@ Responsibilities:
 
 - load the extraction baseline and server-owned doctype schema;
 - assemble correction resources through pure transforms;
+- replace generated GraphQL inputs currently consumed by correction services
+  with correction-owned application commands and result views; keep mapping in
+  gateway resolvers/adapters;
 - open/reuse sessions;
 - save versioned draft overlays;
 - validate required fields and external validation results;
@@ -709,6 +723,34 @@ Stage delivery:
 - run health and end-to-end smoke tests;
 - preserve rollback instructions and previous artifacts.
 
+#### M11 production container and deployment hardening
+
+M11 turns the M03 development-image policy into independently deployable stage
+artifacts:
+
+- create a multi-stage production Dockerfile for each backend application;
+- install/build only the owning workspace and required shared packages rather
+  than the complete monorepo dependency graph;
+- copy only compiled runtime artifacts and production dependencies into the
+  final image;
+- run as a non-root user with a read-only filesystem, dropped capabilities, and
+  narrowly scoped writable temporary paths where the selected runtime permits;
+- keep migration execution in explicit one-off jobs and out of normal
+  application startup;
+- define separate liveness and readiness semantics, then configure the selected
+  stage orchestrator's probes rather than assuming a development Dockerfile
+  `HEALTHCHECK` is portable;
+- pin complete base-image versions and reviewed digests, with controlled
+  automated update proposals;
+- generate an SBOM and perform dependency, image vulnerability, secret, and
+  provenance/signature checks before publication;
+- publish immutable image tags and retain the previous deployable artifact for
+  rollback;
+- run post-deployment health and full-stack smoke checks against stage.
+
+The frontend remains a static artifact and does not receive a production
+container unless the selected hosting platform demonstrates a concrete need.
+
 There is no production environment in the initial roadmap. The public stage is
 the production-like learning target.
 
@@ -771,7 +813,73 @@ or requests the appropriate reviews, and produces one normalized review report.
 It must not indiscriminately load every installed skill or modify code unless
 the user separately requests a fix.
 
-M03 also adopts
+##### M03.1 Toolchain alignment
+
+M03 establishes one explicit local/container/CI toolchain contract:
+
+- select the supported Node 24 patch release, or Node 26 only if it has reached
+  LTS and the repository dependency matrix is compatible;
+- if M03 lands before Node 26 LTS, complete M03 on Node 24 and use a dedicated
+  later M03.x maintenance change rather than delaying the milestone;
+- align root `engines`, the selected local version-manager file, README
+  prerequisites, Docker base images, and future CI setup;
+- pin the development Docker base to a complete Node patch and Alpine variant
+  instead of a floating `node:24-alpine` tag;
+- decide whether the project follows npm bundled with the selected Node image
+  or intentionally pins npm independently;
+- when bundled npm is selected, remove `NPM_VERSION` and the global
+  `npm install -g` Docker layer;
+- when an independent npm major is selected, treat its installation and
+  compatibility verification as an explicit package-manager migration;
+- establish reviewed automated proposals for future Node image and digest
+  updates without accepting them automatically.
+
+##### M03.2 npm supply-chain policy
+
+M03 selects npm 11.18 or npm 12 deliberately and aligns `package.json`,
+`.npmrc`, local setup, containers, and CI. The baseline includes:
+
+- keep the committed lockfile and use `npm ci` for reproducible CI installs;
+- configure npm's `min-release-age` with an initial seven-day quarantine and
+  narrowly documented exceptions for urgent security fixes or owned packages;
+- restrict git, remote tarball, file, and directory dependency sources unless
+  they are explicitly reviewed;
+- use temporary `--ignore-scripts` for metadata-only dependency changes and a
+  reviewed install-script allowlist for normal installs rather than globally
+  disabling scripts required by tools such as native or platform binaries;
+- add dependency-advisory and registry-signature/provenance checks, initially
+  advisory where ecosystem coverage prevents a clean blocking baseline;
+- require humans to mutate dependencies through reviewed npm uninstall/install
+  commands and review the resulting manifest and lockfile diffs;
+- prohibit automated force fixes, legacy peer resolution, suppressive
+  overrides, and manual dependency or lockfile edits.
+
+The exact policy depends on the selected npm version. npm 11's install-script
+allowlist requires a sufficiently recent minor, while npm 12 changes
+install-script and dependency-source defaults and therefore requires an
+explicit migration review rather than an incidental upgrade.
+
+##### M03.3 Development Docker cleanup and policy
+
+M03 corrects the existing local development images without turning them into
+production artifacts:
+
+- remove `bash`, `python3`, `make`, and `g++` from the gateway development image
+  while no container command or installed dependency requires them;
+- if a future native dependency requires compilation, install build tools in a
+  bounded build stage or temporary Alpine virtual package and remove them from
+  the resulting runtime layer;
+- scope container dependency installation to the owning workspace and required
+  root tooling where npm workspace behavior permits it;
+- add Compose health checks for `gateway-api` and `persistence-mock`, using
+  existing `/health` endpoints and no additional HTTP utility package;
+- keep one-shot migration and seed jobs free of inappropriate health checks;
+- document a narrow DF012 exception for the shared development/tooling
+  Dockerfile because service health is owned by Compose;
+- leave multi-stage production images, production probes, SBOMs, and built-image
+  scanning to M11.
+
+M03 adopts
 [Dockerfile Roast](https://github.com/immanuwell/dockerfile-roast) as a narrow
 container-definition gate. It provides Dockerfile-specific static rules and
 GitHub annotations; it does not replace container builds, Compose validation,
@@ -817,7 +925,14 @@ and milestone responsibilities are maintained in
 - local JWT initially; external OIDC as P1;
 - roles/scopes at public operations;
 - service authentication when processes are remotely deployed;
-- GraphQL depth/complexity limits and request rate limits;
+- GraphQL operation budgets and request rate limits before stage exposure;
+- in M10, evaluate modular GraphQL Armor limits for tokens, aliases, depth,
+  directives, and cost against Yoga-native/Envelop alternatives;
+- for the first-party web client, evaluate persisted-operation allowlisting as
+  a stronger stage/production control while retaining unrestricted local
+  GraphiQL development;
+- keep HTTP/user rate limiting, request-body limits, timeouts, and execution
+  cancellation separate from GraphQL document-complexity controls;
 - strict upload type/size limits and malware-handling decision before public use;
 - short-lived presigned URLs;
 - no secrets or sensitive document contents in logs/events;
@@ -1075,27 +1190,27 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID   | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                            |
-| ---- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | -------------------------------------------------------------------------------------------------- |
-| M00  | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                 |
-| M01  | Monorepo boundary refactor                     | Platform/BE/FE | P0       | In progress | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior  |
-| M02  | Product rebrand and namespace migration        | Rebrand        | P0       | Planned     | M01                | Durable product identity applied before new code and infrastructure accumulate                     |
-| M03  | Review process and quality gates               | Governance/QA  | P0       | Planned     | M02                | Human local verification, local AI review, GitHub PR/Codex review, Dockerfile policy, review skill |
-| M04  | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03                | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack   |
-| M05  | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                           |
-| M06  | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                      |
-| M07  | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M05, M06           | Upload/status/inbox/editor/draft/submit works locally                                              |
-| M08  | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                              |
-| M09  | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                  |
-| M10  | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, threat model, Prometheus/Grafana/Loki/Tempo plus OTel, runbooks           |
-| M11  | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Independently deployable static web and backend runtimes with smoke tests                          |
-| AI00 | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                        |
-| AI10 | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                               |
-| AI11 | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                              |
-| AI12 | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                         |
-| AI20 | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                |
-| AI21 | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                               |
-| AI30 | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                       |
+| ID   | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                             |
+| ---- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | --------------------------------------------------------------------------------------------------- |
+| M00  | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                  |
+| M01  | Monorepo boundary refactor                     | Platform/BE/FE | P0       | In progress | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior   |
+| M02  | Product rebrand and namespace migration        | Rebrand        | P0       | Planned     | M01                | Durable product identity applied before new code and infrastructure accumulate                      |
+| M03  | Review process and quality gates               | Governance/QA  | P0       | Planned     | M02                | Human/AI/PR review, Dockerfile and npm supply-chain policy, deterministic quality gates             |
+| M04  | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03                | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack    |
+| M05  | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                            |
+| M06  | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                       |
+| M07  | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M05, M06           | Upload/status/inbox/editor/draft/submit works locally                                               |
+| M08  | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                               |
+| M09  | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                   |
+| M10  | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, open observability stack, runbooks          |
+| M11  | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback |
+| AI00 | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                         |
+| AI10 | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                |
+| AI11 | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                               |
+| AI12 | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                          |
+| AI20 | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                 |
+| AI21 | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                |
+| AI30 | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                        |
 
 #### Dependency view
 
@@ -1128,6 +1243,7 @@ but it does not repeat the product rename.
 | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                |
 | Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                 |
+| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views      |
 | Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys |
 | Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                             |
 | AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory       |
