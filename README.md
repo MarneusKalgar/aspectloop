@@ -103,10 +103,8 @@ npm run graphql-codegen --workspace @elemika/web
 | Correction shell | `http://localhost:8082/health`  | Independent correction runtime identity                |
 
 GraphiQL is served at the same `/graphql` path as the gateway. Add an
-`Authorization: Bearer <token>` request header for protected operations. When
-`GQL_SCHEMA_AUTH_HEADER` is configured, also add the corresponding
-`x-elemika-schema-auth` header before using schema introspection. Do not save
-real tokens in committed queries or browser history.
+`Authorization: Bearer <token>` request header for protected operations. Do
+not save real tokens in committed queries or browser history.
 
 ## Local Infrastructure
 

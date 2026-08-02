@@ -1,23 +1,13 @@
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnv } from 'vite';
 import { z } from 'zod';
 
 const workspaceRoot = fileURLToPath(new URL('.', import.meta.url));
 const codegenMode = process.env.NODE_ENV ?? 'development';
-const localSchemaPath = './graphql/schema.graphql';
-const gqlSchemaAuthHeaderName = 'x-elemika-schema-auth';
-
-const optionalNonEmptyString = z.preprocess((value) => {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const trimmedValue = value.trim();
-
-  return trimmedValue.length > 0 ? trimmedValue : undefined;
-}, z.string().min(1).optional());
+const localSchemaPath = resolve(workspaceRoot, '../gateway-api/src/graphql/schema/**/*.graphql');
 
 const optionalUrl = z.preprocess((value) => {
   if (typeof value !== 'string') {
@@ -29,28 +19,14 @@ const optionalUrl = z.preprocess((value) => {
   return trimmedValue.length > 0 ? trimmedValue : undefined;
 }, z.url().optional());
 
-const codegenEnvSchema = z
-  .object({
-    GQL_SCHEMA_AUTH_HEADER: optionalNonEmptyString,
-    GQL_SCHEMA_URL: optionalUrl,
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  })
-  .superRefine((value, context) => {
-    if (value.NODE_ENV === 'development' && !value.GQL_SCHEMA_URL) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'GQL_SCHEMA_URL is required in development mode.',
-        path: ['GQL_SCHEMA_URL'],
-      });
-    }
-  });
+const codegenEnvSchema = z.object({
+  GQL_SCHEMA_URL: optionalUrl,
+});
 
 const loadedEnv = loadEnv(codegenMode, workspaceRoot, '');
 
 const parsedCodegenEnv = codegenEnvSchema.safeParse({
-  GQL_SCHEMA_AUTH_HEADER: loadedEnv.GQL_SCHEMA_AUTH_HEADER,
   GQL_SCHEMA_URL: loadedEnv.GQL_SCHEMA_URL,
-  NODE_ENV: codegenMode,
 });
 
 if (!parsedCodegenEnv.success) {
@@ -61,16 +37,10 @@ if (!parsedCodegenEnv.success) {
   );
 }
 
-const schemaHeaders: Record<string, string> = parsedCodegenEnv.data.GQL_SCHEMA_AUTH_HEADER
-  ? {
-      [gqlSchemaAuthHeaderName]: parsedCodegenEnv.data.GQL_SCHEMA_AUTH_HEADER,
-    }
-  : {};
-
 const config: CodegenConfig = {
   documents: ['src/**/*.{ts,tsx}'],
   generates: {
-    './src/gql/': {
+    './src/graphql/generated/': {
       config: {
         scalars: {
           DateTime: 'string',
@@ -83,13 +53,7 @@ const config: CodegenConfig = {
   },
   ignoreNoDocuments: true,
   schema: parsedCodegenEnv.data.GQL_SCHEMA_URL
-    ? [
-        {
-          [parsedCodegenEnv.data.GQL_SCHEMA_URL]: {
-            headers: schemaHeaders,
-          },
-        },
-      ]
+    ? [parsedCodegenEnv.data.GQL_SCHEMA_URL]
     : [localSchemaPath],
 };
 

@@ -1,11 +1,7 @@
 import { useApolloClient } from '@apollo/client/react';
 import { createContext, type PropsWithChildren, useContext, useEffect } from 'react';
 
-import {
-  useSignInMutation,
-  useSignOutMutation,
-  useSignUpMutation,
-} from '../graphql/hooks/useAuthOperations';
+import { useSignInMutation, useSignOutMutation, useSignUpMutation } from '../graphql/hooks/auth';
 import { type AuthenticatedUser, readUserFromAccessToken } from './access-token';
 import { useAccessTokenSession } from './useAccessTokenSession';
 

@@ -19,7 +19,7 @@ import { AppPageShell } from '../../components/layout/AppPageShell';
 import { AuthenticatedAppBar } from '../../components/layout/AuthenticatedAppBar';
 import { PageIntro } from '../../components/layout/PageIntro';
 import { env } from '../../config/env';
-import { useCorrectionSessionsQuery } from '../../graphql/hooks/useCorrectionSessionsQuery';
+import { useCorrectionSessionsQuery } from '../../graphql/hooks/correction/queries/useCorrectionSessionsQuery';
 import { correctionInboxStatCardDefinitions } from './constants';
 import { getStatusOptions, isToday, normalizeCorrectionSessions } from './utils';
 
