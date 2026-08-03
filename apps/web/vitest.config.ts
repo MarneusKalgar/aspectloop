@@ -8,6 +8,9 @@ export default defineConfig({
     'import.meta.env.VITE_MOCK_GQL_RUNTIME': JSON.stringify('true'),
   },
   plugins: [react()],
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     environment: 'jsdom',
     environmentOptions: {

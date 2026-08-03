@@ -1,16 +1,15 @@
+import { useAuth } from '@app/auth/useAuth';
+import { AuthFormCard } from '@app/components/auth/AuthFormCard';
+import { PasswordField } from '@app/components/auth/PasswordField';
+import { FormAlert } from '@app/components/feedback/FormAlert';
+import { AuthLayout } from '@app/components/layout/AuthLayout';
+import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
+import { createSignUpSchema } from '@app/validators/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Stack, TextField } from '@mui/material';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-
-import { useAuth } from '../../auth/useAuth';
-import { AuthFormCard } from '../../components/auth/AuthFormCard';
-import { PasswordField } from '../../components/auth/PasswordField';
-import { FormAlert } from '../../components/feedback/FormAlert';
-import { AuthLayout } from '../../components/layout/AuthLayout';
-import { getOperationErrorMessage } from '../../graphql/utils/getOperationErrorMessage';
-import { createSignUpSchema } from '../../validators/auth';
 
 interface SignUpFormValues {
   displayName: string;

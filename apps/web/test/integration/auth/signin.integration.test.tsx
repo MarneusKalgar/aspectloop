@@ -1,8 +1,7 @@
+import { renderAppAtRoute } from '@app/test/renderAppAtRoute';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-
-import { renderAppAtRoute } from '../../../src/test/renderAppAtRoute';
 
 describe('sign-in integration', () => {
   it('signs the reviewer in and lands on the correction inbox', async () => {

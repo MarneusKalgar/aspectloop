@@ -1,18 +1,17 @@
+import { useAuth } from '@app/auth/useAuth';
+import { AuthFormCard } from '@app/components/auth/AuthFormCard';
+import { PasswordField } from '@app/components/auth/PasswordField';
+import { TestCredentialsHint } from '@app/components/auth/TestCredentialsHint';
+import { FormAlert } from '@app/components/feedback/FormAlert';
+import { AuthLayout } from '@app/components/layout/AuthLayout';
+import { env } from '@app/config/env';
+import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
+import { createSignInSchema } from '@app/validators/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Stack, TextField } from '@mui/material';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-
-import { useAuth } from '../../auth/useAuth';
-import { AuthFormCard } from '../../components/auth/AuthFormCard';
-import { PasswordField } from '../../components/auth/PasswordField';
-import { TestCredentialsHint } from '../../components/auth/TestCredentialsHint';
-import { FormAlert } from '../../components/feedback/FormAlert';
-import { AuthLayout } from '../../components/layout/AuthLayout';
-import { env } from '../../config/env';
-import { getOperationErrorMessage } from '../../graphql/utils/getOperationErrorMessage';
-import { createSignInSchema } from '../../validators/auth';
 
 interface SignInFormValues {
   email: string;

@@ -1,10 +1,9 @@
+import type { CorrectionSessionsQuery } from '@app/graphql/generated/graphql';
+import type { GraphqlOperationState } from '@app/graphql/hooks/types';
+
 import { useQuery } from '@apollo/client/react';
-
-import type { CorrectionSessionsQuery } from '../../../generated/graphql';
-import type { GraphqlOperationState } from '../../types';
-
-import { graphql } from '../../../generated';
-import { getOperationErrorMessage } from '../../../utils/getOperationErrorMessage';
+import { graphql } from '@app/graphql/generated';
+import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
 
 const correctionSessionsQueryDocument = graphql(`
   query CorrectionSessions {

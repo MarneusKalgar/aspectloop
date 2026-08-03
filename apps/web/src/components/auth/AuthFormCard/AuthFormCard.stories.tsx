@@ -1,7 +1,7 @@
 import { Button, Stack, TextField } from '@mui/material';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { FormAlert } from '../../feedback/FormAlert';
+import { FormAlert } from '@app/components/feedback/FormAlert';
 import { TestCredentialsHint } from '../TestCredentialsHint';
 import { AuthFormCard } from '.';
 

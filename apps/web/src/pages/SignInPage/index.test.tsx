@@ -1,10 +1,10 @@
+import { renderWithProviders } from '@app/test/renderWithProviders';
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { renderWithProviders } from '../../test/renderWithProviders';
 import { SignInPage } from './index';
 
-vi.mock('../../auth/useAuth', () => ({
+vi.mock('@app/auth/useAuth', () => ({
   useAuth: () => ({
     signIn: vi.fn(),
   }),

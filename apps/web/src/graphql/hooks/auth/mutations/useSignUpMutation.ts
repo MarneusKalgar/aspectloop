@@ -1,10 +1,9 @@
+import type { SignUpInput, SignUpMutation } from '@app/graphql/generated/graphql';
+import type { GraphqlMutationState } from '@app/graphql/hooks/types';
+
 import { useMutation } from '@apollo/client/react';
-
-import type { SignUpInput, SignUpMutation } from '../../../generated/graphql';
-import type { GraphqlMutationState } from '../../types';
-
-import { graphql } from '../../../generated';
-import { getOperationErrorMessage } from '../../../utils/getOperationErrorMessage';
+import { graphql } from '@app/graphql/generated';
+import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
 
 const signUpMutationDocument = graphql(`
   mutation SignUp($input: SignUpInput!) {

@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      tsconfigPaths: true,
+    },
     server: {
       port: resolveWebPort(loadedEnv.WEB_PORT),
     },

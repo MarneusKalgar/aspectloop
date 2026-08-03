@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
-
 import {
   DocumentFieldConfig,
   DocumentTypeConfig,
-} from '../../document-registry/document-registry.types';
+} from '@app/document-registry/document-registry.types';
+import { BadRequestException } from '@nestjs/common';
+
 import { CorrectionFieldTarget } from '../correction-flow.types';
 
 /**

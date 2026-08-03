@@ -1,6 +1,5 @@
+import { useAuth } from '@app/auth/useAuth';
 import { Navigate } from 'react-router-dom';
-
-import { useAuth } from '../../auth/useAuth';
 
 export function RootRedirectPage() {
   const { user } = useAuth();

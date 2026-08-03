@@ -1,7 +1,7 @@
+import { BrandLogo } from '@app/components/brand/BrandLogo';
 import { Button, ButtonBase } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
-import { BrandLogo } from '../../brand/BrandLogo';
 import {
   publicAppBarActionSx,
   PublicAppBarRoot,

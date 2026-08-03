@@ -1,10 +1,9 @@
+import type { SignOutMutation } from '@app/graphql/generated/graphql';
+import type { GraphqlMutationStateWithoutVariables } from '@app/graphql/hooks/types';
+
 import { useMutation } from '@apollo/client/react';
-
-import type { SignOutMutation } from '../../../generated/graphql';
-import type { GraphqlMutationStateWithoutVariables } from '../../types';
-
-import { graphql } from '../../../generated';
-import { getOperationErrorMessage } from '../../../utils/getOperationErrorMessage';
+import { graphql } from '@app/graphql/generated';
+import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
 
 const signOutMutationDocument = graphql(`
   mutation SignOut {
