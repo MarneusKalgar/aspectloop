@@ -19,6 +19,5 @@ describe('SignInPage', () => {
     expect(screen.getByLabelText(/^password/i, { selector: 'input' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create account' })).toBeInTheDocument();
-    expect(screen.getByText('Test credentials')).toBeInTheDocument();
   });
 });

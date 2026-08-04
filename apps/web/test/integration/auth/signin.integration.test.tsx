@@ -1,3 +1,4 @@
+import { defaultMockReviewerCredentials } from '@app/mocks/fixtures/default-reviewer';
 import { renderAppAtRoute } from '@app/test/renderAppAtRoute';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,8 +13,8 @@ describe('sign-in integration', () => {
     const emailInput = await screen.findByRole('textbox', { name: 'Email' });
     const passwordInput = screen.getByLabelText(/^password/i, { selector: 'input' });
 
-    await user.type(emailInput, 'reviewer@elemika.io');
-    await user.type(passwordInput, 'password123');
+    await user.type(emailInput, defaultMockReviewerCredentials.email);
+    await user.type(passwordInput, defaultMockReviewerCredentials.password);
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
     expect(

@@ -38,5 +38,5 @@ if (!parsedEnv.success) {
 export const env = {
   apiUrl: parsedEnv.data.VITE_API_URL,
   appName: parsedEnv.data.VITE_APP_NAME,
-  mockGraphqlRuntime: parsedEnv.data.VITE_MOCK_GQL_RUNTIME,
+  mockGraphqlRuntime: import.meta.env.DEV && parsedEnv.data.VITE_MOCK_GQL_RUNTIME,
 };

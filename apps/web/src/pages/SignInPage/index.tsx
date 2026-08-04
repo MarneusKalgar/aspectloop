@@ -1,10 +1,9 @@
 import { useAuth } from '@app/auth/useAuth';
 import { AuthFormCard } from '@app/components/auth/AuthFormCard';
+import { DevelopmentTestCredentialsHint } from '@app/components/auth/DevelopmentTestCredentialsHint';
 import { PasswordField } from '@app/components/auth/PasswordField';
-import { TestCredentialsHint } from '@app/components/auth/TestCredentialsHint';
 import { FormAlert } from '@app/components/feedback/FormAlert';
 import { AuthLayout } from '@app/components/layout/AuthLayout';
-import { env } from '@app/config/env';
 import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
 import { createSignInSchema } from '@app/validators/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,15 +78,7 @@ export function SignInPage() {
             <FormAlert message={errors.root?.message ?? null} />
           </>
         }
-        extra={
-          env.mockGraphqlRuntime ? (
-            <TestCredentialsHint
-              email="reviewer@elemika.io"
-              label={t('auth.signIn.testCredentials.label')}
-              password="password123"
-            />
-          ) : null
-        }
+        extra={<DevelopmentTestCredentialsHint />}
         footer={
           <Button component={RouterLink} data-testid="signup-link" to="/signup" variant="text">
             {t('auth.signIn.cta.secondary')}

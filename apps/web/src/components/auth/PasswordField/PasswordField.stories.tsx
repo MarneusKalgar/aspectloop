@@ -4,7 +4,7 @@ import { PasswordField } from '.';
 
 const meta = {
   args: {
-    defaultValue: 'password123',
+    defaultValue: 'example-password',
     helperText: 'At least 8 characters',
     label: 'Password',
   },

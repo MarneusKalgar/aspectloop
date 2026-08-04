@@ -3,6 +3,7 @@ import {
   createUnsignedAccessToken,
   readUserFromAccessToken,
 } from '../auth/access-token';
+import { defaultMockReviewerCredentials } from './fixtures/default-reviewer';
 
 interface CorrectionSessionSummary {
   documentId: string;
@@ -24,9 +25,9 @@ const now = new Date().toISOString();
 const defaultUser: MockUserRecord = {
   createdAt: now,
   displayName: 'Correction Tester',
-  email: 'reviewer@elemika.io',
+  email: defaultMockReviewerCredentials.email,
   id: 'mock-user-1',
-  password: 'password123',
+  password: defaultMockReviewerCredentials.password,
   roles: ['CORRECTOR'],
   scopes: ['corrections:write'],
   updatedAt: now,

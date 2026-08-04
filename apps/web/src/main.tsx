@@ -1,3 +1,4 @@
+import { worker } from '@app/mocks/browser';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -5,9 +6,7 @@ import { App } from './App';
 import { env } from './config/env';
 
 async function bootstrap() {
-  if (env.mockGraphqlRuntime) {
-    const { worker } = await import('./mocks/browser');
-
+  if (import.meta.env.DEV && env.mockGraphqlRuntime) {
     await worker.start({
       onUnhandledRequest: 'bypass',
       serviceWorker: {

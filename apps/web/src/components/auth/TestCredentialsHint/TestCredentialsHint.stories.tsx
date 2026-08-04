@@ -4,9 +4,9 @@ import { TestCredentialsHint } from '.';
 
 const meta = {
   args: {
-    email: 'reviewer@elemika.io',
+    email: 'reviewer@example.test',
     label: 'Test credentials',
-    password: 'password123',
+    password: 'example-password',
   },
   component: TestCredentialsHint,
   tags: ['autodocs'],
