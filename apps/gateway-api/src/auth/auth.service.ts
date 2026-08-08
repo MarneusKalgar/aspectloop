@@ -13,7 +13,7 @@ import {
   SignOutPayload,
   SignUpInput,
   SignUpPayload,
-} from '../graphql/graphql.types';
+} from '../graphql/generated/graphql.types';
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';

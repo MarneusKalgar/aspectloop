@@ -1,7 +1,7 @@
 import { Button, Stack, TextField } from '@mui/material';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { FormAlert } from '../../feedback/FormAlert';
+import { FormAlert } from '@app/components/feedback/FormAlert';
 import { TestCredentialsHint } from '../TestCredentialsHint';
 import { AuthFormCard } from '.';
 
@@ -28,9 +28,9 @@ export const SignInVariant: Story = {
       }
       extra={
         <TestCredentialsHint
-          email="reviewer@elemika.io"
+          email="reviewer@example.test"
           label="Test credentials"
-          password="password123"
+          password="example-password"
         />
       }
       footer={<Button variant="text">Create account</Button>}
@@ -38,8 +38,8 @@ export const SignInVariant: Story = {
       title="Review extracted data with evidence at hand"
     >
       <Stack spacing={2}>
-        <TextField label="Email" value="reviewer@elemika.io" />
-        <TextField label="Password" type="password" value="password123" />
+        <TextField label="Email" value="reviewer@example.test" />
+        <TextField label="Password" type="password" value="example-password" />
         <Button variant="contained">Sign in</Button>
       </Stack>
     </AuthFormCard>

@@ -1,9 +1,17 @@
+import { ConfigService } from '@nestjs/config';
 import { Params } from 'nestjs-pino';
 import { IncomingMessage } from 'node:http';
 
-import { GRAPHQL_SCHEMA_AUTH_HEADER_NAME } from '../graphql/utils';
+/**
+ * Builds gateway logging from validated application configuration.
+ *
+ * @param configService Validated gateway configuration.
+ * @returns The NestJS Pino module configuration.
+ */
+export function getPinoLoggerConfig(configService: ConfigService): Params {
+  const nodeEnv = configService.get<string>('NODE_ENV') ?? 'development';
+  const usePrettyTransport = nodeEnv !== 'stage' && nodeEnv !== 'production';
 
-export function getPinoLoggerConfig(): Params {
   return {
     forRoutes: ['/{*path}'],
     pinoHttp: {
@@ -11,19 +19,14 @@ export function getPinoLoggerConfig(): Params {
         ignore: (req: IncomingMessage & { url?: string }) =>
           req.url?.startsWith('/health') ?? false,
       },
-      level: process.env.APP_LOG_LEVEL ?? 'info',
-      redact: [
-        'req.headers.authorization',
-        `req.headers["${GRAPHQL_SCHEMA_AUTH_HEADER_NAME}"]`,
-        'req.headers.cookie',
-      ],
-      transport:
-        process.env.NODE_ENV === 'stage'
-          ? undefined
-          : {
-              options: { colorize: true, translateTime: 'SYS:standard' },
-              target: 'pino-pretty',
-            },
+      level: configService.get<string>('APP_LOG_LEVEL') ?? 'info',
+      redact: ['req.headers.authorization', 'req.headers.cookie'],
+      transport: usePrettyTransport
+        ? {
+            options: { colorize: true, translateTime: 'SYS:standard' },
+            target: 'pino-pretty',
+          }
+        : undefined,
     },
   };
 }

@@ -4,7 +4,7 @@ import { UserAvatarMenu } from '.';
 
 const meta = {
   args: {
-    email: 'reviewer@elemika.io',
+    email: 'reviewer@example.test',
     name: 'Avery Stone',
     onSignOut: () => {},
     signOutLabel: 'Sign out',

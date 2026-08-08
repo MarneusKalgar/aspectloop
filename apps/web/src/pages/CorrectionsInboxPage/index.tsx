@@ -1,3 +1,18 @@
+import { useAuth } from '@app/auth/useAuth';
+import { EmptyState } from '@app/components/feedback/EmptyState';
+import { RuntimeModeChip } from '@app/components/feedback/RuntimeModeChip';
+import { CorrectionSessionCardList } from '@app/components/inbox/CorrectionSessionCardList';
+import { CorrectionSessionsTable } from '@app/components/inbox/CorrectionSessionsTable';
+import { InboxFilterChips } from '@app/components/inbox/InboxFilterChips';
+import { InboxSearchField } from '@app/components/inbox/InboxSearchField';
+import { InboxStatCard } from '@app/components/inbox/InboxStatCard';
+import { InboxStatsRow } from '@app/components/inbox/InboxStatsRow';
+import { normalizeSessionStatus } from '@app/components/inbox/status';
+import { AppPageShell } from '@app/components/layout/AppPageShell';
+import { AuthenticatedAppBar } from '@app/components/layout/AuthenticatedAppBar';
+import { PageIntro } from '@app/components/layout/PageIntro';
+import { env } from '@app/config/env';
+import { useCorrectionSessionsQuery } from '@app/graphql/hooks/correction/queries/useCorrectionSessionsQuery';
 import { Alert, CircularProgress, Stack, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
@@ -5,21 +20,6 @@ import { useTranslation } from 'react-i18next';
 
 import type { CorrectionInboxStatCardId, CorrectionSessionRow } from './types';
 
-import { useAuth } from '../../auth/useAuth';
-import { EmptyState } from '../../components/feedback/EmptyState';
-import { RuntimeModeChip } from '../../components/feedback/RuntimeModeChip';
-import { CorrectionSessionCardList } from '../../components/inbox/CorrectionSessionCardList';
-import { CorrectionSessionsTable } from '../../components/inbox/CorrectionSessionsTable';
-import { InboxFilterChips } from '../../components/inbox/InboxFilterChips';
-import { InboxSearchField } from '../../components/inbox/InboxSearchField';
-import { InboxStatCard } from '../../components/inbox/InboxStatCard';
-import { InboxStatsRow } from '../../components/inbox/InboxStatsRow';
-import { normalizeSessionStatus } from '../../components/inbox/status';
-import { AppPageShell } from '../../components/layout/AppPageShell';
-import { AuthenticatedAppBar } from '../../components/layout/AuthenticatedAppBar';
-import { PageIntro } from '../../components/layout/PageIntro';
-import { env } from '../../config/env';
-import { useCorrectionSessionsQuery } from '../../graphql/hooks/useCorrectionSessionsQuery';
 import { correctionInboxStatCardDefinitions } from './constants';
 import { getStatusOptions, isToday, normalizeCorrectionSessions } from './utils';
 

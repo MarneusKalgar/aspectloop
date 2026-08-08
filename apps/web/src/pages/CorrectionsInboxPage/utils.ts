@@ -1,6 +1,6 @@
-import type { CorrectionSessionRow } from './types';
+import { formatSessionStatusLabel, normalizeSessionStatus } from '@app/components/inbox/status';
 
-import { formatSessionStatusLabel, normalizeSessionStatus } from '../../components/inbox/status';
+import type { CorrectionSessionRow } from './types';
 
 export function getStatusOptions(sessions: CorrectionSessionRow[], allLabel: string) {
   const statuses = Array.from(

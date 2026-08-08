@@ -1,7 +1,6 @@
 import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client/core';
 import { SetContextLink } from '@apollo/client/link/context';
-
-import { env } from '../../config/env';
+import { env } from '@app/config/env';
 
 interface CreateGraphqlClientOptions {
   getAccessToken: () => null | string;

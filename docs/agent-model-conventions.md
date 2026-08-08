@@ -1,7 +1,7 @@
 # Agent, Planning, And Model Conventions
 
 Status: Active  
-Last updated: 2026-07-21
+Last updated: 2026-08-02
 
 ## 1. Purpose
 
@@ -112,15 +112,19 @@ proposed -> approved -> in-progress -> completed
 6. Implement production behavior before test code; do not use TDD.
 7. Add or update test code after implementation only when the approved scope
    requires it. The human owns test execution.
-8. Do not run formatting, lint, type checks, tests, builds, migration commands,
+8. Add JSDoc immediately above every function or method an agent adds or
+   materially changes, including private helpers and callback methods. State the
+   behavior, meaningful parameters, return value, and material side effects or
+   failure policy; do not add empty restatements of the function name.
+9. Do not run formatting, lint, type checks, tests, builds, migration commands,
    or local smoke checks. Provide the human with exact commands, scope, and
    expected signals instead.
-9. Do not generate or hand-author database migrations. Implement the schema or
-   entity change, then identify the service-specific command a human must use
-   to generate the migration. Review a generated migration only when asked.
-10. Record material deviations and the human verification status in the plan.
+10. Do not generate or hand-author database migrations. Implement the schema or
+    entity change, then identify the service-specific command a human must use
+    to generate the migration. Review a generated migration only when asked.
+11. Record material deviations and the human verification status in the plan.
     Mark agent-unexecuted checks explicitly; never report them as passing.
-11. Do not stage, commit, push, create a PR, deploy, or perform destructive Git
+12. Do not stage, commit, push, create a PR, deploy, or perform destructive Git
     operations unless explicitly requested.
 
 ## 6. Main Task Versus Subagents

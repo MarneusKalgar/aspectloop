@@ -1,4 +1,4 @@
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { YogaDriver, YogaDriverConfig } from '@graphql-yoga/nestjs';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -6,41 +6,39 @@ import { join } from 'node:path';
 
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { JsonScalar } from './scalars/json.scalar';
-import { createIntrospectionHeaderGateRequestDidStart } from './utils/createIntrospectionHeaderGateRequestDidStart';
+import { createDisableIntrospectionPlugin } from './utils/createDisableIntrospectionPlugin';
+import { maskGraphqlError } from './utils/maskGraphqlError';
 
 @Module({
   imports: [
     ConfigModule,
-    GraphQLModule.forRootAsync<ApolloDriverConfig>({
-      driver: ApolloDriver,
+    GraphQLModule.forRootAsync<YogaDriverConfig>({
+      driver: YogaDriver,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const nodeEnv = configService.get<string>('NODE_ENV');
-        const introspectionAuthorizationHeader =
-          configService.get<string>('GQL_SCHEMA_AUTH_HEADER');
-        const requestDidStart = createIntrospectionHeaderGateRequestDidStart(
-          introspectionAuthorizationHeader,
-        );
         const isRuntimeBuild = nodeEnv === 'production' || nodeEnv === 'stage';
         const schemaGlob = isRuntimeBuild
           ? 'dist/graphql/schema/**/*.graphql'
           : 'src/graphql/schema/**/*.graphql';
+        const disableIntrospectionPlugin = createDisableIntrospectionPlugin(isRuntimeBuild);
 
         return {
           context: ({ req }: { req: unknown }) => ({ req }),
+          cors: false,
           definitions: isRuntimeBuild
             ? undefined
             : {
                 outputAs: 'class',
-                path: join(process.cwd(), 'src/graphql/graphql.types.ts'),
+                path: join(process.cwd(), 'src/graphql/generated/graphql.types.ts'),
               },
-          driver: ApolloDriver,
           graphiql: !isRuntimeBuild,
-          introspection: !isRuntimeBuild,
+          logging: false,
+          maskedErrors: { maskError: maskGraphqlError },
           path: '/graphql',
-          plugins: requestDidStart ? [{ requestDidStart }] : [],
+          plugins: disableIntrospectionPlugin ? [disableIntrospectionPlugin] : [],
           sortSchema: true,
-          stopOnTerminationSignals: false,
+          stopOnApplicationShutdown: false,
           typePaths: [join(process.cwd(), schemaGlob)],
         };
       },

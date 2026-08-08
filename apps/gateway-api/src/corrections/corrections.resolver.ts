@@ -7,7 +7,7 @@ import { GqlJwtAuthGuard } from '../auth/guards/gql-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ScopesGuard } from '../auth/guards/scopes.guard';
 import { AuthUser } from '../auth/types/auth-user';
-import { SubmitCorrectionsInput } from '../graphql/graphql.types';
+import { SubmitCorrectionsInput } from '../graphql/generated/graphql.types';
 import { SubmitCorrectionsCommandInput } from './correction-flow.types';
 import { CorrectionsService } from './corrections.service';
 

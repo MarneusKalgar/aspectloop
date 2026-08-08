@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { BrandLogo } from '../../brand/BrandLogo';
+import { BrandLogo } from '@app/components/brand/BrandLogo';
+
 import {
   AuthFormCardExtra,
   AuthFormCardFooter,

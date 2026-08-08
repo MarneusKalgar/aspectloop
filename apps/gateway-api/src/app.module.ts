@@ -20,11 +20,15 @@ import { UsersModule } from './users/users.module';
 @Module({
   controllers: [HealthController],
   imports: [
-    LoggerModule.forRoot(getPinoLoggerConfig()),
     ConfigModule.forRoot({
       envFilePath: getEnvFilePaths(),
       isGlobal: true,
       validate: validateEnv,
+    }),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: getPinoLoggerConfig,
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

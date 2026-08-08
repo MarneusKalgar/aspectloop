@@ -1,6 +1,6 @@
+import { RabbitmqService } from '@app/rabbitmq/rabbitmq.service';
 import { Injectable } from '@nestjs/common';
 
-import { RabbitmqService } from '../../rabbitmq/rabbitmq.service';
 import { CORRECTION_EVENTS_QUEUE } from '../constants';
 import { CORRECTION_OUTBOX_EVENT_TYPE_DOCUMENT_CORRECTED } from '../correction-flow.types';
 

@@ -1,8 +1,8 @@
+import { App } from '@app/App';
+import { defaultMockReviewerCredentials } from '@app/mocks/fixtures/default-reviewer';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-
-import { App } from '../../../src/App';
 
 describe('sign-up integration', () => {
   it('surfaces the server error when the email already exists', async () => {
@@ -20,8 +20,8 @@ describe('sign-up integration', () => {
     const passwordInput = screen.getByLabelText(/^password/i, { selector: 'input' });
 
     await user.type(displayNameInput, 'Existing Reviewer');
-    await user.type(emailInput, 'reviewer@elemika.io');
-    await user.type(passwordInput, 'password123');
+    await user.type(emailInput, defaultMockReviewerCredentials.email);
+    await user.type(passwordInput, defaultMockReviewerCredentials.password);
     await user.click(screen.getByTestId('submit-button'));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(

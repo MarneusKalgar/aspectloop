@@ -10,7 +10,7 @@ const meta = {
     onSignOut: () => {},
     pageLabel: 'Correction inbox',
     signOutLabel: 'Sign out',
-    userEmail: 'reviewer@elemika.io',
+    userEmail: 'reviewer@example.test',
     userName: 'Avery Stone',
   },
   component: AuthenticatedAppBar,

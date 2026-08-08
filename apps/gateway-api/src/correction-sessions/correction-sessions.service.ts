@@ -15,7 +15,7 @@ import { DocumentRegistryService } from '../document-registry/document-registry.
 import {
   OpenCorrectionSessionInput,
   SaveCorrectionSessionDraftInput,
-} from '../graphql/graphql.types';
+} from '../graphql/generated/graphql.types';
 import { PersistenceClient } from '../persistence/persistence.client';
 import { isRecord } from '../persistence/utils';
 import { CorrectionSession } from './correction-session.entity';

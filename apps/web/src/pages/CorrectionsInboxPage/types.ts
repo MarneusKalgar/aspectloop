@@ -1,4 +1,4 @@
-import type { InboxStatCardTone } from '../../components/inbox/InboxStatCard';
+import type { InboxStatCardTone } from '@app/components/inbox/InboxStatCard';
 
 export interface CorrectionInboxStatCardDefinition {
   id: CorrectionInboxStatCardId;

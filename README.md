@@ -91,6 +91,27 @@ npm run build:contracts
 npm run graphql-codegen --workspace @elemika/web
 ```
 
+## GraphQL Transport And Code Generation
+
+The gateway is a NestJS application on Express that serves schema-first
+GraphQL through GraphQL Yoga. Apollo Client remains the browser GraphQL client.
+
+GraphiQL and GraphQL introspection are available only in local development and
+test environments at `http://localhost:8080/graphql`. Stage and production
+expose neither capability.
+
+Normal local code generation reads gateway-owned SDL from
+`apps/gateway-api/src/graphql/schema` without starting the gateway. Set
+`GQL_SCHEMA_URL` in `apps/web/.env.local` only when generating against a
+running local, stage, or future Java backend. Generated web artifacts are owned
+by `apps/web/src/graphql/generated`; handwritten hooks, runtime configuration,
+and utilities remain outside that directory.
+
+Browser MSW is a development and test capability. Set
+`VITE_MOCK_GQL_RUNTIME=true` only for the Vite development server or mocked
+browser workflow. Production Vite builds force mock mode off and exclude the
+MSW worker, browser runtime, handlers, fixtures, and mock credential hint.
+
 ## Local Endpoints
 
 | Service          | Endpoint                        | Description                                            |
@@ -102,11 +123,10 @@ npm run graphql-codegen --workspace @elemika/web
 | Extraction shell | `http://localhost:8081/health`  | Independent extraction runtime identity                |
 | Correction shell | `http://localhost:8082/health`  | Independent correction runtime identity                |
 
-GraphiQL is served at the same `/graphql` path as the gateway. Add an
-`Authorization: Bearer <token>` request header for protected operations. When
-`GQL_SCHEMA_AUTH_HEADER` is configured, also add the corresponding
-`x-elemika-schema-auth` header before using schema introspection. Do not save
-real tokens in committed queries or browser history.
+GraphiQL is served at the same `/graphql` path as the gateway in local
+development and test environments. Add an
+`Authorization: Bearer <token>` request header for protected operations. Do
+not save real tokens in committed queries or browser history.
 
 ## Local Infrastructure
 
@@ -151,3 +171,9 @@ M01 is implemented but not yet human-verified. The required human checks cover
 the regenerated npm lockfile, formatting, lint, type checks, builds, tests,
 Docker Compose, migrations, code generation, and endpoint smoke checks. M02
 performs the product rebrand only after those checks pass.
+
+M01.1 is the bounded GraphQL transport and frontend-boundary corrective
+follow-up discovered during M01 human npm verification: the selected Apollo
+server graph could not be resolved cleanly because the deprecated Playground
+compatibility package required an incompatible Apollo Server major. It remains
+part of M01 completion rather than a separate roadmap milestone.

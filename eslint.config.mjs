@@ -57,6 +57,19 @@ export default [
   },
   {
     files: [
+      'apps/web/codegen.ts',
+      'apps/web/vite.config.ts',
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: './apps/web/tsconfig.node.json',
+        projectService: false,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: [
       'apps/web/src/**/*.test.ts',
       'apps/web/src/**/*.test.tsx',
       'apps/web/src/test/**/*.{ts,tsx}',

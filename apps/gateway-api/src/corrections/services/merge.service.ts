@@ -1,7 +1,7 @@
+import { DocumentTypeConfig } from '@app/document-registry/document-registry.types';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { isDeepStrictEqual } from 'node:util';
 
-import { DocumentTypeConfig } from '../../document-registry/document-registry.types';
 import {
   CORRECTION_SOURCE_USER_EDIT,
   MergeCorrectionEditAuditDraft,

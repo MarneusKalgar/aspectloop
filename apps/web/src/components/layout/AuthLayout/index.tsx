@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { AuthHeroPanel } from '../../auth/AuthHeroPanel';
+import { AuthHeroPanel } from '@app/components/auth/AuthHeroPanel';
+
 import { PublicAppBar } from '../PublicAppBar';
 import { AuthLayoutFormPane, AuthLayoutMain, AuthLayoutRoot } from './AuthLayout.style';
 

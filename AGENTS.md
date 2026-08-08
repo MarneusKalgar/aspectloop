@@ -59,6 +59,8 @@
 
 - Use `rg`/`rg --files` for search and `apply_patch` for manual file edits.
 - Keep edits ASCII unless an existing file or requirement needs Unicode.
+- Add JSDoc immediately above every function or method added or materially
+  changed by an agent, including private helpers and callback methods.
 - Do not run broad formatting/fix commands on unrelated files.
 - Do not stage, commit, push, create a PR, deploy, or run destructive Git
   operations unless explicitly requested.
