@@ -806,6 +806,17 @@ The milestone covers three review layers:
    explicit `@codex review` request. Deterministic checks remain the merge
    signal; AI review is an independent reasoning signal.
 
+As an additional M03 work item, run a time-boxed
+[Greptile Starter](https://www.greptile.com/pricing) pilot for GitHub PR review
+while the repository is private. Use standard reviews only, trigger reviews
+manually on PRs that are ready for review, and avoid automatic re-review after
+every push so the free monthly credit allowance is not consumed by intermediate
+commits. Evaluate it on 5-10 representative PRs using validated findings,
+false-positive rate, cross-workspace findings, duplicate comments, latency, and
+credit usage. Greptile remains advisory and must not replace deterministic CI,
+human verification, or the vendor-neutral local review skill. At the end of the
+pilot, retain one GitHub AI reviewer rather than running overlapping review bots.
+
 M03 also introduces a committed repository skill under
 `.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
 and risk surfaces, selects only the relevant installed specialist skills, runs

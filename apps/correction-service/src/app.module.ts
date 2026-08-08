@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
 import { validateEnv } from './config/env.validation';
@@ -9,11 +9,15 @@ import { HealthController } from './health/health.controller';
 @Module({
   controllers: [HealthController],
   imports: [
-    LoggerModule.forRoot(getPinoLoggerConfig()),
     ConfigModule.forRoot({
       envFilePath: ['.env.local', '.env'],
       isGlobal: true,
       validate: validateEnv,
+    }),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: getPinoLoggerConfig,
     }),
   ],
 })

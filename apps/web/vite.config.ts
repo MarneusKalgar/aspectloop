@@ -18,6 +18,7 @@ function resolveWebPort(rawWebPort: string | undefined) {
 
 export default defineConfig(({ command, mode }) => {
   const loadedEnv = loadEnv(mode, process.cwd(), '');
+  const browserMockEnabled = command === 'serve' && loadedEnv.VITE_MOCK_GQL_RUNTIME === 'true';
   const productionAliases =
     command === 'build'
       ? [
@@ -40,6 +41,9 @@ export default defineConfig(({ command, mode }) => {
       : undefined;
 
   return {
+    define: {
+      'import.meta.env.BROWSER_MOCK_ENABLED': JSON.stringify(browserMockEnabled),
+    },
     plugins: [react()],
     publicDir: command === 'build' ? false : 'public',
     resolve: {
