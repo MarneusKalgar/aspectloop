@@ -13,7 +13,7 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
-  document.cookie = 'elemika_access_token=; Max-Age=0; path=/';
+  document.cookie = 'aspectloop_access_token=; Max-Age=0; path=/';
   server.resetHandlers();
   window.history.pushState({}, '', '/');
 });

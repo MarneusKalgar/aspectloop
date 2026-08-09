@@ -1,5 +1,5 @@
 {
-  "name": "@elemika/extraction-service",
+  "name": "@aspectloop/extraction-service",
   "version": "0.1.0",
   "private": true,
   "scripts": {

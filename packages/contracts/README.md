@@ -1,6 +1,6 @@
 # Contracts
 
-`@elemika/contracts` is the framework-free public boundary for contracts shared
+`@aspectloop/contracts` is the framework-free public boundary for contracts shared
 by independently deployed runtimes.
 
 Add transport, event, or provider contracts only when at least two runtimes

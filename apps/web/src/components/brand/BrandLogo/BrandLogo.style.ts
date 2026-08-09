@@ -24,10 +24,12 @@ export const BrandMark = styled(Box)<{ ownerState: { large: boolean } }>(
     color: '#fff',
     display: 'inline-flex',
     fontFamily: theme.typography.fontFamily,
-    fontSize: ownerState.large ? '1.5rem' : '1rem',
+    fontSize: ownerState.large ? '1.125rem' : '0.75rem',
     fontWeight: 700,
     height: ownerState.large ? 52 : 32,
     justifyContent: 'center',
+    letterSpacing: 0,
+    lineHeight: 1,
     width: ownerState.large ? 52 : 32,
   }),
 );
@@ -36,6 +38,7 @@ export const BrandName = styled(Typography)(({ theme }) => ({
   color: theme.custom.shell.text,
   fontSize: '1.1rem',
   fontWeight: 700,
-  letterSpacing: '-0.025em',
+  letterSpacing: 0,
   lineHeight: 1,
+  whiteSpace: 'nowrap',
 }));

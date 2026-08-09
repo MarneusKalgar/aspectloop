@@ -1,24 +1,29 @@
-# Elemika Correction MVP
+# AspectLoop
 
-Elemika is a local-first workspace for reviewing, correcting, and eventually
+AspectLoop is a local-first workspace for reviewing, correcting, and eventually
 submitting structured data extracted from supplier documents.
 
-The repository is in M01, the monorepo-boundary refactor. The existing product
-behavior remains in the gateway while the future extraction and correction
-runtimes are introduced as independent health-only NestJS shells.
+AspectLoop is an independent learning and portfolio project and is not
+affiliated with or endorsed by Elemica.
+
+The M01 repository-boundary refactor and M01.1 GraphQL remediation are complete.
+M02 applies the product identity before the data, extraction, correction, cloud,
+and AI foundations accumulate. The existing product behavior remains in the
+gateway while the extraction and correction runtimes are independent health-only
+NestJS shells.
 
 ## Application Boundaries
 
-- `@elemika/web`: React and Vite browser application.
-- `@elemika/gateway-api`: public schema-first GraphQL API, authentication, and
+- `@aspectloop/web`: React and Vite browser application.
+- `@aspectloop/gateway-api`: public schema-first GraphQL API, authentication, and
   the current temporary home for correction behavior.
-- `@elemika/extraction-service`: extraction runtime shell; no extraction
+- `@aspectloop/extraction-service`: extraction runtime shell; no extraction
   behavior or infrastructure dependency exists yet.
-- `@elemika/correction-service`: correction runtime shell; correction behavior
+- `@aspectloop/correction-service`: correction runtime shell; correction behavior
   remains in the gateway until M06.
-- `@elemika/contracts`: framework-free public boundary for contracts that are
+- `@aspectloop/contracts`: framework-free public boundary for contracts that are
   genuinely shared by independent runtimes.
-- `@elemika/persistence-service-mock`: local file-backed persistence dependency.
+- `@aspectloop/persistence-service-mock`: local file-backed persistence dependency.
 
 ## Prerequisites
 
@@ -88,7 +93,7 @@ npm run build:gateway
 npm run build:extraction
 npm run build:correction
 npm run build:contracts
-npm run graphql-codegen --workspace @elemika/web
+npm run graphql-codegen --workspace @aspectloop/web
 ```
 
 ## GraphQL Transport And Code Generation
@@ -138,8 +143,9 @@ not save real tokens in committed queries or browser history.
 - `persistence-mock`
 - `migrate` and `seed` profiled one-off services
 
-The Compose project name and existing named volume keys remain compatible with
-the prior local stack. Extraction and correction shells are intentionally not
+M02 starts a clean AspectLoop Compose namespace. Existing `elemika_api_*` local
+volumes are not reused and may be retained or removed manually after the new
+stack is verified. Extraction and correction shells are intentionally not
 Compose services yet.
 
 ## Repository Layout
@@ -167,13 +173,7 @@ docs/
 `AGENTS.md` and `docs/agent-model-conventions.md` define the execution and
 human-verification conventions.
 
-M01 is implemented but not yet human-verified. The required human checks cover
-the regenerated npm lockfile, formatting, lint, type checks, builds, tests,
-Docker Compose, migrations, code generation, and endpoint smoke checks. M02
-performs the product rebrand only after those checks pass.
-
-M01.1 is the bounded GraphQL transport and frontend-boundary corrective
-follow-up discovered during M01 human npm verification: the selected Apollo
-server graph could not be resolved cleanly because the deprecated Playground
-compatibility package required an incompatible Apollo Server major. It remains
-part of M01 completion rather than a separate roadmap milestone.
+M02 source changes are implemented, but its human-owned lockfile regeneration,
+ignored local configuration update, local Compose verification, and GitHub
+repository rename remain before the milestone is complete. See
+`docs/general-plan.md` and the active M02 plan for the acceptance checklist.

@@ -514,7 +514,7 @@ function TopBar({ title, subtitle, right, viewport, backHref = '../index.html' }
       >
         <${Stack} spacing=${0.5} sx=${{ flex: 1, minWidth: 0 }}>
           <${Breadcrumbs} separator="·" sx=${{ fontSize: 12 }}>
-            <${Typography} color="text.secondary" variant="subtitle2">Elemika</${Typography}>
+            <${Typography} color="text.secondary" variant="subtitle2">AspectLoop</${Typography}>
             <${Typography} color="text.secondary" variant="subtitle2">Correction flows</${Typography}>
           </${Breadcrumbs}>
           <${Typography} variant="h3">${title}</${Typography}>

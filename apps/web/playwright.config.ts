@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'VITE_API_URL=http://127.0.0.1:8080 VITE_APP_NAME="Elemika Correction" VITE_MOCK_GQL_RUNTIME=true npm --workspace @elemika/web exec -- vite --host 127.0.0.1 --port 4174',
+      'VITE_API_URL=http://127.0.0.1:8080 VITE_APP_NAME="AspectLoop" VITE_MOCK_GQL_RUNTIME=true npm --workspace @aspectloop/web exec -- vite --host 127.0.0.1 --port 4174',
     port,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

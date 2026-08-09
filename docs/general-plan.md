@@ -1,7 +1,7 @@
-# Elemika General Architecture Plan
+# AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-07-21
+Last updated: 2026-08-09
 
 ## Table Of Contents
 
@@ -40,7 +40,7 @@ Last updated: 2026-07-21
 ### Purpose
 
 This document is the high-level architecture and delivery roadmap for evolving
-Elemika from an interview-oriented proof of concept into a production-like
+AspectLoop from an interview-oriented proof of concept into a production-like
 full-stack document processing system.
 
 It defines:
@@ -61,7 +61,7 @@ execution conventions are defined in `AGENTS.md` and
 
 ### Product Direction
 
-Elemika models a human-in-the-loop supplier-document workflow:
+AspectLoop models a human-in-the-loop supplier-document workflow:
 
 1. A user uploads or registers a supplier document, initially a PDF.
 2. The platform stores the source document as an immutable artifact.
@@ -158,7 +158,7 @@ separate `backend/` workspace. Each NestJS application remains independently
 runnable, buildable, migratable, and deployable.
 
 ```text
-elemika/
+aspectloop/
   apps/
     web/
     gateway-api/
@@ -500,6 +500,51 @@ Responsibilities:
 
 The gateway must not own PDF parsing, extraction prompts, correction merge
 rules, correction audit transitions, or domain outbox logic.
+
+#### Identity and session stabilization
+
+The existing local JWT flow is PoC-level: the gateway has authentication,
+role, and scope guards, but the browser can still render a user decoded from a
+stale access token while protected GraphQL operations return `Unauthorized`.
+M04.1 stabilizes the complete FE/BE session contract after `platform_db` exists
+and before M07 accepts the end-to-end browser workflow.
+
+Authentication and authorization baseline:
+
+- protect GraphQL operations by default and explicitly identify public auth
+  operations; use the authenticated actor from request context rather than a
+  caller-supplied user ID;
+- keep gateway role/scope checks for coarse authorization, while resource
+  ownership and state-transition authorization remain with the owning domain
+  service;
+- validate browser session state against the server during application startup;
+  do not treat a locally decoded token as authoritative authentication;
+- keep access tokens short lived and browser-readable only in memory; use an
+  opaque refresh token in a scoped `HttpOnly`, `SameSite`, and production
+  `Secure` cookie;
+- persist only a hash of each refresh-token secret, rotate the token atomically
+  on refresh, reject reuse of a revoked predecessor, and revoke it on sign-out;
+- coordinate concurrent browser refresh attempts as one request, retry a failed
+  GraphQL operation at most once, then clear the session and return to sign-in;
+- establish and document the initial single-session or multi-session policy
+  rather than allowing token behavior to emerge from implementation details.
+
+Registration confirmation baseline:
+
+- create users as unverified and require successful email confirmation before
+  protected product access;
+- use expiring, single-use opaque verification tokens whose secrets are hashed
+  at rest and consumed atomically;
+- provide confirmation and resend flows with cooldown/rate limiting and
+  responses that do not disclose whether an arbitrary email is registered;
+- use a provider-neutral mail adapter and a local mail-capture service so the
+  full confirmation flow works without an external email provider;
+- defer managed email delivery and external OIDC to stage/cloud work.
+
+The `rd_shop` implementation is a reference for opaque token structure,
+hashed token storage, atomic rotation/consumption, cookie handling, and guard
+composition. AspectLoop retains its schema-first GraphQL boundary and defines
+its own user, session, and authorization contracts.
 
 #### Extraction service
 
@@ -919,6 +964,30 @@ approval. Required status checks and resolved review conversations are the
 enforceable controls when repository visibility and the GitHub plan support
 branch rules.
 
+##### M03.4 Logging and privacy baseline
+
+M03 establishes a compact, consistent logging contract before additional
+backend workflows increase telemetry volume:
+
+- request-scoped application logs carry a request ID and bounded business
+  context instead of serializing the complete request object;
+- each HTTP request produces one compact completion event containing the
+  request ID, method, normalized route, status, duration, and error outcome;
+- GraphQL telemetry records a bounded operation name and outcome, never the
+  operation document, variables, or response payload;
+- authentication and security events use internal identifiers rather than raw
+  email addresses, and success is logged only after the complete operation has
+  succeeded;
+- headers, cookies, authorization values, query/body payloads, document data,
+  prompts, and other personal or sensitive content are excluded by default;
+- temporary diagnostic logging must be explicit, narrowly scoped, redacted,
+  and removed or disabled before merge;
+- the gateway, extraction service, and correction service use the same field
+  names and severity semantics, while retaining service-owned logger setup.
+
+This is an application-logging baseline, not deployment of the observability
+stack. Local stdout and Compose logs remain sufficient until M10.
+
 #### Testing
 
 The detailed test taxonomy, MSW ownership, local-versus-stage system strategy,
@@ -982,14 +1051,20 @@ Signal ownership:
 | Visualization   | Grafana with provisioned Prometheus, Loki, and Tempo data sources              |
 | Alerting        | Prometheus/Grafana alerting initially; Alertmanager only when routing needs it |
 
-Baseline requirements in every implementation milestone:
+Baseline requirements, introduced incrementally by the owning milestones:
 
-- structured Pino logs with service, environment, operation, outcome, and
-  duration fields;
-- request, correlation, causation, message/job, and trace IDs propagated across
-  HTTP, GraphQL, RabbitMQ, and later AI calls;
+- compact structured Pino logs with service, environment, operation, outcome,
+  duration, and the relevant correlation identifiers;
+- globally unique request IDs accepted from trusted callers when valid,
+  generated otherwise, returned to clients, and propagated across HTTP and
+  GraphQL;
+- correlation, causation, message/job, and trace IDs propagated through
+  RabbitMQ and later AI calls when those flows are introduced;
 - health/readiness endpoints per runtime;
-- no secrets, document bodies, prompt contents, or PII in telemetry;
+- normalized routes and bounded GraphQL operation names rather than raw URLs,
+  documents, variables, or other high-cardinality payload values;
+- no secrets, request headers/bodies, document contents, prompt contents, raw
+  identity fields, or other PII in telemetry;
 - local failure visibility through stdout and Compose logs without requiring
   the observability profile.
 
@@ -1001,6 +1076,8 @@ M10 adds the production-like observability stack:
 - OpenTelemetry spans for HTTP, GraphQL, TypeORM, RabbitMQ, and artifact access;
 - trace IDs in structured logs and Grafana links between metrics, traces, and
   logs;
+- end-to-end validation that request, correlation, causation, message/job, and
+  trace identifiers survive asynchronous service boundaries;
 - provisioned data sources, a service-overview dashboard, and an
   extraction/correction workflow dashboard;
 - a small set of actionable alerts;
@@ -1106,7 +1183,7 @@ against the same fixtures and contracts.
 
 #### CCAF alignment
 
-| CCAF domain                            | Elemika practice area                                                                          |
+| CCAF domain                            | AspectLoop practice area                                                                       |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Agentic Architecture & Orchestration   | Correction-assistant workflow, bounded delegation, human approval                              |
 | Tool Design & MCP Integration          | Typed document/rule/validation tools and optional MCP server                                   |
@@ -1120,35 +1197,29 @@ demonstrably improves quality.
 
 ## 6. Rebranding Track
 
-`Elemika` is too close to `Elemica` for a public repository, hosted demo, or
-presentation. Rebranding is an early P0 milestone: it follows the M01
-repository-boundary refactor and precedes new product functionality.
+The former internal working name, `Elemika`, was too close to `Elemica` for a
+public repository, hosted demo, or presentation. M02 establishes `AspectLoop`
+as the product name, `aspectloop` as the machine-facing slug, and
+`@aspectloop/*` as the private workspace scope before new domain and
+infrastructure work accumulates.
 
-### Timing
+AspectLoop is an independent learning and portfolio project. It is not
+affiliated with or endorsed by Elemica.
 
-- Complete M01 first so the rename targets the intended long-lived repository
-  and application boundaries.
-- Select and apply the new name in M02 before adding the data, extraction,
-  correction, cloud, and AI foundations.
-- Treat any later public-release check as an audit for missed references and
-  sensitive material, not as another product rename.
+### Completion Boundary
 
-### Scope
-
-- availability/confusion check for the new name;
-- repository and package names;
-- UI name, logo, page titles, copy, and screenshots;
-- environment-variable prefixes and service/container identifiers;
-- object-storage buckets/prefixes and event producer names where appropriate;
-- README, diagrams, sample data, and public documentation;
-- GitHub repository metadata and deployment URLs;
-- explicit independent-learning-project disclaimer;
-- scan for private paths, credentials, proprietary source, copied assets, and
-  unintended references to the real Elemica system.
-
-Historical architecture decisions may retain factual references to the Java
-system as research context, but public artifacts must not imply affiliation or
-reuse proprietary code/data.
+- M02 updates current code, package metadata, local infrastructure, design
+  references, and public documentation to the AspectLoop identity.
+- Human-owned work completes the npm lockfile regeneration, ignored local
+  environment update, clean local Compose verification, availability check, and
+  GitHub repository rename.
+- Future object-storage, cloud, and deployment resources use `aspectloop` when
+  those milestones create them; M02 creates no placeholder cloud resources.
+- Generic service names, environment-variable keys, routes, queues, and event
+  contracts remain domain-oriented and are not product-prefixed.
+- Historical architecture decisions may retain factual references to the Java
+  system as research context, but public artifacts must not imply affiliation or
+  reuse proprietary code/data.
 
 ## 7. Roadmap And Governance
 
@@ -1165,6 +1236,8 @@ stage second.
 - deterministic extraction service/provider mock;
 - correction editor and complete local upload-to-submit flow;
 - optimistic locking, immutable submitted artifact, audit, outbox, retry/DLQ;
+- authoritative FE/BE session state, protected-operation guards, refresh-token
+  rotation, and locally testable email confirmation;
 - focused tests, baseline security, health, and structured logs;
 - early rebranding immediately after the repository boundary refactor;
 - local verification, local AI review, and GitHub PR quality gates;
@@ -1201,35 +1274,38 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID   | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                             |
-| ---- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | --------------------------------------------------------------------------------------------------- |
-| M00  | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                  |
-| M01  | Monorepo boundary refactor                     | Platform/BE/FE | P0       | In progress | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior   |
-| M02  | Product rebrand and namespace migration        | Rebrand        | P0       | Planned     | M01                | Durable product identity applied before new code and infrastructure accumulate                      |
-| M03  | Review process and quality gates               | Governance/QA  | P0       | Planned     | M02                | Human/AI/PR review, Dockerfile and npm supply-chain policy, deterministic quality gates             |
-| M04  | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03                | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack    |
-| M05  | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                            |
-| M06  | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                       |
-| M07  | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M05, M06           | Upload/status/inbox/editor/draft/submit works locally                                               |
-| M08  | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                               |
-| M09  | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                   |
-| M10  | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, open observability stack, runbooks          |
-| M11  | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback |
-| AI00 | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                         |
-| AI10 | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                |
-| AI11 | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                               |
-| AI12 | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                          |
-| AI20 | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                 |
-| AI21 | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                |
-| AI30 | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                        |
+| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                             |
+| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | --------------------------------------------------------------------------------------------------- |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                  |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior   |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | In progress | M01                | AspectLoop source migration complete; human lockfile, local verification, and GitHub rename pending |
+| M03   | Review process and quality gates               | Governance/QA  | P0       | Planned     | M02                | Human/AI/PR review, deterministic gates, supply-chain policy, privacy-safe logging baseline         |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03                | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack    |
+| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation        |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                            |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                       |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                 |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                               |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                   |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks           |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                         |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                               |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                          |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                 |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                        |
 
 #### Dependency view
 
 ```mermaid
 flowchart LR
   M00 --> M01 --> M02 --> M03 --> M04 --> M05
+  M04 --> M04_1["M04.1 identity/session"]
   M04 --> M06
   M05 --> M07
+  M04_1 --> M07
   M06 --> M07 --> M08 --> M09
   M07 --> M10
   M08 --> M10 --> M11
@@ -1243,32 +1319,35 @@ flowchart LR
   AI21 --> AI30
 ```
 
-M02 removes the `Elemika` identity before new domain and infrastructure work
-accumulates. M03 then establishes the review process used by every later
+M02 establishes the AspectLoop identity before new domain and infrastructure
+work accumulates. M03 then establishes the review process used by every later
 milestone. M11 includes a final public-content and sensitive-material audit,
 but it does not repeat the product rename.
 
 ### Key Risks And Responses
 
-| Risk                                         | Response                                                                                  |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                |
-| Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                 |
-| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views      |
-| Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys |
-| Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                             |
-| AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory       |
-| Too many skills dilute review focus          | Route by changed area and risk; select only a small relevant specialist set               |
-| Dockerfile lint is mistaken for image safety | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates         |
-| Artifact model duplicates too much data      | Store immutable blobs cheaply; DB keeps references and workflow metadata                  |
-| RabbitMQ/Compose complexity slows local work | One-command scripts, health checks, narrow service profiles, deterministic fixtures       |
-| Observability stack slows normal local work  | Keep it in an optional Compose profile with short retention and single-node components    |
-| Telemetry cardinality or volume grows        | Bound labels, sample traces, redact payloads, and set explicit retention limits           |
-| WebSocket introduces false consistency       | Notification-only events followed by authoritative refetch                                |
-| AI output is trusted without evidence        | Strict schemas, eval thresholds, provenance, human approval, failure artifacts            |
-| Provider lock-in                             | Provider-neutral interfaces and shared eval datasets, with provider details isolated      |
-| Python course diverges from TS product       | Implement product harness in TS; use Python only where ecosystem value is concrete        |
-| Public name implies Elemica affiliation      | Complete rebrand and public-content audit before release                                  |
+| Risk                                         | Response                                                                                   |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                 |
+| Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                  |
+| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views       |
+| Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys  |
+| Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                              |
+| Browser shows stale authenticated state      | Validate server-side at startup; refresh once, then clear and redirect                     |
+| Refresh-token replay extends a session       | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse         |
+| AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory        |
+| Too many skills dilute review focus          | Route by changed area and risk; select only a small relevant specialist set                |
+| Dockerfile lint is mistaken for image safety | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates          |
+| Artifact model duplicates too much data      | Store immutable blobs cheaply; DB keeps references and workflow metadata                   |
+| RabbitMQ/Compose complexity slows local work | One-command scripts, health checks, narrow service profiles, deterministic fixtures        |
+| Observability stack slows normal local work  | Keep it in an optional Compose profile with short retention and single-node components     |
+| Logs expose request or identity data         | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity |
+| Telemetry cardinality or volume grows        | Bound labels, sample traces, redact payloads, and set explicit retention limits            |
+| WebSocket introduces false consistency       | Notification-only events followed by authoritative refetch                                 |
+| AI output is trusted without evidence        | Strict schemas, eval thresholds, provenance, human approval, failure artifacts             |
+| Provider lock-in                             | Provider-neutral interfaces and shared eval datasets, with provider details isolated       |
+| Python course diverges from TS product       | Implement product harness in TS; use Python only where ecosystem value is concrete         |
+| Former name implies Elemica affiliation      | Use AspectLoop and a non-affiliation statement; audit public content before release        |
 
 ### Explicit Non-Goals
 
@@ -1290,10 +1369,7 @@ but it does not repeat the product rename.
 
 ### Immediate Next Plan
 
-The next detailed implementation plan should be M01: Monorepo boundary
-refactor. It should move the web and existing API into peer `apps/*` npm
-workspaces, establish independent NestJS application targets, add the contracts
-package boundary, update root scripts/Compose/codegen paths, and verify that
-existing backend and frontend behavior still runs locally. It should not
-redesign the document schema, create the service databases, add MinIO, or
-implement extraction.
+Complete the human-owned M02 lockfile, local configuration, Compose, UI, and
+GitHub verification. Once the product, repository, and workspace names are
+stable, write the M03 review-process and quality-gates plan. M03 must not add
+new product functionality or alter the document schema.

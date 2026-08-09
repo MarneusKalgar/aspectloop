@@ -1,5 +1,5 @@
 {
-  "name": "@elemika/gateway-api",
+  "name": "@aspectloop/gateway-api",
   "version": "0.1.0",
   "private": true,
   "scripts": {

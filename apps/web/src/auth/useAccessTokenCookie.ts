@@ -10,12 +10,17 @@ export interface AccessTokenCookieState {
 }
 
 interface AccessTokenCookieValues {
-  elemika_access_token?: string;
+  aspectloop_access_token?: string;
 }
 
+/**
+ * Stores the browser access token in the AspectLoop-scoped authentication cookie.
+ *
+ * @returns The current access token and operations for setting or clearing it.
+ */
 export function useAccessTokenCookie(): AccessTokenCookieState {
   const [cookies, setCookie, removeCookie] = useCookies<
-    'elemika_access_token',
+    'aspectloop_access_token',
     AccessTokenCookieValues
   >([accessTokenCookieName], { doNotParse: true });
 

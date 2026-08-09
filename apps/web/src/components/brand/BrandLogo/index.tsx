@@ -9,8 +9,14 @@ interface BrandLogoProps {
   variant?: 'large' | 'regular';
 }
 
+/**
+ * Renders the AspectLoop product mark and optional wordmark for application chrome.
+ *
+ * @param props - Controls the rendered mark, wordmark visibility, layout, and size variant.
+ * @returns The branded logo lockup.
+ */
 export function BrandLogo({
-  mark = 'E',
+  mark = 'AL',
   showWordmark = true,
   stacked = false,
   variant = 'regular',
@@ -18,7 +24,7 @@ export function BrandLogo({
   return (
     <BrandLogoRoot direction="row" ownerState={{ stacked }}>
       <BrandMark ownerState={{ large: variant === 'large' }}>{mark}</BrandMark>
-      {showWordmark ? <BrandName>Elemika</BrandName> : null}
+      {showWordmark ? <BrandName>AspectLoop</BrandName> : null}
     </BrandLogoRoot>
   );
 }

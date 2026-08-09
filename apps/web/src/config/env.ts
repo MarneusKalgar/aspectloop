@@ -19,7 +19,7 @@ const envSchema = z.object({
 
 const parsedEnv = envSchema.safeParse({
   VITE_API_URL: import.meta.env.VITE_API_URL,
-  VITE_APP_NAME: import.meta.env.VITE_APP_NAME ?? 'Elemika Correction',
+  VITE_APP_NAME: import.meta.env.VITE_APP_NAME ?? 'AspectLoop',
 });
 
 if (!parsedEnv.success) {

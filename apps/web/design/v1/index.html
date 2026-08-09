@@ -1,9 +1,10 @@
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Elemika correction flows</title>
+    <title>AspectLoop design references</title>
     <style>
       :root {
         --bg: oklch(98% 0.005 250);
@@ -147,25 +148,47 @@
       .actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
       }
 
       .actions a {
         display: inline-flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
-        min-height: 48px;
+        gap: 2px;
+        min-height: 52px;
         border-radius: 12px;
         border: 1px solid var(--border);
         color: var(--fg);
         text-decoration: none;
         font-weight: 600;
+        font-size: 13px;
+        line-height: 1.3;
+        padding: 8px 6px;
+      }
+
+      .actions a small {
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.6;
       }
 
       .actions a.primary {
         border-color: transparent;
         background: var(--accent);
         color: white;
+      }
+
+      .actions a.dark-variant {
+        background: oklch(14% 0.03 258);
+        border-color: oklch(26% 0.025 258);
+        color: oklch(90% 0.01 258);
+      }
+
+      .actions a.dark-variant small {
+        opacity: 0.5;
+        color: oklch(70% 0.015 258);
       }
 
       .actions a:hover {
@@ -193,19 +216,18 @@
   </head>
   <body>
     <main class="page">
-      <div class="eyebrow">Elemika / Phase 3 Part 2 / MUI v9.0.1</div>
+      <div class="eyebrow">Design reference / v1 / MUI v9.0.1</div>
       <h1>Desktop and mobile correction flows built as an evidence-first workbench.</h1>
       <p class="lede">
-        The screens follow the Part 2 frontend brief: a light precision workspace, strong evidence
+        The screens follow the Part 2 frontend brief: light and dark precision workspaces, strong evidence
         linkage, persistent validation surfaces, and MVP-sized auth, inbox, and correction-session
-        flows. Each screen is a separate HTML file so the desktop and narrow-web mobile states can
-        be reviewed side by side.
+        flows. Each screen ships in a light and dark variant — desktop and mobile — as separate HTML files.
       </p>
 
       <section class="meta">
         <article class="meta-card">
           <strong>Direction</strong>
-          <span>Tech / utility palette and typography with a quieter light-first evidence desk layout.</span>
+          <span>Tech / utility palette — light and dark. Both use the same token system with inverted surface and text tokens.</span>
         </article>
         <article class="meta-card">
           <strong>Auth behavior</strong>
@@ -227,8 +249,10 @@
             <span class="tag">MUI form shell</span>
           </div>
           <div class="actions">
-            <a class="primary" href="screens/signup-desktop.html">Open desktop</a>
-            <a href="screens/signup-mobile.html">Open mobile</a>
+            <a class="primary" href="screens/signup-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/signup-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/signup-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/signup-mobile-dark.html">Mobile<small>Dark</small></a>
           </div>
         </article>
 
@@ -241,8 +265,10 @@
             <span class="tag">Immediate inbox handoff</span>
           </div>
           <div class="actions">
-            <a class="primary" href="screens/login-desktop.html">Open desktop</a>
-            <a href="screens/login-mobile.html">Open mobile</a>
+            <a class="primary" href="screens/login-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/login-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/login-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/login-mobile-dark.html">Mobile<small>Dark</small></a>
           </div>
         </article>
 
@@ -255,8 +281,10 @@
             <span class="tag">Session actions</span>
           </div>
           <div class="actions">
-            <a class="primary" href="screens/corrections-dashboard-desktop.html">Open desktop</a>
-            <a href="screens/corrections-dashboard-mobile.html">Open mobile</a>
+            <a class="primary" href="screens/corrections-dashboard-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/corrections-dashboard-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/corrections-dashboard-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/corrections-dashboard-mobile-dark.html">Mobile<small>Dark</small></a>
           </div>
         </article>
 
@@ -269,15 +297,17 @@
             <span class="tag">Validation summary</span>
           </div>
           <div class="actions">
-            <a class="primary" href="screens/correction-session-desktop.html">Open desktop</a>
-            <a href="screens/correction-session-mobile.html">Open mobile</a>
+            <a class="primary" href="screens/correction-session-desktop.html">Desktop<small>Light</small></a>
+            <a href="screens/correction-session-mobile.html">Mobile<small>Light</small></a>
+            <a class="dark-variant" href="screens/correction-session-desktop-dark.html">Desktop<small>Dark</small></a>
+            <a class="dark-variant" href="screens/correction-session-mobile-dark.html">Mobile<small>Dark</small></a>
           </div>
         </article>
       </section>
 
       <p class="footer">
-        Source inputs: `docs/phase-3-frontend-foundation-plan.md` Part 2, current `apps/web`
-        MUI baseline, and the requested latest MUI release.
+        Static design references for the AspectLoop review workspace. These are
+        source material for design work, not production application routes.
       </p>
     </main>
   </body>
