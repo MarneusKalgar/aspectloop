@@ -1,21 +1,39 @@
 {
-  "name": "elemika",
+  "name": "aspectloop",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "npm@11.6.1",
   "engines": {
     "node": "24.x",
-    "npm": "11.6.x"
+    "npm": "11.14.x"
   },
   "workspaces": [
     "apps/*",
+    "packages/*",
     "mocks/*"
   ],
   "scripts": {
-    "format": "prettier --write \"{apps,mocks,docs}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
-    "lint": "eslint \"apps/**/*.{ts,tsx,js}\" --fix",
-    "lint:ci": "eslint \"apps/**/*.{ts,tsx,js}\"",
-    "prepare": "husky"
+    "dev:web": "npm run dev --workspace @aspectloop/web",
+    "dev:gateway": "npm run dev --workspace @aspectloop/gateway-api",
+    "dev:extraction": "npm run dev --workspace @aspectloop/extraction-service",
+    "dev:correction": "npm run dev --workspace @aspectloop/correction-service",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace @aspectloop/web",
+    "build:gateway": "npm run build --workspace @aspectloop/gateway-api",
+    "build:extraction": "npm run build --workspace @aspectloop/extraction-service",
+    "build:correction": "npm run build --workspace @aspectloop/correction-service",
+    "build:contracts": "npm run build --workspace @aspectloop/contracts",
+    "local:up": "bash infra/local/scripts/local-compose.sh up --build -d",
+    "local:start": "bash infra/local/scripts/local-compose.sh up -d",
+    "local:migrate": "bash infra/local/scripts/local-migrate.sh",
+    "local:seed": "bash infra/local/scripts/local-seed.sh",
+    "local:down": "bash infra/local/scripts/local-compose.sh down --remove-orphans",
+    "local:reset": "bash infra/local/scripts/local-compose.sh down -v --remove-orphans",
+    "local:db:generate:gateway": "bash infra/local/scripts/local-compose.sh exec -w /app/apps/gateway-api gateway-api npm run db:generate:local --",
+    "format": "prettier --write \"{apps,mocks,packages,infra,docs}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
+    "lint": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\" --fix",
+    "lint:ci": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\"",
+    "prepare": "husky",
+    "type-check": "npm run type-check --workspace @aspectloop/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

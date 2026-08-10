@@ -1,0 +1,44 @@
+type User {
+  id: ID!
+  email: String!
+  displayName: String!
+  roles: [String!]!
+  scopes: [String!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AuthPayload {
+  accessToken: String!
+  user: User!
+}
+
+type SignOutPayload {
+  success: Boolean!
+}
+
+type SignUpPayload {
+  success: Boolean!
+  user: User!
+}
+
+input SignUpInput {
+  email: String!
+  password: String!
+  displayName: String!
+}
+
+input SignInInput {
+  email: String!
+  password: String!
+}
+
+extend type Query {
+  me: User
+}
+
+extend type Mutation {
+  signOut: SignOutPayload!
+  signIn(input: SignInInput!): AuthPayload!
+  signUp(input: SignUpInput!): SignUpPayload!
+}

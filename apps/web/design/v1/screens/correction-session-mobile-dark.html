@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Supplier invoice review — AspectLoop — Dark</title>
+<style>
+
+:root {
+  --primary:         oklch(64% 0.24 145);
+  --primary-dark:    oklch(50% 0.24 145);
+  --primary-light:   oklch(22% 0.08 145);
+  --secondary:       oklch(62% 0.22 264);
+  --secondary-light: oklch(20% 0.06 264);
+  --error:           oklch(58% 0.24 27);
+  --error-light:     oklch(18% 0.06 27);
+  --warning:         oklch(74% 0.18 65);
+  --warning-light:   oklch(20% 0.06 65);
+  --success:         oklch(64% 0.22 145);
+  --success-light:   oklch(18% 0.07 145);
+  --text-primary:    oklch(94% 0.008 258);
+  --text-secondary:  oklch(72% 0.015 258);
+  --text-disabled:   oklch(38% 0.01 255);
+  --divider:         oklch(36% 0.025 258);
+  --bg:              oklch(10% 0.025 258);
+  --surface:         oklch(21% 0.03 258);
+  --shell-bg:        oklch(7% 0.018 258);
+  --shell-surface:   oklch(11% 0.024 258);
+  --shell-border:    oklch(30% 0.022 258);
+  --shell-text:      oklch(95% 0.008 258);
+  --shell-muted:     oklch(56% 0.018 258);
+  --shadow-sm:  0 1px 2px 0 rgba(0,0,0,.4);
+  --shadow-1:   0 1px 3px 0 rgba(0,0,0,.5), 0 1px 2px -1px rgba(0,0,0,.5);
+  --shadow-2:   0 4px 6px -1px rgba(0,0,0,.5), 0 2px 4px -2px rgba(0,0,0,.5);
+  --shadow-4:   0 10px 15px -3px rgba(0,0,0,.55), 0 4px 6px -4px rgba(0,0,0,.5);
+  --shadow-8:   0 20px 25px -5px rgba(0,0,0,.65), 0 8px 10px -6px rgba(0,0,0,.5);
+  --font: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --mono: "JetBrains Mono","IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+}
+*,*::before,*::after { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; }
+body { background:var(--bg); color:var(--text-primary); font:1rem/1.5 var(--font); -webkit-font-smoothing:antialiased; }
+
+.app-bar { position:sticky;top:0;z-index:1100;background:var(--shell-bg);border-bottom:1px solid var(--shell-border);height:64px;display:flex;align-items:center;padding:0 24px;gap:16px;box-shadow:0 1px 28px rgba(0,0,0,.35); }
+.app-bar-logo { display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--shell-text); }
+.logo-mark { width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:700 .75rem var(--font);letter-spacing:0;line-height:1;box-shadow:0 0 0 2px color-mix(in oklab,var(--primary) 40%,transparent),0 4px 14px color-mix(in oklab,var(--primary) 55%,transparent); }
+.logo-name { font:700 1.1rem var(--font);letter-spacing:0;color:var(--shell-text); }
+.app-bar-spacer { flex:1; }
+.app-bar-nav { display:flex;align-items:center;gap:2px; }
+.nav-item { padding:6px 12px;border-radius:var(--r);font:500 .875rem var(--font);color:var(--shell-muted);text-decoration:none;transition:background 150ms,color 150ms; }
+.nav-item:hover { background:rgba(255,255,255,.08);color:var(--shell-text); }
+.nav-item.active { color:var(--shell-text);background:rgba(255,255,255,.14); }
+.app-bar-avatar { position:relative; }
+.avatar-btn { width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font:700 .875rem var(--font);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.avatar-menu { display:none;position:absolute;top:44px;right:0;background:var(--surface);border:1px solid var(--divider);border-radius:var(--r);box-shadow:var(--shadow-8);min-width:180px;overflow:hidden;z-index:10; }
+.avatar-menu.open { display:block; }
+.avatar-menu-item { display:block;padding:10px 16px;font:400 .875rem var(--font);color:var(--text-primary);text-decoration:none;cursor:pointer;border:none;width:100%;text-align:left;background:none; }
+.avatar-menu-item:hover { background:var(--bg); }
+.avatar-menu-divider { height:1px;background:var(--divider);margin:4px 0; }
+
+.btn { display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;min-height:36px;border-radius:var(--r);font:500 .875rem/1.75 var(--font);letter-spacing:.02857em;text-transform:uppercase;cursor:pointer;border:none;text-decoration:none;transition:background 200ms,box-shadow 200ms;white-space:nowrap;user-select:none; }
+.btn-primary { background:var(--primary);color:#fff;box-shadow:var(--shadow-1); }
+.btn-primary:hover { background:var(--primary-dark);box-shadow:var(--shadow-2),0 4px 18px color-mix(in oklab,var(--primary) 38%,transparent); }
+.btn-outlined { background:transparent;color:var(--primary);border:1px solid color-mix(in oklab,var(--primary) 50%,transparent); }
+.btn-outlined:hover { background:var(--primary-light); }
+.btn-text { background:transparent;color:var(--primary);box-shadow:none;padding:6px 8px; }
+.btn-text:hover { background:var(--primary-light); }
+.btn-full { width:100%;min-height:42px;font-size:.9375rem;margin-top:8px; }
+.btn:disabled,.btn[disabled] { opacity:.38;cursor:default;box-shadow:none;pointer-events:none; }
+.btn-sm { min-height:28px;padding:4px 10px;font-size:.8125rem; }
+
+.field { position:relative;margin-bottom:20px; }
+.field-wrap { position:relative; }
+.field-wrap input,.field-wrap textarea {
+  display:block;width:100%;padding:16.5px 14px;border:1px solid rgba(255,255,255,.32);border-radius:var(--r);
+  font:1rem var(--font);color:var(--text-primary);background:transparent;outline:none;transition:border-color 150ms;
+}
+.field-wrap input:hover { border-color:var(--text-primary); }
+.field-wrap input:focus,.field-wrap textarea:focus { border:2px solid var(--primary);padding:15.5px 13px; }
+.field-wrap label {
+  position:absolute;left:14px;top:16.5px;font:1rem var(--font);color:var(--text-secondary);
+  pointer-events:none;background:var(--surface);padding:0 4px;line-height:1;
+  transition:top 150ms cubic-bezier(0,0,.2,1),font-size 150ms cubic-bezier(0,0,.2,1),color 150ms;
+}
+.field-wrap input:focus ~ label,.field-wrap input:not(:placeholder-shown) ~ label,
+.field-wrap textarea:focus ~ label,.field-wrap textarea:not(:placeholder-shown) ~ label { top:-9px;font-size:.75rem;color:var(--primary); }
+.field.err .field-wrap input,.field.err .field-wrap textarea { border-color:var(--error); }
+.field.err .field-wrap input:focus,.field.err .field-wrap textarea:focus { border:2px solid var(--error);padding:15.5px 13px; }
+.field.err .field-wrap label,.field.err .field-wrap input:not(:placeholder-shown) ~ label,.field.err .field-wrap input:focus ~ label { color:var(--error); }
+.field-helper { margin:3px 14px 0;font-size:.75rem;line-height:1.33;color:var(--text-secondary);min-height:18px; }
+.field.err .field-helper { color:var(--error); }
+.field-suffix { position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;padding:0 8px; }
+.field-suffix button { background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:50%;display:flex; }
+
+.alert { display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:var(--r);font:.875rem/1.43 var(--font);margin-bottom:16px; }
+.alert-error { background:var(--error-light);color:oklch(80% 0.18 27); }
+.alert-success { background:var(--success-light);color:oklch(80% 0.16 145); }
+.alert-warning { background:var(--warning-light);color:oklch(82% 0.14 55); }
+.alert-info { background:oklch(18% 0.04 220);color:oklch(82% 0.08 220); }
+.alert-icon { font-size:18px;flex-shrink:0;margin-top:1px; }
+.alert-body { flex:1; }
+
+.chip { display:inline-flex;align-items:center;border-radius:16px;font:600 .75rem var(--font);letter-spacing:.01em;white-space:nowrap;user-select:none;cursor:default; }
+.chip-sm { height:22px;padding:0 8px; }
+.chip-md { height:32px;padding:0 12px;font-size:.8125rem; }
+.chip-default { background:oklch(26% 0.018 255);color:var(--text-primary); }
+.chip-primary { background:color-mix(in oklab,var(--primary) 18%,white);color:var(--primary-dark); }
+.chip-error { background:var(--error-light);color:var(--error); }
+.chip-success { background:var(--success-light);color:var(--success); }
+.chip-warning { background:var(--warning-light);color:var(--warning); }
+.chip-clickable { cursor:pointer; }
+.chip-clickable:hover { filter:brightness(.94); }
+.chip-clickable.chip-active { background:var(--primary);color:#fff;box-shadow:0 2px 10px color-mix(in oklab,var(--primary) 45%,transparent); }
+
+.paper { background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-sm); }
+.paper-outlined { border:1px solid var(--divider); }
+
+.divider { border:none;border-top:1px solid var(--divider);margin:0; }
+
+table { width:100%;border-collapse:collapse;font:.875rem/1.43 var(--font); }
+thead { background:var(--bg); }
+th { padding:12px 16px;text-align:left;font:600 .75rem var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);border-bottom:2px solid var(--divider);white-space:nowrap; }
+td { padding:13px 16px;border-bottom:1px solid var(--divider);color:var(--text-primary);vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:color-mix(in oklab,var(--primary) 14%,var(--bg)); }
+tr.hidden { display:none; }
+
+.dialog-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1300;align-items:center;justify-content:center; }
+.dialog-overlay.open { display:flex; }
+.dialog { background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-8);max-width:480px;width:calc(100% - 48px);padding:28px; }
+.dialog-title { font:600 1.25rem/1.6 var(--font);margin:0 0 12px; }
+.dialog-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);margin:0 0 24px; }
+.dialog-actions { display:flex;justify-content:flex-end;gap:8px; }
+
+.empty-state { text-align:center;padding:64px 24px; }
+.empty-state-icon { font-size:40px;margin-bottom:16px;opacity:.4; }
+.empty-state-title { font:600 1.25rem/1.6 var(--font);margin:0 0 8px; }
+.empty-state-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);max-width:360px;margin:0 auto; }
+
+.t-h5 { font:600 1.5rem/1.33 var(--font);margin:0; }
+.t-body2 { font:400 .875rem/1.43 var(--font); }
+.t-caption { font:400 .75rem/1.66 var(--font);letter-spacing:.03333em; }
+.t-overline { font:400 .75rem/2.66 var(--font);letter-spacing:.08333em;text-transform:uppercase; }
+.c-muted { color:var(--text-secondary); }
+.c-primary { color:var(--primary); }
+.c-error { color:var(--error); }
+.c-success { color:var(--success); }
+.mono { font-family:var(--mono);font-variant-numeric:tabular-nums; }
+
+body { height:100dvh;display:flex;flex-direction:column;overflow:hidden; }
+.workspace-mobile { flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden; }
+.tab-bar { display:flex;border-bottom:1px solid var(--divider);background:var(--surface);flex-shrink:0; }
+.tab-btn { flex:1;padding:12px 8px;font:500 .875rem var(--font);color:var(--text-secondary);border:none;border-bottom:2px solid transparent;background:none;cursor:pointer;transition:color 150ms,border-color 150ms; }
+.tab-btn.active { color:var(--primary);border-bottom-color:var(--primary);font-weight:600; }
+.tab-panels { flex:1;overflow-y:auto; }
+.tab-panel { display:none;padding:16px;padding-bottom:80px; }
+.tab-panel.active { display:block; }
+.field-card { background:var(--surface);border:1px solid var(--divider);border-radius:var(--r-md);padding:14px;margin-bottom:12px;box-shadow:var(--shadow-sm); }
+.field-card-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px; }
+.field-card-label { font:.875rem var(--font);font-weight:500; }
+.field-original-mobile { font:.75rem var(--mono);color:var(--text-secondary);margin:0 0 10px; }
+.summary-row { display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--divider); }
+.summary-row:last-child { border-bottom:none; }
+.section-label { font:.75rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin:20px 0 10px;padding-top:16px;border-top:1px solid var(--divider); }
+.section-label:first-child { border-top:none;padding-top:0;margin-top:0; }
+.bottom-action-bar { position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:var(--surface);border-top:1px solid var(--divider);display:flex;gap:12px;align-items:center; }
+.back-link { display:flex;align-items:center;color:var(--text-secondary);text-decoration:none;padding:4px; }
+
+</style>
+</head>
+<body>
+
+<header class="app-bar" data-component="MuiAppBar" data-node-id="app-bar" style="padding:0 8px 0 4px;gap:8px">
+  <a href="corrections-dashboard-mobile.html" class="back-link" data-node-id="app-bar-back">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+  </a>
+  <div style="flex:1;overflow:hidden">
+    <div style="font:500 .9375rem var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-node-id="appbar-title">Supplier invoice review</div>
+    <div class="t-caption c-muted mono" data-node-id="appbar-session-id">S-2024-0311</div>
+  </div>
+  <span class="chip chip-sm chip-primary" data-component="MuiChip" data-node-id="appbar-status-chip" style="flex-shrink:0">In progress</span>
+</header>
+
+<div class="workspace-mobile" data-node-id="workspace-mobile">
+  <div class="tab-bar" data-component="MuiTabs" data-node-id="tab-bar">
+    <button class="tab-btn" id="tab-evidence" data-tab="evidence" data-component="MuiTab" data-node-id="tab-evidence-btn">Evidence</button>
+    <button class="tab-btn active" id="tab-fields" data-tab="fields" data-component="MuiTab" data-node-id="tab-fields-btn">Fields</button>
+    <button class="tab-btn" id="tab-summary" data-tab="summary" data-component="MuiTab" data-node-id="tab-summary-btn">Summary</button>
+  </div>
+
+  <div class="tab-panels" data-node-id="tab-panels">
+    <div class="tab-panel" id="panel-evidence" data-node-id="evidence-panel">
+      <div class="alert alert-info" data-component="MuiAlert" data-severity="info" data-node-id="evidence-placeholder-alert">
+        <span class="alert-icon">&#8505;</span>
+        <div class="alert-body">Document preview is not yet connected to a source asset.</div>
+      </div>
+      <p class="t-overline c-muted" style="margin:16px 0 12px">Source provenance</p>
+      <div class="summary-row" data-node-id="prov-source"><span class="t-body2 c-muted">Source</span><span class="t-body2 mono">OCR pipeline v2.4</span></div>
+      <div class="summary-row" data-node-id="prov-extracted"><span class="t-body2 c-muted">Extracted</span><span class="t-body2 mono">2024-03-11</span></div>
+      <div class="summary-row" data-node-id="prov-pages"><span class="t-body2 c-muted">Pages</span><span class="t-body2 mono">2</span></div>
+      <div class="summary-row" data-node-id="prov-confidence"><span class="t-body2 c-muted">Avg confidence</span><span class="t-body2 mono">74%</span></div>
+    </div>
+
+    <div class="tab-panel active" id="panel-fields" data-node-id="fields-panel">
+      <div class="alert alert-warning" data-component="MuiAlert" data-severity="warning" data-node-id="fields-review-banner" style="margin-bottom:16px">
+        <span class="alert-icon">&#9888;</span>
+        <div class="alert-body"><strong>3 fields need review.</strong> Low-confidence values are shown first.</div>
+      </div>
+      <p class="section-label" data-node-id="section-low-conf">Review first</p>
+      <div class="field-card" data-component="MuiCard" data-node-id="field-card-vat">
+        <div class="field-card-head"><span class="field-card-label" data-node-id="field-card-vat-label">VAT number</span><span class="chip chip-sm chip-error" data-component="MuiChip" data-node-id="field-card-vat-confidence">45%</span></div>
+        <p class="field-original-mobile" data-node-id="field-card-vat-original">Original: DE123456789</p>
+        <div class="field" data-component="MuiTextField" data-variant="outlined" data-node-id="field-card-vat-input" style="margin-bottom:0">
+          <div class="field-wrap"><input type="text" id="m-vat" placeholder=" " data-node-id="input-mobile-vat"><label for="m-vat">Corrected value</label></div>
+        </div>
+      </div>
+      <div class="field-card" data-component="MuiCard" data-node-id="field-card-due">
+        <div class="field-card-head"><span class="field-card-label" data-node-id="field-card-due-label">Due date</span><span class="chip chip-sm chip-warning" data-component="MuiChip" data-node-id="field-card-due-confidence">52%</span></div>
+        <p class="field-original-mobile" data-node-id="field-card-due-original">Original: 2024-02-15</p>
+        <div class="field" data-component="MuiTextField" data-variant="outlined" data-node-id="field-card-due-input" style="margin-bottom:0">
+          <div class="field-wrap"><input type="text" id="m-due" placeholder=" " data-node-id="input-mobile-due"><label for="m-due">Corrected value</label></div>
+        </div>
+      </div>
+      <div class="field-card" data-component="MuiCard" data-node-id="field-card-tax">
+        <div class="field-card-head"><span class="field-card-label" data-node-id="field-card-tax-label">Tax amount</span><span class="chip chip-sm chip-warning" data-component="MuiChip" data-node-id="field-card-tax-confidence">61%</span></div>
+        <p class="field-original-mobile" data-node-id="field-card-tax-original">Original: 142.00</p>
+        <div class="field" data-component="MuiTextField" data-variant="outlined" data-node-id="field-card-tax-input" style="margin-bottom:0">
+          <div class="field-wrap"><input type="text" id="m-tax" placeholder=" " data-node-id="input-mobile-tax"><label for="m-tax">Corrected value</label></div>
+        </div>
+      </div>
+      <p class="section-label" data-node-id="section-other">Other fields</p>
+      <div class="field-card" data-component="MuiCard" data-node-id="field-card-company">
+        <div class="field-card-head"><span class="field-card-label">Company name</span><span class="chip chip-sm chip-success" data-component="MuiChip" data-node-id="field-card-company-confidence">95%</span></div>
+        <p class="field-original-mobile">Original: Acme Corp Ltd.</p>
+        <div class="field" data-component="MuiTextField" data-variant="outlined" data-node-id="field-card-company-input" style="margin-bottom:0">
+          <div class="field-wrap"><input type="text" id="m-company" placeholder=" " data-node-id="input-mobile-company"><label for="m-company">Corrected value</label></div>
+        </div>
+      </div>
+      <div class="field-card" data-component="MuiCard" data-node-id="field-card-total">
+        <div class="field-card-head"><span class="field-card-label">Total amount</span><span class="chip chip-sm chip-success" data-component="MuiChip" data-node-id="field-card-total-confidence">88%</span></div>
+        <p class="field-original-mobile">Original: 890.00</p>
+        <div class="field" data-component="MuiTextField" data-variant="outlined" data-node-id="field-card-total-input" style="margin-bottom:0">
+          <div class="field-wrap"><input type="text" id="m-total" placeholder=" " data-node-id="input-mobile-total"><label for="m-total">Corrected value</label></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-summary" data-node-id="summary-panel">
+      <div class="alert alert-warning" data-component="MuiAlert" data-severity="warning" data-node-id="summary-review-alert" style="margin-bottom:20px">
+        <span class="alert-icon">&#9888;</span>
+        <div class="alert-body">3 low-confidence fields still need review before submitting.</div>
+      </div>
+      <div class="summary-row" data-node-id="summary-total"><span class="t-body2">Total fields</span><span class="t-body2 mono">12</span></div>
+      <div class="summary-row" data-node-id="summary-reviewed"><span class="t-body2">Reviewed</span><span class="t-body2 mono">9</span></div>
+      <div class="summary-row" data-node-id="summary-low-conf"><span class="t-body2 c-error">Low confidence</span><span class="chip chip-sm chip-error" data-component="MuiChip" data-node-id="summary-low-conf-chip">3</span></div>
+      <div class="summary-row" data-node-id="summary-session"><span class="t-body2 c-muted">Session ID</span><span class="t-body2 mono">S-2024-0311</span></div>
+      <div class="summary-row" data-node-id="summary-doc"><span class="t-body2 c-muted">Document</span><span class="t-body2">Acme Corp Invoice #1042</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-action-bar" data-node-id="bottom-action-bar">
+  <span id="draft-status-mobile" style="font:.75rem var(--font);color:var(--text-secondary);flex:1" data-node-id="draft-status-mobile">Draft saved</span>
+  <button class="btn btn-primary" id="submit-btn-mobile" data-component="MuiButton" data-variant="contained" data-color="primary" data-node-id="submit-btn-mobile">Submit corrections</button>
+</div>
+
+<div class="dialog-overlay" id="submit-dialog-mobile" data-component="MuiDialog" data-node-id="submit-confirm-dialog">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="m-dialog-title" data-node-id="submit-dialog-paper">
+    <h2 class="dialog-title" id="m-dialog-title" data-node-id="dialog-title">Submit corrections?</h2>
+    <p class="dialog-body" data-node-id="dialog-body">This will mark the session as complete.</p>
+    <div class="dialog-actions" data-component="MuiDialogActions" data-node-id="dialog-actions">
+      <button class="btn btn-text" id="m-dialog-cancel" data-component="MuiButton" data-variant="text" data-node-id="dialog-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="m-dialog-confirm" data-component="MuiButton" data-variant="contained" data-node-id="dialog-confirm-btn">Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const tabs = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+const submitBtnM = document.getElementById('submit-btn-mobile');
+const dialogM = document.getElementById('submit-dialog-mobile');
+const cancelM = document.getElementById('m-dialog-cancel');
+const confirmM = document.getElementById('m-dialog-confirm');
+const draftM = document.getElementById('draft-status-mobile');
+
+submitBtnM.addEventListener('click', () => dialogM.classList.add('open'));
+cancelM.addEventListener('click', () => dialogM.classList.remove('open'));
+confirmM.addEventListener('click', () => { dialogM.classList.remove('open'); window.location.href = 'corrections-dashboard-mobile.html'; });
+dialogM.addEventListener('click', (e) => { if (e.target === dialogM) dialogM.classList.remove('open'); });
+
+let t;
+document.querySelectorAll('.tab-panels input').forEach(inp => {
+  inp.addEventListener('input', () => {
+    draftM.textContent = 'Saving…';
+    clearTimeout(t);
+    t = setTimeout(() => { draftM.textContent = 'Draft saved'; }, 800);
+  });
+});
+
+</script>
+</body>
+</html>

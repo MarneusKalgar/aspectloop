@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create account — AspectLoop</title>
+<style>
+
+:root {
+  --primary:         oklch(64% 0.24 145);
+  --primary-dark:    oklch(50% 0.24 145);
+  --primary-light:   oklch(97% 0.07 145);
+  --secondary:       oklch(58% 0.22 264);
+  --secondary-light: oklch(97% 0.05 264);
+  --error:           oklch(52% 0.24 27);
+  --error-light:     oklch(97% 0.04 27);
+  --warning:         oklch(72% 0.18 65);
+  --warning-light:   oklch(97% 0.04 65);
+  --success:         oklch(60% 0.22 145);
+  --success-light:   oklch(97% 0.05 145);
+  --text-primary:    oklch(11% 0.025 255);
+  --text-secondary:  oklch(44% 0.018 255);
+  --text-disabled:   oklch(68% 0.01 255);
+  --divider:         oklch(88% 0.008 250);
+  --bg:              oklch(95.5% 0.009 252);
+  --surface:         oklch(100% 0 0);
+  --shell-bg:        oklch(13% 0.03 258);
+  --shell-surface:   oklch(18% 0.03 258);
+  --shell-border:    oklch(24% 0.025 258);
+  --shell-text:      oklch(95% 0.008 258);
+  --shell-muted:     oklch(58% 0.02 258);
+  --shadow-sm:  0 1px 2px 0 rgba(0,0,0,.06);
+  --shadow-1:   0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
+  --shadow-2:   0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+  --shadow-4:   0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+  --shadow-8:   0 20px 25px -5px rgba(0,0,0,.14), 0 8px 10px -6px rgba(0,0,0,.1);
+  --font: "Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --mono: "JetBrains Mono","IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+}
+*,*::before,*::after { box-sizing:border-box; }
+html,body { margin:0; min-height:100%; }
+body { background:var(--bg); color:var(--text-primary); font:1rem/1.5 var(--font); -webkit-font-smoothing:antialiased; }
+
+.app-bar { position:sticky;top:0;z-index:1100;background:var(--shell-bg);border-bottom:1px solid var(--shell-border);height:64px;display:flex;align-items:center;padding:0 24px;gap:16px;box-shadow:0 1px 28px rgba(0,0,0,.35); }
+.app-bar-logo { display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--shell-text); }
+.logo-mark { width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:700 .75rem var(--font);letter-spacing:0;line-height:1;box-shadow:0 0 0 2px color-mix(in oklab,var(--primary) 40%,transparent),0 4px 14px color-mix(in oklab,var(--primary) 55%,transparent); }
+.logo-name { font:700 1.1rem var(--font);letter-spacing:0;color:var(--shell-text); }
+.app-bar-spacer { flex:1; }
+.app-bar-nav { display:flex;align-items:center;gap:2px; }
+.nav-item { padding:6px 12px;border-radius:var(--r);font:500 .875rem var(--font);color:var(--shell-muted);text-decoration:none;transition:background 150ms,color 150ms; }
+.nav-item:hover { background:rgba(255,255,255,.08);color:var(--shell-text); }
+.nav-item.active { color:var(--shell-text);background:rgba(255,255,255,.14); }
+.app-bar-avatar { position:relative; }
+.avatar-btn { width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font:700 .875rem var(--font);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center; }
+.avatar-menu { display:none;position:absolute;top:44px;right:0;background:var(--surface);border:1px solid var(--divider);border-radius:var(--r);box-shadow:var(--shadow-8);min-width:180px;overflow:hidden;z-index:10; }
+.avatar-menu.open { display:block; }
+.avatar-menu-item { display:block;padding:10px 16px;font:400 .875rem var(--font);color:var(--text-primary);text-decoration:none;cursor:pointer;border:none;width:100%;text-align:left;background:none; }
+.avatar-menu-item:hover { background:var(--bg); }
+.avatar-menu-divider { height:1px;background:var(--divider);margin:4px 0; }
+
+.btn { display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;min-height:36px;border-radius:var(--r);font:500 .875rem/1.75 var(--font);letter-spacing:.02857em;text-transform:uppercase;cursor:pointer;border:none;text-decoration:none;transition:background 200ms,box-shadow 200ms;white-space:nowrap;user-select:none; }
+.btn-primary { background:var(--primary);color:#fff;box-shadow:var(--shadow-1); }
+.btn-primary:hover { background:var(--primary-dark);box-shadow:var(--shadow-2),0 4px 18px color-mix(in oklab,var(--primary) 38%,transparent); }
+.btn-outlined { background:transparent;color:var(--primary);border:1px solid color-mix(in oklab,var(--primary) 50%,transparent); }
+.btn-outlined:hover { background:var(--primary-light); }
+.btn-text { background:transparent;color:var(--primary);box-shadow:none;padding:6px 8px; }
+.btn-text:hover { background:var(--primary-light); }
+.btn-full { width:100%;min-height:42px;font-size:.9375rem;margin-top:8px; }
+.btn:disabled,.btn[disabled] { opacity:.38;cursor:default;box-shadow:none;pointer-events:none; }
+.btn-sm { min-height:28px;padding:4px 10px;font-size:.8125rem; }
+
+.field { position:relative;margin-bottom:20px; }
+.field-wrap { position:relative; }
+.field-wrap input,.field-wrap textarea {
+  display:block;width:100%;padding:16.5px 14px;border:1px solid rgba(0,0,0,.23);border-radius:var(--r);
+  font:1rem var(--font);color:var(--text-primary);background:transparent;outline:none;transition:border-color 150ms;
+}
+.field-wrap input:hover { border-color:var(--text-primary); }
+.field-wrap input:focus,.field-wrap textarea:focus { border:2px solid var(--primary);padding:15.5px 13px; }
+.field-wrap label {
+  position:absolute;left:14px;top:16.5px;font:1rem var(--font);color:var(--text-secondary);
+  pointer-events:none;background:var(--surface);padding:0 4px;line-height:1;
+  transition:top 150ms cubic-bezier(0,0,.2,1),font-size 150ms cubic-bezier(0,0,.2,1),color 150ms;
+}
+.field-wrap input:focus ~ label,.field-wrap input:not(:placeholder-shown) ~ label,
+.field-wrap textarea:focus ~ label,.field-wrap textarea:not(:placeholder-shown) ~ label { top:-9px;font-size:.75rem;color:var(--primary); }
+.field.err .field-wrap input,.field.err .field-wrap textarea { border-color:var(--error); }
+.field.err .field-wrap input:focus,.field.err .field-wrap textarea:focus { border:2px solid var(--error);padding:15.5px 13px; }
+.field.err .field-wrap label,.field.err .field-wrap input:not(:placeholder-shown) ~ label,.field.err .field-wrap input:focus ~ label { color:var(--error); }
+.field-helper { margin:3px 14px 0;font-size:.75rem;line-height:1.33;color:var(--text-secondary);min-height:18px; }
+.field.err .field-helper { color:var(--error); }
+.field-suffix { position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;padding:0 8px; }
+.field-suffix button { background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:6px;border-radius:50%;display:flex; }
+
+.alert { display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:var(--r);font:.875rem/1.43 var(--font);margin-bottom:16px; }
+.alert-error { background:var(--error-light);color:oklch(32% 0.18 27); }
+.alert-success { background:var(--success-light);color:oklch(32% 0.16 145); }
+.alert-warning { background:var(--warning-light);color:oklch(42% 0.14 55); }
+.alert-info { background:#E5F6FD;color:#014361; }
+.alert-icon { font-size:18px;flex-shrink:0;margin-top:1px; }
+.alert-body { flex:1; }
+
+.chip { display:inline-flex;align-items:center;border-radius:16px;font:600 .75rem var(--font);letter-spacing:.01em;white-space:nowrap;user-select:none;cursor:default; }
+.chip-sm { height:22px;padding:0 8px; }
+.chip-md { height:32px;padding:0 12px;font-size:.8125rem; }
+.chip-default { background:oklch(90% 0.01 255);color:var(--text-primary); }
+.chip-primary { background:color-mix(in oklab,var(--primary) 18%,white);color:var(--primary-dark); }
+.chip-error { background:var(--error-light);color:var(--error); }
+.chip-success { background:var(--success-light);color:var(--success); }
+.chip-warning { background:var(--warning-light);color:var(--warning); }
+.chip-clickable { cursor:pointer; }
+.chip-clickable:hover { filter:brightness(.94); }
+.chip-clickable.chip-active { background:var(--primary);color:#fff;box-shadow:0 2px 10px color-mix(in oklab,var(--primary) 45%,transparent); }
+
+.paper { background:var(--surface);border-radius:var(--r-md);box-shadow:var(--shadow-sm); }
+.paper-outlined { border:1px solid var(--divider); }
+
+.divider { border:none;border-top:1px solid var(--divider);margin:0; }
+
+table { width:100%;border-collapse:collapse;font:.875rem/1.43 var(--font); }
+thead { background:var(--bg); }
+th { padding:12px 16px;text-align:left;font:600 .75rem var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);border-bottom:2px solid var(--divider);white-space:nowrap; }
+td { padding:13px 16px;border-bottom:1px solid var(--divider);color:var(--text-primary);vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:color-mix(in oklab,var(--primary) 6%,white); }
+tr.hidden { display:none; }
+
+.dialog-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1300;align-items:center;justify-content:center; }
+.dialog-overlay.open { display:flex; }
+.dialog { background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-8);max-width:480px;width:calc(100% - 48px);padding:28px; }
+.dialog-title { font:600 1.25rem/1.6 var(--font);margin:0 0 12px; }
+.dialog-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);margin:0 0 24px; }
+.dialog-actions { display:flex;justify-content:flex-end;gap:8px; }
+
+.empty-state { text-align:center;padding:64px 24px; }
+.empty-state-icon { font-size:40px;margin-bottom:16px;opacity:.4; }
+.empty-state-title { font:600 1.25rem/1.6 var(--font);margin:0 0 8px; }
+.empty-state-body { font:.875rem/1.43 var(--font);color:var(--text-secondary);max-width:360px;margin:0 auto; }
+
+.t-h5 { font:600 1.5rem/1.33 var(--font);margin:0; }
+.t-body2 { font:400 .875rem/1.43 var(--font); }
+.t-caption { font:400 .75rem/1.66 var(--font);letter-spacing:.03333em; }
+.t-overline { font:400 .75rem/2.66 var(--font);letter-spacing:.08333em;text-transform:uppercase; }
+.c-muted { color:var(--text-secondary); }
+.c-primary { color:var(--primary); }
+.c-error { color:var(--error); }
+.c-success { color:var(--success); }
+.mono { font-family:var(--mono);font-variant-numeric:tabular-nums; }
+
+.auth-page { min-height:100dvh;display:flex;flex-direction:column; }
+.auth-content { flex:1;display:flex;align-items:flex-start;justify-content:center;padding:24px 20px 48px; }
+.form-box { width:100%;max-width:360px;padding-top:8px; }
+.auth-title { font:600 1.375rem/1.35 var(--font);letter-spacing:-.01em;margin:0 0 8px; }
+.auth-sub { font:.875rem/1.5 var(--font);color:var(--text-secondary);margin:0 0 24px; }
+.auth-switch { text-align:center;margin-top:20px;font:.875rem var(--font);color:var(--text-secondary); }
+.auth-switch a { color:var(--primary);text-decoration:none;font-weight:500; }
+
+</style>
+</head>
+<body>
+
+<div class="auth-page" data-node-id="auth-page">
+  <header class="app-bar" data-component="MuiAppBar" data-node-id="app-bar" style="justify-content:center">
+    <a href="../index.html" class="app-bar-logo" data-node-id="app-bar-logo">
+      <div class="logo-mark">AL</div>
+      <span class="logo-name">AspectLoop</span>
+    </a>
+  </header>
+  <div class="auth-content">
+    <div class="form-box" data-node-id="auth-form-panel">
+      <h1 class="auth-title" data-node-id="auth-title">Create your review workspace</h1>
+      <p class="auth-sub" data-node-id="auth-subtitle">Create an account to access the correction inbox.</p>
+      <div id="alert-success" class="alert alert-success" data-component="MuiAlert" data-severity="success" data-node-id="auth-success-banner" style="display:none" role="alert" aria-live="polite">
+        <span class="alert-icon">&#10003;</span>
+        <div class="alert-body">Account created. Sign in to continue.</div>
+      </div>
+      <form id="signup-form" data-node-id="signup-form" novalidate>
+        <div class="field" id="field-name" data-component="MuiTextField" data-variant="outlined" data-node-id="signup-name-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="text" id="name" name="name" placeholder=" " autocomplete="name" data-node-id="signup-name-input">
+            <label for="name">Full name</label>
+          </div>
+          <p class="field-helper" id="name-helper" data-node-id="signup-name-helper"></p>
+        </div>
+        <div class="field" id="field-email" data-component="MuiTextField" data-variant="outlined" data-node-id="signup-email-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="email" id="email" name="email" placeholder=" " autocomplete="email" data-node-id="signup-email-input">
+            <label for="email">Email</label>
+          </div>
+          <p class="field-helper" id="email-helper" data-node-id="signup-email-helper"></p>
+        </div>
+        <div class="field" id="field-password" data-component="MuiTextField" data-variant="outlined" data-node-id="signup-password-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="password" id="password" name="password" placeholder=" " autocomplete="new-password" data-node-id="signup-password-input">
+            <label for="password">Password</label>
+          </div>
+          <p class="field-helper" id="password-helper" data-node-id="signup-password-helper">Minimum 8 characters.</p>
+        </div>
+        <div class="field" id="field-confirm" data-component="MuiTextField" data-variant="outlined" data-node-id="signup-confirm-field" data-state="empty">
+          <div class="field-wrap">
+            <input type="password" id="confirm" name="confirm" placeholder=" " autocomplete="new-password" data-node-id="signup-confirm-input">
+            <label for="confirm">Confirm password</label>
+          </div>
+          <p class="field-helper" id="confirm-helper" data-node-id="signup-confirm-helper"></p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" data-component="MuiButton" data-variant="contained" data-color="primary" data-node-id="signup-submit-btn">Create account</button>
+      </form>
+      <div id="post-success" style="display:none;margin-top:16px" data-node-id="signup-post-success">
+        <a href="login-mobile.html" class="btn btn-outlined" style="width:100%" data-component="MuiButton" data-variant="outlined" data-node-id="signup-goto-signin-btn">Go to sign in</a>
+      </div>
+      <p class="auth-switch" data-node-id="auth-switch">
+        Already have an account? <a href="login-mobile.html" data-component="MuiLink" data-node-id="auth-signin-link">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const form = document.getElementById('signup-form');
+const togglePw = document.getElementById('toggle-pw');
+const alertSuccess = document.getElementById('alert-success');
+const postSuccess = document.getElementById('post-success');
+
+if (togglePw) {
+  togglePw.addEventListener('click', () => {
+    const pw = document.getElementById('password');
+    pw.type = pw.type === 'text' ? 'password' : 'text';
+  });
+}
+
+function setF(id, helperId, msg) {
+  const f = document.getElementById('field-' + id);
+  const h = document.getElementById(helperId + '-helper');
+  if (!f || !h) return;
+  if (msg) { f.classList.add('err'); f.dataset.state = 'error'; h.textContent = msg; }
+  else { f.classList.remove('err'); h.textContent = (id === 'password') ? 'Minimum 8 characters.' : ''; }
+}
+
+function runValidate() {
+  const name = (document.getElementById('name') || {value:''}).value.trim();
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('password').value;
+  const confirm = document.getElementById('confirm').value;
+  let ok = true;
+  if (document.getElementById('field-name')) {
+    if (!name || name.length < 2) { setF('name','name','Full name is required.'); ok=false; } else setF('name','name','');
+  }
+  if (!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) { setF('email','email','Enter a valid email address.'); ok=false; } else setF('email','email','');
+  if (!pw || pw.length < 8) { setF('password','password','Password must be at least 8 characters.'); ok=false; } else setF('password','password','');
+  if (!confirm || confirm !== pw) { setF('confirm','confirm','Passwords do not match.'); ok=false; } else setF('confirm','confirm','');
+  return ok;
+}
+
+['name','email','password','confirm'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('blur', runValidate);
+  el.addEventListener('input', () => { const f = document.getElementById('field-' + id); if (f && f.dataset.state === 'error') runValidate(); });
+});
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!runValidate()) return;
+  alertSuccess.style.display = 'flex';
+  form.style.display = 'none';
+  postSuccess.style.display = 'block';
+});
+
+</script>
+</body>
+</html>

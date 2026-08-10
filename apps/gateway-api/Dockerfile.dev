@@ -1,0 +1,36 @@
+FROM node:24-alpine
+
+ARG NPM_VERSION=11.14.1
+
+RUN apk add --no-cache bash python3 make g++
+
+RUN npm install -g "npm@${NPM_VERSION}"
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001
+
+WORKDIR /app
+
+RUN chown -R nestjs:nodejs /app
+
+USER nestjs
+
+COPY --chown=nestjs:nodejs package.json package-lock.json ./
+COPY --chown=nestjs:nodejs .npmrc ./
+COPY --chown=nestjs:nodejs apps/gateway-api/package.json ./apps/gateway-api/package.json
+COPY --chown=nestjs:nodejs apps/extraction-service/package.json ./apps/extraction-service/package.json
+COPY --chown=nestjs:nodejs apps/correction-service/package.json ./apps/correction-service/package.json
+COPY --chown=nestjs:nodejs apps/web/package.json ./apps/web/package.json
+COPY --chown=nestjs:nodejs packages/contracts/package.json ./packages/contracts/package.json
+COPY --chown=nestjs:nodejs mocks/persistence-service/package.json ./mocks/persistence-service/package.json
+
+RUN npm ci --ignore-scripts
+
+COPY --chown=nestjs:nodejs tsconfig.base.json ./
+COPY --chown=nestjs:nodejs apps/gateway-api ./apps/gateway-api
+
+WORKDIR /app/apps/gateway-api
+
+EXPOSE 8080
+
+CMD ["npm", "run", "dev"]

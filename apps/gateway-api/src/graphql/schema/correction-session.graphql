@@ -1,0 +1,38 @@
+type CorrectionSession {
+  id: ID!
+  documentId: ID!
+  documentType: String!
+  status: String!
+  version: Int!
+  """
+  Current mutable draft payload as a JSON object.
+  """
+  draftPayload: JSON!
+  lockedBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input OpenCorrectionSessionInput {
+  documentId: ID!
+  documentType: String!
+}
+
+input SaveCorrectionSessionDraftInput {
+  sessionId: ID!
+  expectedVersion: Int!
+  """
+  Draft payload as a JSON object. Pass a raw object literal or use GraphQL variables.
+  """
+  draftPayload: JSON!
+}
+
+extend type Query {
+  correctionSessions: [CorrectionSession!]!
+  correctionSession(sessionId: ID!): CorrectionSession!
+}
+
+extend type Mutation {
+  openCorrectionSession(input: OpenCorrectionSessionInput!): CorrectionSession!
+  saveCorrectionSessionDraft(input: SaveCorrectionSessionDraftInput!): CorrectionSession!
+}

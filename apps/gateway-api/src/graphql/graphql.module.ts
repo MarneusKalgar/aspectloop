@@ -1,0 +1,49 @@
+import { YogaDriver, YogaDriverConfig } from '@graphql-yoga/nestjs';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { GraphQLModule } from '@nestjs/graphql';
+import { join } from 'node:path';
+
+import { DateTimeScalar } from './scalars/datetime.scalar';
+import { JsonScalar } from './scalars/json.scalar';
+import { createDisableIntrospectionPlugin } from './utils/createDisableIntrospectionPlugin';
+import { maskGraphqlError } from './utils/maskGraphqlError';
+
+@Module({
+  imports: [
+    ConfigModule,
+    GraphQLModule.forRootAsync<YogaDriverConfig>({
+      driver: YogaDriver,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const nodeEnv = configService.get<string>('NODE_ENV');
+        const isRuntimeBuild = nodeEnv === 'production' || nodeEnv === 'stage';
+        const schemaGlob = isRuntimeBuild
+          ? 'dist/graphql/schema/**/*.graphql'
+          : 'src/graphql/schema/**/*.graphql';
+        const disableIntrospectionPlugin = createDisableIntrospectionPlugin(isRuntimeBuild);
+
+        return {
+          context: ({ req }: { req: unknown }) => ({ req }),
+          cors: false,
+          definitions: isRuntimeBuild
+            ? undefined
+            : {
+                outputAs: 'class',
+                path: join(process.cwd(), 'src/graphql/generated/graphql.types.ts'),
+              },
+          graphiql: !isRuntimeBuild,
+          logging: false,
+          maskedErrors: { maskError: maskGraphqlError },
+          path: '/graphql',
+          plugins: disableIntrospectionPlugin ? [disableIntrospectionPlugin] : [],
+          sortSchema: true,
+          stopOnApplicationShutdown: false,
+          typePaths: [join(process.cwd(), schemaGlob)],
+        };
+      },
+    }),
+  ],
+  providers: [DateTimeScalar, JsonScalar],
+})
+export class GraphqlApiModule {}

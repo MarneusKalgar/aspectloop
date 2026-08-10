@@ -1,0 +1,36 @@
+{
+  "type": "supplier_invoice",
+  "version": 1,
+  "label": "Supplier Invoice",
+  "sections": [
+    {
+      "id": "header",
+      "label": "Header",
+      "path": "header",
+      "repeatable": false,
+      "fields": [
+        {
+          "id": "invoice_number",
+          "label": "Invoice Number",
+          "path": "header.invoiceNumber",
+          "inputType": "text",
+          "required": true
+        },
+        {
+          "id": "invoice_date",
+          "label": "Invoice Date",
+          "path": "header.invoiceDate",
+          "inputType": "date",
+          "required": true
+        },
+        {
+          "id": "supplier_name",
+          "label": "Supplier Name",
+          "path": "header.supplierName",
+          "inputType": "text",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
