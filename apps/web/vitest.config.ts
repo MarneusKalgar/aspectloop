@@ -5,7 +5,7 @@ export default defineConfig({
   define: {
     'import.meta.env.BROWSER_MOCK_ENABLED': JSON.stringify(false),
     'import.meta.env.VITE_API_URL': JSON.stringify('http://127.0.0.1:8080'),
-    'import.meta.env.VITE_APP_NAME': JSON.stringify('Elemika Correction'),
+    'import.meta.env.VITE_APP_NAME': JSON.stringify('AspectLoop'),
   },
   plugins: [react()],
   resolve: {

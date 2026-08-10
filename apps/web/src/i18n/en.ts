@@ -1,5 +1,5 @@
 export const enResources = {
-  'app.name': 'Elemika Correction',
+  'app.name': 'AspectLoop',
   'app.runtime.live': 'Live backend',
   'app.runtime.mock': 'Mock contract',
   'auth.shared.email': 'Email',

@@ -22,7 +22,7 @@ export interface AuthenticatedUser {
   scopes: string[];
 }
 
-export const accessTokenCookieName = 'elemika_access_token';
+export const accessTokenCookieName = 'aspectloop_access_token';
 
 export function createUnsignedAccessToken(claims: AccessTokenClaims): string {
   return new UnsecuredJWT(claims).encode();

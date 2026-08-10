@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign in — Elemika — Dark</title>
+<title>Sign in — AspectLoop — Dark</title>
 <style>
 
 :root {
@@ -46,8 +46,8 @@ body { background:var(--bg); color:var(--text-primary); font:1rem/1.5 var(--font
 
 .app-bar { position:sticky;top:0;z-index:1100;background:var(--shell-bg);border-bottom:1px solid var(--shell-border);height:64px;display:flex;align-items:center;padding:0 24px;gap:16px;box-shadow:0 1px 28px rgba(0,0,0,.35); }
 .app-bar-logo { display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--shell-text); }
-.logo-mark { width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:700 1rem var(--font);box-shadow:0 0 0 2px color-mix(in oklab,var(--primary) 40%,transparent),0 4px 14px color-mix(in oklab,var(--primary) 55%,transparent); }
-.logo-name { font:700 1.1rem var(--font);letter-spacing:-.025em;color:var(--shell-text); }
+.logo-mark { width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font:700 .75rem var(--font);letter-spacing:0;line-height:1;box-shadow:0 0 0 2px color-mix(in oklab,var(--primary) 40%,transparent),0 4px 14px color-mix(in oklab,var(--primary) 55%,transparent); }
+.logo-name { font:700 1.1rem var(--font);letter-spacing:0;color:var(--shell-text); }
 .app-bar-spacer { flex:1; }
 .app-bar-nav { display:flex;align-items:center;gap:2px; }
 .nav-item { padding:6px 12px;border-radius:var(--r);font:500 .875rem var(--font);color:var(--shell-muted);text-decoration:none;transition:background 150ms,color 150ms; }
@@ -154,7 +154,7 @@ tr.hidden { display:none; }
 .auth-content { flex:1;display:flex;align-items:center;justify-content:center;padding:24px 20px; }
 .form-box { width:100%;max-width:360px; }
 .logo-block { text-align:center;margin-bottom:28px; }
-.logo-big { width:52px;height:52px;background:var(--primary);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font:700 1.5rem var(--font);margin-bottom:14px; }
+.logo-big { width:52px;height:52px;background:var(--primary);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font:700 1.125rem var(--font);letter-spacing:0;line-height:1;margin-bottom:14px; }
 .auth-title { font:600 1.375rem/1.35 var(--font);letter-spacing:-.01em;margin:0 0 6px;text-align:center; }
 .auth-sub { font:.875rem/1.5 var(--font);color:var(--text-secondary);margin:0 0 24px;text-align:center; }
 .auth-switch { text-align:center;margin-top:20px;font:.875rem var(--font);color:var(--text-secondary); }
@@ -170,14 +170,14 @@ tr.hidden { display:none; }
 <div class="auth-page" data-node-id="auth-page">
   <header class="app-bar" data-component="MuiAppBar" data-node-id="app-bar" style="justify-content:center">
     <a href="../index.html" class="app-bar-logo" data-node-id="app-bar-logo">
-      <div class="logo-mark">E</div>
-      <span class="logo-name">Elemika</span>
+      <div class="logo-mark">AL</div>
+      <span class="logo-name">AspectLoop</span>
     </a>
   </header>
   <div class="auth-content">
     <div class="form-box" data-node-id="auth-form-panel">
       <div class="logo-block" data-node-id="auth-logo-block">
-        <div class="logo-big">E</div>
+        <div class="logo-big">AL</div>
         <h1 class="auth-title" data-node-id="auth-title">Sign in</h1>
         <p class="auth-sub" data-node-id="auth-subtitle">Sign in to open your correction inbox.</p>
       </div>
@@ -212,7 +212,7 @@ tr.hidden { display:none; }
       </p>
       <div class="test-hint" data-node-id="login-test-credentials">
         <span class="label">Test credentials</span>
-        <code>reviewer@elemika.io</code> / <code>password123</code>
+        <code>reviewer@aspectloop.test</code> / <code>password123</code>
       </div>
     </div>
   </div>
@@ -256,7 +256,7 @@ form.addEventListener('submit', (e) => {
   setField(emailField, emailInput, emailHelper, eErr);
   setField(passwordField, passwordInput, passwordHelper, pErr);
   if (eErr || pErr) return;
-  if (emailInput.value.trim() === 'reviewer@elemika.io' && passwordInput.value === 'password123') {
+  if (emailInput.value.trim() === 'reviewer@aspectloop.test' && passwordInput.value === 'password123') {
     errorAlert.style.display = 'none';
     const dest = window.location.href.includes('mobile') ? 'corrections-dashboard-mobile.html' : 'corrections-dashboard-desktop.html';
     window.location.href = dest;

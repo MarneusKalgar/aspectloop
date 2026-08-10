@@ -1,5 +1,5 @@
 {
-  "name": "elemika",
+  "name": "aspectloop",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -12,16 +12,16 @@
     "mocks/*"
   ],
   "scripts": {
-    "dev:web": "npm run dev --workspace @elemika/web",
-    "dev:gateway": "npm run dev --workspace @elemika/gateway-api",
-    "dev:extraction": "npm run dev --workspace @elemika/extraction-service",
-    "dev:correction": "npm run dev --workspace @elemika/correction-service",
+    "dev:web": "npm run dev --workspace @aspectloop/web",
+    "dev:gateway": "npm run dev --workspace @aspectloop/gateway-api",
+    "dev:extraction": "npm run dev --workspace @aspectloop/extraction-service",
+    "dev:correction": "npm run dev --workspace @aspectloop/correction-service",
     "build": "npm run build --workspaces --if-present",
-    "build:web": "npm run build --workspace @elemika/web",
-    "build:gateway": "npm run build --workspace @elemika/gateway-api",
-    "build:extraction": "npm run build --workspace @elemika/extraction-service",
-    "build:correction": "npm run build --workspace @elemika/correction-service",
-    "build:contracts": "npm run build --workspace @elemika/contracts",
+    "build:web": "npm run build --workspace @aspectloop/web",
+    "build:gateway": "npm run build --workspace @aspectloop/gateway-api",
+    "build:extraction": "npm run build --workspace @aspectloop/extraction-service",
+    "build:correction": "npm run build --workspace @aspectloop/correction-service",
+    "build:contracts": "npm run build --workspace @aspectloop/contracts",
     "local:up": "bash infra/local/scripts/local-compose.sh up --build -d",
     "local:start": "bash infra/local/scripts/local-compose.sh up -d",
     "local:migrate": "bash infra/local/scripts/local-migrate.sh",
@@ -33,7 +33,7 @@
     "lint": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\" --fix",
     "lint:ci": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\"",
     "prepare": "husky",
-    "type-check": "npm run type-check --workspace @elemika/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
+    "type-check": "npm run type-check --workspace @aspectloop/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

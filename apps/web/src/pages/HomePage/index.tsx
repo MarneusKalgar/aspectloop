@@ -5,7 +5,7 @@ export function HomePage() {
     <Paper sx={{ p: 3 }} variant="outlined">
       <Stack spacing={1}>
         <Typography component="h1" variant="h5">
-          Elemika Correction
+          AspectLoop
         </Typography>
         <Typography color="text.secondary">
           Local frontend shell is running. Correction UI starts in Phase 3.
