@@ -143,10 +143,7 @@ not save real tokens in committed queries or browser history.
 - `persistence-mock`
 - `migrate` and `seed` profiled one-off services
 
-M02 starts a clean AspectLoop Compose namespace. Existing `elemika_api_*` local
-volumes are not reused and may be retained or removed manually after the new
-stack is verified. Extraction and correction shells are intentionally not
-Compose services yet.
+Extraction and correction shells are intentionally not Compose services yet.
 
 ## Repository Layout
 

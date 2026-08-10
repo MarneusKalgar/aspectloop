@@ -17,6 +17,8 @@ export default [
       '**/design/**',
       '**/.storybook/**',
       '**/*.stories.{ts,tsx}',
+      'apps/gateway-api/src/graphql/generated/**',
+      'apps/web/src/graphql/generated/**',
     ],
   },
   eslint.configs.recommended,
