@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-09
+Last updated: 2026-08-15
 
 ## Table Of Contents
 
@@ -770,7 +770,7 @@ Stage delivery:
 
 #### M11 production container and deployment hardening
 
-M11 turns the M03 development-image policy into independently deployable stage
+M11 turns the M03-C development-image policy into independently deployable stage
 artifacts:
 
 - create a multi-stage production Dockerfile for each backend application;
@@ -830,12 +830,68 @@ and durable WebSocket delivery are P2 and not implied by adding Socket.IO.
 These are acceptance concerns in every milestone, followed by a dedicated
 hardening milestone.
 
-#### Review process foundation
+#### M03 quality foundation program
 
-M03 establishes the review process after the M02 rename and before new domain
-and infrastructure work accumulates. Its detailed implementation plan is
-written only after M02 lands so repository names, package paths, GitHub
-settings, and review instructions are stable.
+`M03` is an umbrella program rather than an executable milestone. It is divided
+into bounded sibling milestones so toolchain migration, CI, containers,
+application logging, and external automation do not share one all-or-nothing
+completion decision.
+
+| ID    | Name                                   | Priority | Blocks M04 |
+| ----- | -------------------------------------- | -------- | ---------- |
+| M03-A | Toolchain and dependency security      | P0       | Yes        |
+| M03-B | Verification and pull-request gates    | P0       | Yes        |
+| M03-C | Local container hardening              | P0/P1    | Yes        |
+| M03-D | Logging and privacy baseline           | P0       | Yes        |
+| M03-E | Review and dependency automation pilot | P1       | No         |
+
+M03-A through M03-D establish the required quality foundation after the M02
+rename and before new domain and infrastructure work accumulates. M03-E starts
+after deterministic CI exists and may continue across later representative
+pull requests without delaying M04.
+
+##### M03-A Toolchain and dependency security
+
+M03-A establishes the canonical local toolchain and dependency-security
+contract. M03-B consumes the selected versions in CI, while M03-C consumes them
+in development containers:
+
+- use Node `24.19.0` as the selected LTS runtime and npm `12.0.2` as the
+  independently pinned package manager;
+- align root `engines`, `packageManager`, `.nvmrc`, `.npmrc`, and README
+  prerequisites with that exact contract;
+- treat npm 12 installation, strict configuration, lifecycle-script policy,
+  and lockfile regeneration as an explicit reviewed migration;
+- require M03-B CI and M03-C development containers to consume the same exact
+  versions without mixing those later workstreams into M03-A.
+
+###### npm supply-chain policy
+
+M03-A selects Node `24.19.0` and npm `12.0.2` and aligns `package.json`,
+`.npmrc`, local setup, and the lockfile. M03-B and M03-C later apply the same
+contract to CI and containers. The baseline includes:
+
+- keep the committed lockfile and use `npm ci` for reproducible CI installs;
+- configure npm's `min-release-age` with an initial three-day quarantine and
+  narrowly documented exceptions for urgent security fixes or owned packages;
+- restrict git, remote tarball, file, and directory dependency sources unless
+  they are explicitly reviewed;
+- use temporary `--ignore-scripts` for metadata-only dependency changes and a
+  reviewed install-script allowlist for normal installs rather than globally
+  disabling scripts required by tools such as native or platform binaries;
+- add dependency-advisory and registry-signature/provenance checks, initially
+  advisory where ecosystem coverage prevents a clean blocking baseline;
+- require humans to mutate dependencies through reviewed npm uninstall/install
+  commands and review the resulting manifest and lockfile diffs;
+- prohibit automated force fixes, legacy peer resolution, suppressive
+  overrides, and manual dependency or lockfile edits.
+
+npm 12 makes unknown configuration, unreviewed install scripts, and prohibited
+dependency sources explicit policy failures. M03-A records reviewed script
+decisions through npm-generated `allowScripts` metadata and keeps emergency
+release-age exceptions narrow and time bounded.
+
+##### M03-B Verification and pull-request gates
 
 The milestone covers three review layers:
 
@@ -851,75 +907,24 @@ The milestone covers three review layers:
    explicit `@codex review` request. Deterministic checks remain the merge
    signal; AI review is an independent reasoning signal.
 
-As an additional M03 work item, run a time-boxed
-[Greptile Starter](https://www.greptile.com/pricing) pilot for GitHub PR review
-while the repository is private. Use standard reviews only, trigger reviews
-manually on PRs that are ready for review, and avoid automatic re-review after
-every push so the free monthly credit allowance is not consumed by intermediate
-commits. Evaluate it on 5-10 representative PRs using validated findings,
-false-positive rate, cross-workspace findings, duplicate comments, latency, and
-credit usage. Greptile remains advisory and must not replace deterministic CI,
-human verification, or the vendor-neutral local review skill. At the end of the
-pilot, retain one GitHub AI reviewer rather than running overlapping review bots.
+CI installs and asserts the exact Node/npm contract selected by M03-A before a
+clean dependency installation. It caches only npm downloads, not `node_modules`.
 
-M03 also introduces a committed repository skill under
+M03-B also introduces a committed repository skill under
 `.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
 and risk surfaces, selects only the relevant installed specialist skills, runs
 or requests the appropriate reviews, and produces one normalized review report.
 It must not indiscriminately load every installed skill or modify code unless
 the user separately requests a fix.
 
-##### M03.1 Toolchain alignment
+##### M03-C Local container hardening
 
-M03 establishes one explicit local/container/CI toolchain contract:
-
-- select the supported Node 24 patch release, or Node 26 only if it has reached
-  LTS and the repository dependency matrix is compatible;
-- if M03 lands before Node 26 LTS, complete M03 on Node 24 and use a dedicated
-  later M03.x maintenance change rather than delaying the milestone;
-- align root `engines`, the selected local version-manager file, README
-  prerequisites, Docker base images, and future CI setup;
-- pin the development Docker base to a complete Node patch and Alpine variant
-  instead of a floating `node:24-alpine` tag;
-- decide whether the project follows npm bundled with the selected Node image
-  or intentionally pins npm independently;
-- when bundled npm is selected, remove `NPM_VERSION` and the global
-  `npm install -g` Docker layer;
-- when an independent npm major is selected, treat its installation and
-  compatibility verification as an explicit package-manager migration;
-- establish reviewed automated proposals for future Node image and digest
-  updates without accepting them automatically.
-
-##### M03.2 npm supply-chain policy
-
-M03 selects npm 11.18 or npm 12 deliberately and aligns `package.json`,
-`.npmrc`, local setup, containers, and CI. The baseline includes:
-
-- keep the committed lockfile and use `npm ci` for reproducible CI installs;
-- configure npm's `min-release-age` with an initial seven-day quarantine and
-  narrowly documented exceptions for urgent security fixes or owned packages;
-- restrict git, remote tarball, file, and directory dependency sources unless
-  they are explicitly reviewed;
-- use temporary `--ignore-scripts` for metadata-only dependency changes and a
-  reviewed install-script allowlist for normal installs rather than globally
-  disabling scripts required by tools such as native or platform binaries;
-- add dependency-advisory and registry-signature/provenance checks, initially
-  advisory where ecosystem coverage prevents a clean blocking baseline;
-- require humans to mutate dependencies through reviewed npm uninstall/install
-  commands and review the resulting manifest and lockfile diffs;
-- prohibit automated force fixes, legacy peer resolution, suppressive
-  overrides, and manual dependency or lockfile edits.
-
-The exact policy depends on the selected npm version. npm 11's install-script
-allowlist requires a sufficiently recent minor, while npm 12 changes
-install-script and dependency-source defaults and therefore requires an
-explicit migration review rather than an incidental upgrade.
-
-##### M03.3 Development Docker cleanup and policy
-
-M03 corrects the existing local development images without turning them into
+M03-C corrects the existing local development images without turning them into
 production artifacts:
 
+- pin development images to the exact Node patch/Alpine variant selected by
+  M03-A and install the exact independent npm version only when the base image
+  does not bundle it;
 - remove `bash`, `python3`, `make`, and `g++` from the gateway development image
   while no container command or installed dependency requires them;
 - if a future native dependency requires compilation, install build tools in a
@@ -935,7 +940,7 @@ production artifacts:
 - leave multi-stage production images, production probes, SBOMs, and built-image
   scanning to M11.
 
-M03 adopts
+M03-C adopts
 [Dockerfile Roast](https://github.com/immanuwell/dockerfile-roast) as a narrow
 container-definition gate. It provides Dockerfile-specific static rules and
 GitHub annotations; it does not replace container builds, Compose validation,
@@ -964,9 +969,9 @@ approval. Required status checks and resolved review conversations are the
 enforceable controls when repository visibility and the GitHub plan support
 branch rules.
 
-##### M03.4 Logging and privacy baseline
+##### M03-D Logging and privacy baseline
 
-M03 establishes a compact, consistent logging contract before additional
+M03-D establishes a compact, consistent logging contract before additional
 backend workflows increase telemetry volume:
 
 - request-scoped application logs carry a request ID and bounded business
@@ -987,6 +992,31 @@ backend workflows increase telemetry volume:
 
 This is an application-logging baseline, not deployment of the observability
 stack. Local stdout and Compose logs remain sufficient until M10.
+
+##### M03-E Review and dependency automation pilot
+
+M03-E is a non-blocking evaluation milestone owned by the human because it
+grants external GitHub applications repository access. It begins only after
+M03-B provides stable deterministic checks.
+
+- Pilot [Greptile Starter](https://www.greptile.com/pricing) on 5-10
+  representative pull requests. Trigger reviews only when a PR is ready, measure
+  validated findings, false positives, duplicate comments, latency, permissions,
+  and credit use, and retain at most one GitHub AI reviewer.
+- Pilot hosted Renovate for npm workspaces, GitHub Actions, Dockerfiles, and
+  Docker Compose. Keep GitHub dependency graph and Dependabot alerts, but allow
+  only one dependency updater to create PRs.
+- Require dashboard approval, weekly scheduling, a three-day minimum release
+  age, low PR concurrency, human lockfile review, and no automerge.
+- Validate one npm 12 update PR against the human-owned npm 12 workflow. If the
+  hosted updater cannot reproduce the lockfile and strict install policy,
+  restrict it to Actions/Docker references or remove it rather than weakening
+  repository policy.
+
+The Greptile sample may span M04 or later feature work because representative
+review evidence cannot be manufactured inside a single quality-only PR. An
+incomplete, unavailable, or rejected pilot does not reopen M03-A through M03-D
+and does not block M04.
 
 #### Testing
 
@@ -1274,34 +1304,43 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                             |
-| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | --------------------------------------------------------------------------------------------------- |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                  |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior   |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | In progress | M01                | AspectLoop source migration complete; human lockfile, local verification, and GitHub rename pending |
-| M03   | Review process and quality gates               | Governance/QA  | P0       | Planned     | M02                | Human/AI/PR review, deterministic gates, supply-chain policy, privacy-safe logging baseline         |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03                | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack    |
-| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation        |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                            |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                       |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                 |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                               |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                   |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks           |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                         |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                               |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                          |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                 |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                        |
+| ID    | Milestone                                      | Track          | Priority | Status    | Depends on         | Outcome                                                                                              |
+| ----- | ---------------------------------------------- | -------------- | -------- | --------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                   |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior    |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned    |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Planned   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow       |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Planned   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                  |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content   |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned   | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04              |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned   | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack     |
+| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned   | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation         |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned   | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                             |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned   | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                        |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned   | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                  |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned   | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned   | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                    |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned   | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks            |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned   | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback  |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned   | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                          |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned   | AI00, M05          | One document type extracted from digital PDFs with structured output                                 |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned   | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned   | AI11               | Evidence-based expansion to scans/images and repeated rows                                           |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned   | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                  |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned   | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                 |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned   | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                         |
 
 #### Dependency view
 
 ```mermaid
 flowchart LR
-  M00 --> M01 --> M02 --> M03 --> M04 --> M05
+  M00 --> M01 --> M02 --> M03A["M03-A"] --> M03B["M03-B"]
+  M03B --> M03C["M03-C"]
+  M03B --> M03D["M03-D"]
+  M03C --> M04 --> M05
+  M03D --> M04
+  M03B -. "non-blocking" .-> M03E["M03-E"]
   M04 --> M04_1["M04.1 identity/session"]
   M04 --> M06
   M05 --> M07
@@ -1320,8 +1359,9 @@ flowchart LR
 ```
 
 M02 establishes the AspectLoop identity before new domain and infrastructure
-work accumulates. M03 then establishes the review process used by every later
-milestone. M11 includes a final public-content and sensitive-material audit,
+work accumulates. M03-A through M03-D establish the required quality foundation
+used by every later milestone. M03-E evaluates external automation without
+blocking M04. M11 includes a final public-content and sensitive-material audit,
 but it does not repeat the product rename.
 
 ### Key Risks And Responses
@@ -1369,7 +1409,8 @@ but it does not repeat the product rename.
 
 ### Immediate Next Plan
 
-Complete the human-owned M02 lockfile, local configuration, Compose, UI, and
-GitHub verification. Once the product, repository, and workspace names are
-stable, write the M03 review-process and quality-gates plan. M03 must not add
-new product functionality or alter the document schema.
+Write the focused M03-B implementation plan for deterministic local
+verification and pull-request gates. It must consume the completed M03-A
+Node/npm and dependency-security contract, add no product functionality, and
+leave container cleanup, logging changes, and external automation to M03-C,
+M03-D, and M03-E respectively.

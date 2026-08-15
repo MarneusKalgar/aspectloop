@@ -26,17 +26,15 @@ export class FlattenService {
     return {
       documentType: config.type,
       sections: config.sections.map((section) => ({
-        fields: section.fields.map(
-          (field): CorrectionFieldMetadataView => ({
-            codeListKey: field.codeListKey ?? null,
-            id: field.id,
-            inputType: mapDocumentFieldInputType(field.inputType),
-            label: field.label,
-            path: field.path,
-            required: field.required ?? false,
-            validation: mapDocumentFieldValidation(field.validation),
-          }),
-        ),
+        fields: section.fields.map((field): CorrectionFieldMetadataView => ({
+          codeListKey: field.codeListKey ?? null,
+          id: field.id,
+          inputType: mapDocumentFieldInputType(field.inputType),
+          label: field.label,
+          path: field.path,
+          required: field.required ?? false,
+          validation: mapDocumentFieldValidation(field.validation),
+        })),
         id: section.id,
         label: section.label,
         path: section.path,

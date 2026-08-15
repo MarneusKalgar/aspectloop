@@ -6,11 +6,11 @@ submitting structured data extracted from supplier documents.
 AspectLoop is an independent learning and portfolio project and is not
 affiliated with or endorsed by Elemica.
 
-The M01 repository-boundary refactor and M01.1 GraphQL remediation are complete.
-M02 applies the product identity before the data, extraction, correction, cloud,
-and AI foundations accumulate. The existing product behavior remains in the
-gateway while the extraction and correction runtimes are independent health-only
-NestJS shells.
+The M01 repository-boundary refactor, M01.1 GraphQL remediation, M02 product
+rebrand, and M03-A toolchain and dependency-security foundation are complete.
+M03-B adds deterministic verification and pull-request gates next.
+The existing product behavior remains in the gateway while the extraction and
+correction runtimes are independent health-only NestJS shells.
 
 ## Application Boundaries
 
@@ -27,16 +27,49 @@ NestJS shells.
 
 ## Prerequisites
 
-- Node.js `24.x`
-- npm `11.14.x`
+- Node.js `24.19.0`
+- npm `12.0.2` installed independently for that Node version
 - Docker Desktop or Docker Engine with Docker Compose v2 for the local backend
   stack
 
-Install workspace dependencies from the repository root:
+Node `24.19.0` bundles npm `11.17.0`, while AspectLoop intentionally pins npm
+`12.0.2`. Select the repository Node version before invoking npm:
 
 ```bash
-npm install
+nvm use
+node --version
+npm --version
+npm ci
 ```
+
+Expected versions are `v24.19.0` and `12.0.2`. `npm ci` is the normal clean,
+lockfile-based installation command. Dependency changes remain human-owned and
+use reviewed npm uninstall/install commands rather than manifest edits.
+
+## Dependency Security
+
+The repository enforces a three-day package release quarantine, registry-only
+dependency sources, and explicit lifecycle-script review. The canonical policy,
+human approval workflow, audit commands, and emergency exception process are in
+`docs/dependency-security.md`.
+
+Read-only repository checks are available from the root:
+
+```bash
+npm run deps:policy
+npm run deps:scripts:pending
+npm run deps:audit
+npm run deps:signatures
+```
+
+`npm audit signatures` checks registry signatures and supported provenance
+attestations. It does not replace vulnerability review. Never use
+`npm audit fix --force`, `--legacy-peer-deps`, or a blanket install-script
+approval.
+
+If npm reports the machine-local legacy `python` configuration, remove it from
+the user npm configuration outside this repository before running npm with the
+project's strict configuration policy.
 
 ## Environment Files
 
@@ -170,7 +203,9 @@ docs/
 `AGENTS.md` and `docs/agent-model-conventions.md` define the execution and
 human-verification conventions.
 
-M02 source changes are implemented, but its human-owned lockfile regeneration,
-ignored local configuration update, local Compose verification, and GitHub
-repository rename remain before the milestone is complete. See
-`docs/general-plan.md` and the active M02 plan for the acceptance checklist.
+M03-A is complete. The repository now has an explicit Node/npm contract,
+reviewed install-script policy, registry-source checks, a reproducible clean
+install, and a zero-vulnerability audit baseline. M03-B is the next executable
+milestone and owns deterministic verification and pull-request gates. See
+`docs/general-plan.md`, `docs/branch-governance.md`, and
+`docs/dependency-security.md` for the active boundaries.

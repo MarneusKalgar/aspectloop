@@ -11,22 +11,6 @@ import { SubmitCorrectionsInput } from '../graphql/generated/graphql.types';
 import { SubmitCorrectionsCommandInput } from './correction-flow.types';
 import { CorrectionsService } from './corrections.service';
 
-function mapSubmitCorrectionsInput(input: SubmitCorrectionsInput): SubmitCorrectionsCommandInput {
-  return {
-    edits: input.edits.map((edit) => {
-      const value: unknown = edit.value ?? null;
-
-      return {
-        fieldId: edit.fieldId,
-        path: edit.path,
-        value,
-      };
-    }),
-    expectedVersion: input.expectedVersion,
-    sessionId: input.sessionId,
-  };
-}
-
 @Resolver()
 @Roles('CORRECTOR')
 @Scopes('corrections:write')
@@ -46,4 +30,20 @@ export class CorrectionsResolver {
   ) {
     return this.correctionsService.submitCorrections(mapSubmitCorrectionsInput(input), authUser);
   }
+}
+
+function mapSubmitCorrectionsInput(input: SubmitCorrectionsInput): SubmitCorrectionsCommandInput {
+  return {
+    edits: input.edits.map((edit) => {
+      const value: unknown = edit.value ?? null;
+
+      return {
+        fieldId: edit.fieldId,
+        path: edit.path,
+        value,
+      };
+    }),
+    expectedVersion: input.expectedVersion,
+    sessionId: input.sessionId,
+  };
 }
