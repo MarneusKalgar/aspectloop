@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { REQUIRED_NPM_CONFIG } from './dependency-policy.config.mjs';
+import {
+  REQUIRED_EFFECTIVE_NPM_CONFIG,
+  REQUIRED_NPM_CONFIG,
+} from './dependency-policy.config.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const rootManifestPath = join(repositoryRoot, 'package.json');
@@ -55,6 +59,40 @@ function readNpmConfig(filePath) {
 }
 
 /**
+ * Reads selected effective values from the npm executable running this script.
+ *
+ * @param {Readonly<Record<string, string>>} expectedConfig Expected
+ * security-sensitive keys.
+ * @returns {Map<string, string>} Effective npm values that were read successfully.
+ */
+function readEffectiveNpmConfig(expectedConfig) {
+  const config = new Map();
+  const npmExecPath = process.env.npm_execpath;
+
+  if (!npmExecPath) {
+    errors.push('effective npm policy requires execution through an npm script');
+    return config;
+  }
+
+  for (const key of Object.keys(expectedConfig)) {
+    try {
+      const value = execFileSync(process.execPath, [npmExecPath, 'config', 'get', key], {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
+
+      config.set(key, value);
+    } catch {
+      errors.push(`unable to read effective npm configuration for ${key}`);
+    }
+  }
+
+  return config;
+}
+
+/**
  * Verifies that the committed npm policy has not been weakened or bypassed.
  *
  * @param {Map<string, string>} config Parsed project npm configuration.
@@ -77,6 +115,26 @@ function validateNpmPolicy(config) {
 
   if (config.get('dangerously-allow-all-scripts') === 'true') {
     errors.push('.npmrc must not bypass the install-script policy');
+  }
+}
+
+/**
+ * Verifies that higher-precedence npm configuration has not weakened policy.
+ *
+ * @param {Map<string, string>} config Selected effective npm configuration.
+ * @returns {void}
+ */
+function validateEffectiveNpmPolicy(config) {
+  for (const [key, expectedValue] of Object.entries(
+    REQUIRED_EFFECTIVE_NPM_CONFIG,
+  )) {
+    const actualValue = config.get(key);
+
+    if (actualValue !== expectedValue) {
+      errors.push(
+        `effective npm config must set ${key}=${expectedValue}; found ${actualValue ?? 'unavailable'}`,
+      );
+    }
   }
 }
 
@@ -439,10 +497,12 @@ if (!existsSync(lockfilePath)) {
 
 const rootManifest = readJson(rootManifestPath);
 const npmConfig = readNpmConfig(npmrcPath);
+const effectiveNpmConfig = readEffectiveNpmConfig(REQUIRED_EFFECTIVE_NPM_CONFIG);
 const manifestPaths = collectManifestPaths(rootManifest);
 const workspaceIdentity = collectWorkspaceIdentity(manifestPaths);
 
 validateNpmPolicy(npmConfig);
+validateEffectiveNpmPolicy(effectiveNpmConfig);
 validateManifestSources(manifestPaths, workspaceIdentity.names);
 
 if (existsSync(lockfilePath)) {
@@ -463,5 +523,7 @@ if (errors.length > 0) {
   );
   process.exitCode = 1;
 } else {
-  console.log('Dependency source and install-script policy checks passed.');
+  console.log(
+    'Dependency source, effective npm, and install-script policy checks passed.',
+  );
 }

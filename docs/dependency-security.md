@@ -37,6 +37,7 @@ baseline:
 | ---------------------- | ------------------------------------------------------------------------------- |
 | Runtime contract       | Node `24.19.0`, npm `12.0.2`, and `@types/node@24.13.3`                         |
 | Clean installation     | `npm ci` succeeds under the committed strict policy                             |
+| Dependency tree        | `npm ls --all` succeeds with no invalid peer dependencies                       |
 | Install scripts        | No installed package has an unreviewed lifecycle script                         |
 | Dependency sources     | Repository policy accepts only registry packages and known root workspace links |
 | Vulnerability audit    | Zero known vulnerabilities                                                      |
@@ -121,8 +122,15 @@ npm run deps:signatures
 ```
 
 `deps:policy` checks manifests and the lockfile for prohibited dependency
-sources, verifies the committed npm policy, and rejects uncovered lifecycle
-scripts. It does not execute dependency code or mutate files.
+sources, verifies both committed and effective npm policy, and rejects
+uncovered lifecycle scripts. Invoke it through the root npm script so it can
+query the exact selected npm executable.
+
+The effective-policy check reads only named security-sensitive keys. It rejects
+higher-precedence environment, user, global, or command configuration that
+enables unrestricted lifecycle scripts, non-registry dependency sources, force,
+legacy peer resolution, or ignored scripts. It never reads or prints registry
+credentials and does not execute dependency code or mutate files.
 
 `deps:audit` reports vulnerabilities and exits unsuccessfully for high or
 critical findings. M03-A closed with no known vulnerabilities. A future
@@ -144,6 +152,28 @@ Never automate or use:
 For audit remediation, inspect `npm audit fix --dry-run --json`, prefer explicit
 npm uninstall/install commands for direct dependency changes, and review all
 manifest and lockfile churn before a clean `npm ci`.
+
+## Temporary Compatibility Dependencies
+
+The web workspace carries `ajv-formats@2.1.1` as a development-only
+compatibility dependency. `@hookform/resolvers@5.7.1` publishes an optional
+peer requirement for `ajv-formats@^2.1.1`, while the repository root resolves
+`ajv-formats@3.0.1` for Angular and Nest build tooling. Installing the compatible
+2.x peer in `apps/web` keeps `npm ls --all` valid without downgrading unrelated
+root tooling.
+
+AspectLoop uses the Zod resolver and does not use the AJV resolver at runtime.
+This dependency therefore does not define an application capability and is not
+an exception to the source, release-age, vulnerability, or install-script
+policies.
+
+| Package                                       | Owner        | Upstream reference                                                                         | Removal condition                                                                                                                                                                            |
+| --------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web` dev dependency `ajv-formats@2.1.1` | Web/platform | [`react-hook-form/resolvers#814`](https://github.com/react-hook-form/resolvers/issues/814) | Remove through a human npm command after an eligible `@hookform/resolvers` release corrects its peer metadata, then confirm `npm ls --all` remains clean without the workspace-local package |
+
+Do not upgrade this workspace-local package to 3.x while the installed resolver
+declares `^2.1.1`. Reassess and remove the workaround whenever
+`@hookform/resolvers` is upgraded.
 
 ## Release-Age Exceptions
 

@@ -13,3 +13,16 @@ export const REQUIRED_NPM_CONFIG = Object.freeze({
   'allow-remote': 'none',
   'strict-allow-scripts': 'true',
 });
+
+/**
+ * Effective npm settings required while dependency policy checks execute.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const REQUIRED_EFFECTIVE_NPM_CONFIG = Object.freeze({
+  ...REQUIRED_NPM_CONFIG,
+  'dangerously-allow-all-scripts': 'false',
+  'ignore-scripts': 'false',
+  'legacy-peer-deps': 'false',
+  force: 'false',
+});
