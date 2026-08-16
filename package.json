@@ -2,9 +2,10 @@
   "name": "aspectloop",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@12.0.2",
   "engines": {
-    "node": "24.x",
-    "npm": "11.14.x"
+    "node": ">=24.19.0 <25",
+    "npm": ">=12.0.2 <13"
   },
   "workspaces": [
     "apps/*",
@@ -22,6 +23,10 @@
     "build:extraction": "npm run build --workspace @aspectloop/extraction-service",
     "build:correction": "npm run build --workspace @aspectloop/correction-service",
     "build:contracts": "npm run build --workspace @aspectloop/contracts",
+    "deps:policy": "node scripts/check-dependency-policy.mjs",
+    "deps:audit": "npm audit --audit-level=high",
+    "deps:signatures": "npm audit signatures",
+    "deps:scripts:pending": "npm install-scripts ls",
     "local:up": "bash infra/local/scripts/local-compose.sh up --build -d",
     "local:start": "bash infra/local/scripts/local-compose.sh up -d",
     "local:migrate": "bash infra/local/scripts/local-migrate.sh",
@@ -48,7 +53,7 @@
     "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
-    "@types/node": "^25.6.2",
+    "@types/node": "^24.13.3",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-perfectionist": "^5.9.0",
@@ -61,5 +66,12 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2"
+  },
+  "allowScripts": {
+    "msw": false,
+    "@nestjs/core": false,
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.2": true,
+    "fsevents@2.3.3": true
   }
 }
