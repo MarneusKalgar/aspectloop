@@ -124,7 +124,9 @@ npm run deps:signatures
 `deps:policy` checks manifests and the lockfile for prohibited dependency
 sources, verifies both committed and effective npm policy, and rejects
 uncovered lifecycle scripts. Invoke it through the root npm script so it can
-query the exact selected npm executable.
+query the exact selected npm executable. Its checker and required-configuration
+model live together under `scripts/dependencies/`; they are handwritten quality
+infrastructure and remain covered by root formatting and linting.
 
 The effective-policy check reads only named security-sensitive keys. It rejects
 higher-precedence environment, user, global, or command configuration that
