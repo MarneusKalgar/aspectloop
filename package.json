@@ -23,6 +23,10 @@
     "build:extraction": "npm run build --workspace @aspectloop/extraction-service",
     "build:correction": "npm run build --workspace @aspectloop/correction-service",
     "build:contracts": "npm run build --workspace @aspectloop/contracts",
+    "graphql:generate:gateway": "npm run graphql:generate --workspace @aspectloop/gateway-api",
+    "graphql:generate:web": "GQL_CODEGEN_LOCAL_SCHEMA=true npm run graphql-codegen --workspace @aspectloop/web",
+    "graphql:generate": "npm run graphql:generate:gateway && npm run graphql:generate:web",
+    "graphql:check": "node scripts/graphql/check-generated.mjs",
     "deps:policy": "node scripts/check-dependency-policy.mjs",
     "deps:audit": "npm audit --audit-level=high",
     "deps:signatures": "npm audit signatures",
@@ -34,11 +38,17 @@
     "local:down": "bash infra/local/scripts/local-compose.sh down --remove-orphans",
     "local:reset": "bash infra/local/scripts/local-compose.sh down -v --remove-orphans",
     "local:db:generate:gateway": "bash infra/local/scripts/local-compose.sh exec -w /app/apps/gateway-api gateway-api npm run db:generate:local --",
-    "format": "prettier --write \"{apps,mocks,packages,infra,docs}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
-    "lint": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\" --fix",
-    "lint:ci": "eslint \"{apps,packages}/**/*.{ts,tsx,js,mjs}\"",
+    "format": "prettier --write \"{apps,mocks,packages,infra,docs,scripts/graphql}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"{apps,mocks,packages,infra,docs,scripts/graphql}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{json,md,yml,yaml}\"",
+    "lint": "eslint \"{apps,packages,scripts/graphql}/**/*.{ts,tsx,js,mjs}\" --fix",
+    "lint:ci": "eslint \"{apps,packages,scripts/graphql}/**/*.{ts,tsx,js,mjs}\"",
     "prepare": "husky",
-    "type-check": "npm run type-check --workspace @aspectloop/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit"
+    "test:unit:run": "npm run test:unit:run --workspace @aspectloop/web",
+    "test:integration:run": "npm run test:integration:run --workspace @aspectloop/web",
+    "test:e2e:mock": "npm run test:e2e:mock --workspace @aspectloop/web",
+    "type-check": "npm run type-check --workspace @aspectloop/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit",
+    "verify": "npm run format:check && npm run lint:ci && npm run type-check && npm run graphql:check && npm run test:unit:run && npm run test:integration:run",
+    "verify:full": "npm run verify && npm run build && npm run test:e2e:mock"
   },
   "lint-staged": {
     "*.{js,ts,tsx}": [

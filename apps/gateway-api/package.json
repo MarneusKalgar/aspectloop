@@ -6,6 +6,7 @@
     "dev": "NODE_ENV=development nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
+    "graphql:generate": "node scripts/generate-graphql-definitions.mjs",
     "typeorm": "NODE_ENV=development TS_NODE_PROJECT=tsconfig.app.json ts-node -r tsconfig-paths/register ../../node_modules/typeorm/cli.js",
     "db:generate:local": "npm run typeorm -- migration:generate -d ./src/data-source.ts",
     "db:migrate:local": "npm run typeorm -- migration:run -d ./src/data-source.ts",

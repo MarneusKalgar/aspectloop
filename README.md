@@ -8,7 +8,8 @@ affiliated with or endorsed by Elemica.
 
 The M01 repository-boundary refactor, M01.1 GraphQL remediation, M02 product
 rebrand, and M03-A toolchain and dependency-security foundation are complete.
-M03-B adds deterministic verification and pull-request gates next.
+M03-B verification and pull-request gates are in progress; its deterministic
+root command baseline is complete and human-verified.
 The existing product behavior remains in the gateway while the extraction and
 correction runtimes are independent health-only NestJS shells.
 
@@ -46,6 +47,16 @@ Expected versions are `v24.19.0` and `12.0.2`. `npm ci` is the normal clean,
 lockfile-based installation command. Dependency changes remain human-owned and
 use reviewed npm uninstall/install commands rather than manifest edits.
 
+The mocked browser suite uses only Playwright's Chromium project. Install its
+headless shell after the initial dependency installation and again after a
+Playwright update changes the required browser revision:
+
+```bash
+npm exec --workspace @aspectloop/web -- playwright install --only-shell chromium
+```
+
+This intentionally does not install Firefox, WebKit, or full headed Chromium.
+
 ## Dependency Security
 
 The repository enforces a three-day package release quarantine, registry-only
@@ -70,6 +81,77 @@ approval.
 If npm reports the machine-local legacy `python` configuration, remove it from
 the user npm configuration outside this repository before running npm with the
 project's strict configuration policy.
+
+## Deterministic Verification
+
+Run repository checks from the root with the supported Node/npm pair:
+
+```bash
+npm run format:check
+npm run lint:ci
+npm run type-check
+npm run graphql:check
+npm run test:unit:run
+npm run test:integration:run
+npm run test:e2e:mock
+npm run verify
+npm run verify:full
+```
+
+The task 10.4 command baseline and the task 10.5 aggregate commands with
+GraphQL drift checking were human-verified on 2026-08-16 with Node `24.19.0`,
+npm `12.0.2`, and the Chromium headless shell.
+
+`verify` is the fast, non-mutating merge-preparation command. It checks
+formatting, lint, types, generated GraphQL drift, web unit tests, and web
+integration tests.
+`verify:full` adds every workspace build and the MSW-backed Playwright suite.
+The Playwright command is named `test:e2e:mock` because it runs the real Vite
+UI against a mocked GraphQL backend, not the local Compose stack.
+
+`graphql:check` generates gateway and web artifacts under the operating
+system's temporary directory, normalizes line endings, and compares file sets
+and content with the tracked outputs. It never invokes a write-mode generator
+against tracked paths. `verify` includes this drift gate before running test
+suites. Generated GraphQL directories remain excluded from ESLint and Prettier
+because their generators own their format.
+
+The pre-commit hook intentionally runs the repository type check and applies
+ESLint/Prettier only to staged files through `lint-staged`. It does not run the
+aggregate suites and is not a replacement for `verify` or CI.
+
+### Local-Stack Human Verification
+
+Local-stack verification is intentionally separate from deterministic
+repository checks because it consumes ignored environment files and mutates
+local infrastructure. Prepare the `.env.local` files and confirm that
+`apps/web/.env.local` sets `VITE_MOCK_GQL_RUNTIME=false`. Then run:
+
+```bash
+npm run local:up
+npm run local:migrate -- --build
+npm run local:seed -- --build
+curl --fail --silent --show-error http://localhost:8080/health
+curl --fail --silent --show-error http://localhost:8090/health
+```
+
+In a second terminal, start the web app in live-backend mode:
+
+```bash
+npm run dev:web
+```
+
+Open `http://localhost:5173`, create a disposable local account, sign in, and
+confirm that the correction inbox loads without an authorization error. Stop
+the web process, then stop the backend stack while preserving its local data:
+
+```bash
+npm run local:down
+```
+
+This is the current `verify:local-stack` human flow. It is a local health and
+smoke check, not the mocked browser E2E suite and not a claim of automated
+full-stack coverage.
 
 ## Environment Files
 
@@ -126,24 +208,37 @@ npm run build:gateway
 npm run build:extraction
 npm run build:correction
 npm run build:contracts
-npm run graphql-codegen --workspace @aspectloop/web
+npm run graphql:generate:gateway
+npm run graphql:generate:web
+npm run graphql:generate
+npm run graphql:check
 ```
 
 ## GraphQL Transport And Code Generation
 
 The gateway is a NestJS application on Express that serves schema-first
 GraphQL through GraphQL Yoga. Apollo Client remains the browser GraphQL client.
+The canonical ownership, generation, consumption, and drift model is documented
+in `docs/graphql-model.md`.
 
 GraphiQL and GraphQL introspection are available only in local development and
 test environments at `http://localhost:8080/graphql`. Stage and production
 expose neither capability.
 
 Normal local code generation reads gateway-owned SDL from
-`apps/gateway-api/src/graphql/schema` without starting the gateway. Set
-`GQL_SCHEMA_URL` in `apps/web/.env.local` only when generating against a
-running local, stage, or future Java backend. Generated web artifacts are owned
-by `apps/web/src/graphql/generated`; handwritten hooks, runtime configuration,
-and utilities remain outside that directory.
+`apps/gateway-api/src/graphql/schema` without starting the gateway. The
+standalone gateway generator emits sorted, class-based Nest definitions to
+`apps/gateway-api/src/graphql/generated/graphql.types.ts`; gateway startup no
+longer rewrites that file. The web generator validates frontend operations and
+emits client artifacts under `apps/web/src/graphql/generated`.
+
+Use `npm run graphql:generate` after an SDL or frontend operation change, then
+review and commit the generated diff. The canonical root generation and drift
+commands force the local gateway SDL. Set `GQL_SCHEMA_URL` in
+`apps/web/.env.local` only when intentionally invoking the web workspace's
+`graphql-codegen` command against a running local, stage, or future Java
+backend. Handwritten hooks, runtime configuration, and utilities remain outside
+generated directories.
 
 Browser MSW is a development and test capability. Set
 `VITE_MOCK_GQL_RUNTIME=true` only for the Vite development server or mocked
@@ -194,6 +289,8 @@ packages/
   contracts/
 docs/
   general-plan.md
+  graphql-model.md
+  testing-strategy.md
   agent-model-conventions.md
 ```
 
@@ -201,7 +298,8 @@ docs/
 
 `docs/general-plan.md` is the canonical architecture and milestone roadmap.
 `AGENTS.md` and `docs/agent-model-conventions.md` define the execution and
-human-verification conventions.
+human-verification conventions. `docs/graphql-model.md` defines the public SDL,
+generated-artifact, runtime-consumption, and drift-check boundaries.
 
 M03-A is complete. The repository now has an explicit Node/npm contract,
 reviewed install-script policy, registry-source checks, a reproducible clean

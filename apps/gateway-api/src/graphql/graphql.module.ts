@@ -26,12 +26,6 @@ import { maskGraphqlError } from './utils/maskGraphqlError';
         return {
           context: ({ req }: { req: unknown }) => ({ req }),
           cors: false,
-          definitions: isRuntimeBuild
-            ? undefined
-            : {
-                outputAs: 'class',
-                path: join(process.cwd(), 'src/graphql/generated/graphql.types.ts'),
-              },
           graphiql: !isRuntimeBuild,
           logging: false,
           maskedErrors: { maskError: maskGraphqlError },

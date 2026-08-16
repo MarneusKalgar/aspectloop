@@ -8,6 +8,9 @@ import { z } from 'zod';
 const workspaceRoot = fileURLToPath(new URL('.', import.meta.url));
 const codegenMode = process.env.NODE_ENV ?? 'development';
 const localSchemaPath = resolve(workspaceRoot, '../gateway-api/src/graphql/schema/**/*.graphql');
+const generatedOutputPath =
+  process.env.GQL_CODEGEN_OUTPUT_DIR?.trim() ?? './src/graphql/generated/';
+const useLocalSchema = process.env.GQL_CODEGEN_LOCAL_SCHEMA === 'true';
 
 const optionalUrl = z.preprocess((value) => {
   if (typeof value !== 'string') {
@@ -26,7 +29,7 @@ const codegenEnvSchema = z.object({
 const loadedEnv = loadEnv(codegenMode, workspaceRoot, '');
 
 const parsedCodegenEnv = codegenEnvSchema.safeParse({
-  GQL_SCHEMA_URL: loadedEnv.GQL_SCHEMA_URL,
+  GQL_SCHEMA_URL: useLocalSchema ? undefined : loadedEnv.GQL_SCHEMA_URL,
 });
 
 if (!parsedCodegenEnv.success) {
@@ -40,7 +43,7 @@ if (!parsedCodegenEnv.success) {
 const config: CodegenConfig = {
   documents: ['src/**/*.{ts,tsx}'],
   generates: {
-    './src/graphql/generated/': {
+    [generatedOutputPath]: {
       config: {
         scalars: {
           DateTime: 'string',
@@ -52,9 +55,10 @@ const config: CodegenConfig = {
     },
   },
   ignoreNoDocuments: true,
-  schema: parsedCodegenEnv.data.GQL_SCHEMA_URL
-    ? [parsedCodegenEnv.data.GQL_SCHEMA_URL]
-    : [localSchemaPath],
+  schema:
+    !useLocalSchema && parsedCodegenEnv.data.GQL_SCHEMA_URL
+      ? [parsedCodegenEnv.data.GQL_SCHEMA_URL]
+      : [localSchemaPath],
 };
 
 export default config;
