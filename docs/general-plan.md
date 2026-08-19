@@ -926,6 +926,12 @@ activates the pinned Dockerfile Roast policy after its baseline and exceptions
 are classified. A local Node/npm bootstrap composite action remains deferred
 until at least a third job needs the same complete setup sequence.
 
+Mocked web E2E uses a lightweight fixed-path scope job. Web-relevant changes run
+inside the digest-pinned Playwright image matching the lockfile; unrelated
+changes intentionally skip the heavy job, and the aggregate sentinel verifies
+that the skip was authorized by the scope output. Manual dispatch may force the
+browser workflow.
+
 M03-B also introduces a committed repository skill under
 `.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
 and risk surfaces, selects only the relevant installed specialist skills, runs

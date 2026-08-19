@@ -134,6 +134,19 @@ repository. Repeat the command when an updated Playwright package requires a
 new browser revision. Full Chromium, Firefox, and WebKit are not part of the
 current deterministic test contract.
 
+Pull-request CI does not repeat that host installation. Web-relevant runs use
+the digest-pinned official Noble image matching the exact Playwright package
+resolved by `package-lock.json`; the job verifies the package/image version
+contract before starting tests. This avoids a per-run `apt` refresh and browser
+download on GitHub-hosted runners.
+
+The mocked browser workflow is blocking only when fixed web E2E paths change:
+`apps/web/**`, root Node/npm and dependency inputs, the owning workflow, or the
+fixed CI change-detector files. Backend-only and documentation-only pull
+requests produce a successful intentional skip. A manual workflow dispatch may
+force execution. The aggregate merge sentinel validates both required runs and
+intentional skips rather than treating every skipped job as acceptable.
+
 ### 4.4 Current mock drift
 
 The handler module contains handwritten variable casts and response bodies.

@@ -24,4 +24,18 @@ export const CHANGE_GROUPS = Object.freeze({
     ]),
     unchangedReason: 'no Docker-related changes',
   }),
+  web_e2e: Object.freeze({
+    changedReason: 'web E2E-relevant changes detected',
+    paths: Object.freeze([
+      '.github/workflows/pr-checks.yml',
+      '.npmrc',
+      '.nvmrc',
+      'apps/web/**',
+      'package.json',
+      'package-lock.json',
+      'scripts/ci/change-groups.mjs',
+      'scripts/ci/detect-changes.mjs',
+    ]),
+    unchangedReason: 'no web E2E-relevant changes',
+  }),
 });

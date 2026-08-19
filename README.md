@@ -131,6 +131,10 @@ workflow is read-only, pins actions to full commit SHAs, uses a fresh `npm ci`
 per trust-isolated job, and retains Playwright failure artifacts for three
 days.
 
+Mocked web E2E runs only for web-relevant paths or an explicit manual request.
+Required runs use the lockfile-matched, digest-pinned Playwright image; other
+changes record an intentional skip that is validated by the aggregate gate.
+
 GitHub must run the workflow once before its check names can be selected in the
 repository rules. Dockerfile Roast configuration and final activation belong
 to M03-C. See `docs/branch-governance.md` for the human GitHub settings.

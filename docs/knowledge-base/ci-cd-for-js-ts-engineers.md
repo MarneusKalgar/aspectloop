@@ -141,6 +141,12 @@ Each trust-isolated job therefore performs its own `npm ci`. The jobs may reuse
 npm's download cache, which is comparable to separate test workers downloading
 from the same package cache without sharing a mutable installed tree.
 
+An inexpensive scope job may run before an expensive worker. In AspectLoop,
+`Web E2E Scope` compares fixed repository paths first. The browser container is
+created only when that output is `true`; otherwise the expensive job is
+intentionally skipped and the aggregate gate verifies that the skip was
+expected.
+
 Artifacts are different from caches. An artifact is an intentional output for
 another job or a human, such as a built package or Playwright failure report. A
 cache is an optimization and must not become the source of correctness.
@@ -156,6 +162,10 @@ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 is analogous to installing an exact npm dependency with verified integrity.
 Using a mutable branch or floating reference is closer to installing `latest`
 during every CI run.
+
+The same rule applies to job containers. AspectLoop's browser job pins the
+official Playwright image to the package version and an immutable image digest,
+then asserts that the installed npm package still matches the image contract.
 
 Permissions should follow the same principle as narrow TypeScript interfaces:
 provide only the capabilities a job requires. A called workflow must not gain

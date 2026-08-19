@@ -41,14 +41,27 @@ request or ref are cancelled.
 | Check               | Responsibility                                                                                                                         |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `Quality`           | Exact toolchain, clean lockfile install, dependency policy, audit/signature evidence, deterministic verification, and workspace builds |
-| `Mocked Web E2E`    | Chromium headless-shell setup and the real Vite UI against browser MSW                                                                 |
+| `Web E2E Scope`     | Fixed-path decision that requires or intentionally skips the mocked browser workflow                                                   |
+| `Mocked Web E2E`    | Lockfile-matched Playwright container and the real Vite UI against browser MSW when required                                           |
 | `Docker Policy`     | Reusable, path-aware Compose validation and development-image builds                                                                   |
-| `All Checks Passed` | Stable aggregate that fails when any required job fails, is cancelled, or is unexpectedly skipped                                      |
+| `All Checks Passed` | Stable aggregate that validates required outcomes and explicitly authorized skips                                                      |
 
-Every trust-isolated job performs its own `npm ci`; only npm's download cache is
-shared through `setup-node`. Actions are pinned to reviewed full commit SHAs,
-job timeouts are bounded, and Playwright failure artifacts expire after three
-days.
+Every trust-isolated application-check job performs its own `npm ci`; only
+npm's download cache is shared through `setup-node`. Actions and external
+containers are pinned to reviewed immutable references, job timeouts are
+bounded, and Playwright failure artifacts expire after three days.
+
+Mocked web E2E is required for `apps/web/**`, root toolchain/dependency inputs,
+the owning workflow, and the fixed CI change-detector files. Backend-only and
+documentation-only changes complete the scope job and intentionally skip the
+heavy browser job. The aggregate sentinel accepts that skip only when the scope
+output is exactly `false`; a required, cancelled, failed, or unexpectedly
+skipped browser job fails the merge gate. Manual dispatch can force the browser
+workflow with `run_web_e2e`.
+
+Web-relevant runs use the exact Playwright version resolved by the lockfile and
+the matching digest-pinned Noble image. The job asserts the package/image
+version contract and does not run host `apt` or download a browser at runtime.
 
 The Docker job is isolated in
 `.github/workflows/reusable-docker-policy.yml` and reports a successful
@@ -86,10 +99,10 @@ them. External actions remain pinned to reviewed full commit SHAs with version
 comments, including actions called from reusable workflows or future composite
 actions.
 
-Current dependency and Docker path classification uses fixed groups under
-`scripts/ci/`. Node/npm bootstrap steps remain explicit while only `Quality`
-and `Mocked Web E2E` share the complete contract; reconsider a local composite
-action when a third job adopts it.
+Current dependency, Docker, and web E2E path classification uses fixed groups
+under `scripts/ci/`. Node/npm bootstrap steps remain explicit while only
+`Quality` and `Mocked Web E2E` share the complete contract; reconsider a local
+composite action when a third job adopts it.
 
 Registry-signature verification is visible but advisory until its first GitHub
 runner baseline is reviewed. Dependency policy, install-script coverage, and
