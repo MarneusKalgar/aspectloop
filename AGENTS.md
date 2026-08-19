@@ -55,6 +55,24 @@
   extraction/correction contracts.
 - Optimize for a complete local workflow before cloud deployment.
 
+## Automation And CI
+
+- Keep workflow YAML declarative: triggers, permissions, concurrency, jobs,
+  conditions, action calls, and bounded summaries belong in workflow files.
+- Keep only short, linear shell orchestration inline. Move branching, event or
+  JSON parsing, reusable policy, and other substantial logic to fixed-purpose
+  `scripts/ci/*.mjs` files.
+- Use reusable workflows for complete job boundaries. Consider a local
+  composite action only after the same complete step sequence has a real third
+  consumer; do not add one only to reduce a workflow's line count.
+- Keep CI scripts closed over repository-defined configuration. Do not use
+  `eval`, dynamic commands, arbitrary path lists, or unbounded workflow input.
+- Preserve least-privilege workflow permissions, do not inherit secrets into
+  jobs that do not need them, and pin every external action to a reviewed full
+  commit SHA with a version comment.
+- Follow the detailed workflow conventions and merge-gate contract in
+  `docs/branch-governance.md`.
+
 ## Editing And Git
 
 - Use `rg`/`rg --files` for search and `apply_patch` for manual file edits.

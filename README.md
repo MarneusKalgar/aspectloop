@@ -120,6 +120,21 @@ The pre-commit hook intentionally runs the repository type check and applies
 ESLint/Prettier only to staged files through `lint-staged`. It does not run the
 aggregate suites and is not a replacement for `verify` or CI.
 
+## GitHub Pull Request Checks
+
+`.github/workflows/pr-checks.yml` orchestrates independent `Quality`, `Mocked
+Web E2E`, and path-aware `Docker Policy` jobs for pull requests to `main`.
+Docker policy is isolated in `.github/workflows/reusable-docker-policy.yml`;
+fixed path groups are defined under `scripts/ci/`. The stable `All Checks
+Passed` aggregate is the only status intended for branch protection. The
+workflow is read-only, pins actions to full commit SHAs, uses a fresh `npm ci`
+per trust-isolated job, and retains Playwright failure artifacts for three
+days.
+
+GitHub must run the workflow once before its check names can be selected in the
+repository rules. Dockerfile Roast configuration and final activation belong
+to M03-C. See `docs/branch-governance.md` for the human GitHub settings.
+
 ### Local-Stack Human Verification
 
 Local-stack verification is intentionally separate from deterministic
@@ -288,6 +303,9 @@ mocks/
 packages/
   contracts/
 docs/
+  knowledge-base/
+    README.md
+    ci-cd-for-js-ts-engineers.md
   general-plan.md
   graphql-model.md
   testing-strategy.md
@@ -300,10 +318,13 @@ docs/
 `AGENTS.md` and `docs/agent-model-conventions.md` define the execution and
 human-verification conventions. `docs/graphql-model.md` defines the public SDL,
 generated-artifact, runtime-consumption, and drift-check boundaries.
+`docs/knowledge-base/` contains educational mental models and is not a source
+of normative architecture or governance rules.
 
 M03-A is complete. The repository now has an explicit Node/npm contract,
 reviewed install-script policy, registry-source checks, a reproducible clean
-install, and a zero-vulnerability audit baseline. M03-B is the next executable
-milestone and owns deterministic verification and pull-request gates. See
+install, and a zero-vulnerability audit baseline. M03-B has implemented its
+deterministic commands and GitHub workflow; GitHub activation and the local
+review workflow remain. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

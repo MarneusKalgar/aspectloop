@@ -1,0 +1,230 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      run_docker:
+        description: Run Docker validation even when no Docker path diff is available
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  CI: 'true'
+  NODE_VERSION: '24.19.0'
+  NPM_VERSION: '12.0.2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Keep the Node/npm bootstrap explicit while only Quality and Mocked Web E2E
+  # share it. Reconsider a local composite action when a third job needs the
+  # same complete bootstrap contract.
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js with npm download cache
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install exact npm version
+        working-directory: ${{ runner.temp }}
+        run: npm install --global "npm@${NPM_VERSION}"
+
+      - name: Assert toolchain contract
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = "v${NODE_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+
+      - name: Install dependencies from lockfile
+        id: install
+        run: npm ci
+
+      - name: Check dependency policy
+        id: dependency_policy
+        run: npm run deps:policy
+
+      - name: Check install-script coverage
+        id: install_scripts
+        run: npm run deps:scripts:pending
+
+      - name: Audit high and critical vulnerabilities
+        id: dependency_audit
+        run: npm run deps:audit
+
+      - name: Verify registry signatures and attestations
+        id: dependency_signatures
+        continue-on-error: true
+        run: npm run deps:signatures
+
+      - name: Detect dependency-policy changes
+        id: dependency_changes
+        run: node scripts/ci/detect-changes.mjs dependencies
+
+      - name: Run deterministic verification
+        id: verification
+        run: npm run verify
+
+      - name: Build all workspaces
+        id: build
+        run: npm run build
+
+      - name: Write quality summary
+        if: always()
+        env:
+          DEPENDENCY_CHANGES: ${{ steps.dependency_changes.outputs.changed }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          POLICY_OUTCOME: ${{ steps.dependency_policy.outcome }}
+          SCRIPT_OUTCOME: ${{ steps.install_scripts.outcome }}
+          AUDIT_OUTCOME: ${{ steps.dependency_audit.outcome }}
+          SIGNATURE_OUTCOME: ${{ steps.dependency_signatures.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verification.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          {
+            echo "## Quality"
+            echo ""
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Lockfile installation | ${INSTALL_OUTCOME:-skipped} |"
+            echo "| Dependency policy | ${POLICY_OUTCOME:-skipped} |"
+            echo "| Install-script coverage | ${SCRIPT_OUTCOME:-skipped} |"
+            echo "| High/critical audit | ${AUDIT_OUTCOME:-skipped} |"
+            echo "| Registry signatures (advisory) | ${SIGNATURE_OUTCOME:-skipped} |"
+            echo "| Deterministic verification | ${VERIFY_OUTCOME:-skipped} |"
+            echo "| Workspace builds | ${BUILD_OUTCOME:-skipped} |"
+            echo ""
+            echo "Dependency-policy surfaces changed: ${DEPENDENCY_CHANGES:-not-evaluated}."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  mocked_web_e2e:
+    name: Mocked Web E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js with npm download cache
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install exact npm version
+        working-directory: ${{ runner.temp }}
+        run: npm install --global "npm@${NPM_VERSION}"
+
+      - name: Assert toolchain contract
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = "v${NODE_VERSION}"
+          test "$(npm --version)" = "${NPM_VERSION}"
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Install Chromium headless shell
+        run: npm exec --workspace @aspectloop/web -- playwright install --with-deps --only-shell chromium
+
+      - name: Run mocked browser workflow
+        id: e2e
+        run: npm run test:e2e:mock
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Write mocked E2E summary
+        if: always()
+        env:
+          E2E_OUTCOME: ${{ steps.e2e.outcome }}
+        run: |
+          {
+            echo "## Mocked Web E2E"
+            echo ""
+            echo "Result: ${E2E_OUTCOME:-skipped}."
+            echo ""
+            echo "This suite runs the real Vite UI against browser MSW, not the local backend stack."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  docker_policy:
+    name: Docker Policy
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-docker-policy.yml
+    with:
+      run_docker: ${{ inputs.run_docker || false }}
+
+  all_checks_passed:
+    name: All Checks Passed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs:
+      - quality
+      - mocked_web_e2e
+      - docker_policy
+    if: always()
+    steps:
+      - name: Write aggregate summary and evaluate results
+        env:
+          DOCKER_RESULT: ${{ needs.docker_policy.result }}
+          E2E_RESULT: ${{ needs.mocked_web_e2e.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Required Checks"
+            echo ""
+            echo "| Job | Result |"
+            echo "| --- | --- |"
+            echo "| Quality | ${QUALITY_RESULT} |"
+            echo "| Mocked Web E2E | ${E2E_RESULT} |"
+            echo "| Docker Policy | ${DOCKER_RESULT} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          failed=false
+          for result in "$QUALITY_RESULT" "$E2E_RESULT" "$DOCKER_RESULT"; do
+            if [[ "$result" != "success" ]]; then
+              failed=true
+            fi
+          done
+
+          if [[ "$failed" == "true" ]]; then
+            echo "One or more required jobs failed, were cancelled, or were skipped."
+            exit 1
+          fi
+
+          echo "All required jobs passed."

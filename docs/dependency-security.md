@@ -1,7 +1,7 @@
 # Dependency Security
 
 Status: Active
-Last updated: 2026-08-15
+Last updated: 2026-08-19
 
 ## Toolchain Contract
 
@@ -44,8 +44,12 @@ baseline:
 | Registry verification  | 1,053 package signatures and 239 provenance attestations verified               |
 | Release-age exceptions | None                                                                            |
 
-M03-B promotes the reproducible checks into pull-request CI. M03-C applies the
-same exact Node/npm pair to development containers.
+M03-B promotes the reproducible checks into pull-request CI. The `Quality` job
+installs and asserts the exact toolchain, performs a clean `npm ci`, and blocks
+on dependency policy, install-script coverage, and high/critical audit
+findings. Registry signatures and attestations remain visible but advisory
+until the first GitHub-runner baseline is reviewed. M03-C applies the same exact
+Node/npm pair to development containers.
 
 ## Installation Policy
 
@@ -141,8 +145,9 @@ expiry.
 
 `deps:signatures` uses `npm audit signatures` to inspect registry signatures
 and supported provenance attestations. Coverage depends on package and registry
-metadata, so the first reproducible baseline is human-reviewed before M03-B
-makes the check blocking in CI.
+metadata. M03-B runs the check with its full output and job-summary outcome but
+does not initially fail the pull request on this signal. A human reviews the
+first reproducible GitHub-runner baseline before promoting it to blocking.
 
 Never automate or use:
 

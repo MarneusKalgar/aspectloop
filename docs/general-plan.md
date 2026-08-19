@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-15
+Last updated: 2026-08-19
 
 ## Table Of Contents
 
@@ -897,8 +897,9 @@ release-age exceptions narrow and time bounded.
 
 Status: In progress. The deterministic root verification command baseline was
 human-verified on 2026-08-16. Canonical GraphQL generation, clean drift checking,
-and the expanded aggregate verification commands are also human-verified;
-intentional drift/non-mutation evidence, GitHub PR gates, branch-rule activation,
+and the expanded aggregate verification commands are also human-verified. The
+GitHub PR workflow and PR template were implemented on 2026-08-19; the first
+GitHub run, branch-rule activation, intentional drift/non-mutation evidence,
 and the local review workflow remain pending.
 
 The milestone covers three review layers:
@@ -917,6 +918,13 @@ The milestone covers three review layers:
 
 CI installs and asserts the exact Node/npm contract selected by M03-A before a
 clean dependency installation. It caches only npm downloads, not `node_modules`.
+The committed workflow exposes independent `Quality`, `Mocked Web E2E`, and
+path-aware `Docker Policy` jobs behind one stable `All Checks Passed` sentinel.
+The Docker job is delegated to a same-commit reusable workflow, while fixed
+dependency and Docker change groups live under `scripts/ci/`. M03-C adds and
+activates the pinned Dockerfile Roast policy after its baseline and exceptions
+are classified. A local Node/npm bootstrap composite action remains deferred
+until at least a third job needs the same complete setup sequence.
 
 M03-B also introduces a committed repository skill under
 `.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
