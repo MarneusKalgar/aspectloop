@@ -18,6 +18,14 @@ Do not report agent-unexecuted checks as passed.
 command -> result
 ```
 
+## AI Review
+
+- Reviewer/tool: not used / local AspectLoop review / GitHub reviewer
+- [ ] No AI review was used, or every AI finding was independently validated
+      against current code and expected behavior.
+- [ ] Accepted material findings are fixed or recorded under Residual Risk.
+- Rejected or reframed findings and evidence:
+
 ## Generated Artifacts And Migrations
 
 - [ ] GraphQL artifacts are unchanged or regenerated and reviewed.

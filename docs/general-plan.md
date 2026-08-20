@@ -898,9 +898,10 @@ release-age exceptions narrow and time bounded.
 Status: In progress. The deterministic root verification command baseline was
 human-verified on 2026-08-16. Canonical GraphQL generation, clean drift checking,
 and the expanded aggregate verification commands are also human-verified. The
-GitHub PR workflow and PR template were implemented on 2026-08-19; the first
-GitHub run, branch-rule activation, intentional drift/non-mutation evidence,
-and the local review workflow remain pending.
+GitHub PR workflow, PR template, and first complete GitHub run are verified. The
+local review process and repository review-router skill were implemented on
+2026-08-20; branch-rule activation and the first independent review trial remain
+human work.
 
 The milestone covers three review layers:
 
@@ -932,12 +933,13 @@ changes intentionally skip the heavy job, and the aggregate sentinel verifies
 that the skip was authorized by the scope output. Manual dispatch may force the
 browser workflow.
 
-M03-B also introduces a committed repository skill under
-`.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
-and risk surfaces, selects only the relevant installed specialist skills, runs
-or requests the appropriate reviews, and produces one normalized review report.
-It must not indiscriminately load every installed skill or modify code unless
-the user separately requests a fix.
+M03-B also introduces the committed repository skill at
+`.agents/skills/aspectloop-code-review/`. It classifies changed paths and risk
+surfaces, selects only compatible specialist capabilities available in the
+current environment, and produces one normalized review report. Named external
+skills are optional examples rather than repository dependencies. The router
+must not indiscriminately load every available skill or modify code unless the
+user separately requests a fix.
 
 ##### M03-C Local container hardening
 

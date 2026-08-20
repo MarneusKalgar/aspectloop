@@ -100,6 +100,18 @@
   observable outcome, limitations are recorded, and canonical documentation is
   synchronized.
 
+## Review
+
+- Follow `docs/review-process.md` for local verification, read-only local AI
+  review, and GitHub pull-request review.
+- Use `.agents/skills/aspectloop-code-review/SKILL.md` as the repository router
+  for branch, PR, commit, or working-tree review requests.
+- Keep review read-only unless the user separately requests a fix. Select only
+  specialist capabilities relevant to the changed paths, use compatible skills
+  only when available, and normalize duplicate findings into one findings-first
+  report.
+- AI findings are advisory and must be independently validated by a human.
+
 ## Model Workflow
 
 - Prefer GPT-5.6 Sol for architecture, ambiguous planning, high-risk changes,

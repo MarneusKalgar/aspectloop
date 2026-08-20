@@ -126,6 +126,8 @@ AspectLoop currently has one maintainer. Branch rules therefore do not require
 an unavailable second-human approval. The maintainer may merge after required
 checks pass, the diff and AI findings have been independently reviewed, and all
 material conversations are resolved. Deterministic checks remain mandatory.
+The three-layer local and GitHub workflow, including AI finding validation, is
+defined in `docs/review-process.md`.
 
 ## Retiring Development
 

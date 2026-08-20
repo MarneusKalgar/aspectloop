@@ -135,9 +135,14 @@ Mocked web E2E runs only for web-relevant paths or an explicit manual request.
 Required runs use the lockfile-matched, digest-pinned Playwright image; other
 changes record an intentional skip that is validated by the aggregate gate.
 
-GitHub must run the workflow once before its check names can be selected in the
-repository rules. Dockerfile Roast configuration and final activation belong
-to M03-C. See `docs/branch-governance.md` for the human GitHub settings.
+Local verification, read-only AI diff review, optional specialist routing, and
+human validation of AI findings are defined in `docs/review-process.md`. The
+repository router is `.agents/skills/aspectloop-code-review/SKILL.md`.
+
+GitHub has registered the workflow check names. The human repository rules must
+require the stable `All Checks Passed` aggregate. Dockerfile Roast configuration
+and final activation belong to M03-C. See `docs/branch-governance.md` for the
+remaining human GitHub settings.
 
 ### Local-Stack Human Verification
 
