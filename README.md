@@ -131,6 +131,12 @@ workflow is read-only, pins actions to full commit SHAs, uses a fresh `npm ci`
 per trust-isolated job, and retains Playwright failure artifacts for three
 days.
 
+The Quality job validates dependency policy before `npm ci`. Install-tree
+checks remain post-install, while advisory registry-signature verification runs
+last with a two-minute timeout. Docker-policy workflows and their shared change
+detectors are Docker-owned paths, so policy implementation changes cannot skip
+Docker validation.
+
 Mocked web E2E runs only for web-relevant paths or an explicit manual request.
 Required runs use the lockfile-matched, digest-pinned Playwright image; other
 changes record an intentional skip that is validated by the aggregate gate.

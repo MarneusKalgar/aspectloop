@@ -204,7 +204,8 @@ function isInstallScriptCovered(allowScripts, packageName, version) {
 }
 
 /**
- * Reads selected effective values from the npm executable running this script.
+ * Reads selected effective values from the active npm executable. Direct
+ * invocations use the npm executable resolved from PATH.
  *
  * @param {Readonly<Record<string, string>>} expectedConfig Expected
  * security-sensitive keys.
@@ -213,20 +214,21 @@ function isInstallScriptCovered(allowScripts, packageName, version) {
 function readEffectiveNpmConfig(expectedConfig) {
   const config = new Map();
   const npmExecPath = process.env.npm_execpath;
-
-  if (!npmExecPath) {
-    errors.push('effective npm policy requires execution through an npm script');
-    return config;
-  }
+  const npmExecutable = npmExecPath ? process.execPath : 'npm';
+  const npmArguments = npmExecPath ? [npmExecPath] : [];
 
   for (const key of Object.keys(expectedConfig)) {
     try {
-      const value = execFileSync(process.execPath, [npmExecPath, 'config', 'get', key], {
-        cwd: repositoryRoot,
-        encoding: 'utf8',
-        env: process.env,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }).trim();
+      const value = execFileSync(
+        npmExecutable,
+        [...npmArguments, 'config', 'get', key],
+        {
+          cwd: repositoryRoot,
+          encoding: 'utf8',
+          env: process.env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      ).trim();
 
       config.set(key, value);
     } catch {

@@ -65,13 +65,13 @@ jobs:
           test "$(node --version)" = "v${NODE_VERSION}"
           test "$(npm --version)" = "${NPM_VERSION}"
 
+      - name: Check dependency policy before installation
+        id: dependency_policy
+        run: node scripts/dependencies/check-policy.mjs
+
       - name: Install dependencies from lockfile
         id: install
         run: npm ci
-
-      - name: Check dependency policy
-        id: dependency_policy
-        run: npm run deps:policy
 
       - name: Check install-script coverage
         id: install_scripts
@@ -80,11 +80,6 @@ jobs:
       - name: Audit high and critical vulnerabilities
         id: dependency_audit
         run: npm run deps:audit
-
-      - name: Verify registry signatures and attestations
-        id: dependency_signatures
-        continue-on-error: true
-        run: npm run deps:signatures
 
       - name: Detect dependency-policy changes
         id: dependency_changes
@@ -97,6 +92,12 @@ jobs:
       - name: Build all workspaces
         id: build
         run: npm run build
+
+      - name: Verify registry signatures and attestations
+        id: dependency_signatures
+        continue-on-error: true
+        timeout-minutes: 2
+        run: npm run deps:signatures
 
       - name: Write quality summary
         if: always()

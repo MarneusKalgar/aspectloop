@@ -15,12 +15,16 @@ export const CHANGE_GROUPS = Object.freeze({
   docker: Object.freeze({
     changedReason: 'Docker-related changes detected',
     paths: Object.freeze([
+      '.github/workflows/pr-checks.yml',
+      '.github/workflows/reusable-docker-policy.yml',
       '.dockerignore',
       'apps/gateway-api/Dockerfile.dev',
       'infra/local/compose.local.yml',
       'mocks/persistence-service/.dockerignore',
       'mocks/persistence-service/Dockerfile.dev',
       'droast.toml',
+      'scripts/ci/change-groups.mjs',
+      'scripts/ci/detect-changes.mjs',
     ]),
     unchangedReason: 'no Docker-related changes',
   }),

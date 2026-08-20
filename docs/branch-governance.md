@@ -38,18 +38,24 @@ The `PR Checks` workflow runs for pull requests targeting `main`, pushes to
 `main`, and manual diagnostic dispatches. Superseded runs for the same pull
 request or ref are cancelled.
 
-| Check               | Responsibility                                                                                                                         |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `Quality`           | Exact toolchain, clean lockfile install, dependency policy, audit/signature evidence, deterministic verification, and workspace builds |
-| `Web E2E Scope`     | Fixed-path decision that requires or intentionally skips the mocked browser workflow                                                   |
-| `Mocked Web E2E`    | Lockfile-matched Playwright container and the real Vite UI against browser MSW when required                                           |
-| `Docker Policy`     | Reusable, path-aware Compose validation and development-image builds                                                                   |
-| `All Checks Passed` | Stable aggregate that validates required outcomes and explicitly authorized skips                                                      |
+| Check               | Responsibility                                                                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `Quality`           | Exact toolchain, pre-install dependency policy, clean lockfile install, audit/signature evidence, deterministic verification, and builds |
+| `Web E2E Scope`     | Fixed-path decision that requires or intentionally skips the mocked browser workflow                                                     |
+| `Mocked Web E2E`    | Lockfile-matched Playwright container and the real Vite UI against browser MSW when required                                             |
+| `Docker Policy`     | Reusable, path-aware Compose validation and development-image builds                                                                     |
+| `All Checks Passed` | Stable aggregate that validates required outcomes and explicitly authorized skips                                                        |
 
 Every trust-isolated application-check job performs its own `npm ci`; only
 npm's download cache is shared through `setup-node`. Actions and external
 containers are pinned to reviewed immutable references, job timeouts are
 bounded, and Playwright failure artifacts expire after three days.
+
+`Quality` runs the dependency-policy checker directly before `npm ci`, after
+the exact Node/npm contract is asserted. Install-tree checks remain after
+installation. Registry-signature verification runs last with a two-minute step
+timeout and remains advisory, so registry latency cannot delay required
+verification or builds beyond that bound.
 
 Mocked web E2E is required for `apps/web/**`, root toolchain/dependency inputs,
 the owning workflow, and the fixed CI change-detector files. Backend-only and
@@ -69,7 +75,9 @@ intentional skip when no Docker-owned path changed. During M03-B it validates
 Compose and the relevant development images. M03-C task 10.7 owns
 `droast.toml`, the pinned Dockerfile Roast integration, and the final blocking
 Docker policy; the M03-B job rejects a Roast configuration that appears without
-its execution step so that policy cannot be mistakenly bypassed.
+its execution step so that policy cannot be mistakenly bypassed. The Docker
+path group includes both owning workflows and the shared change-detector files,
+so changes to Docker-policy implementation trigger the policy itself.
 
 ## Workflow Implementation Conventions
 
@@ -104,9 +112,10 @@ under `scripts/ci/`. Node/npm bootstrap steps remain explicit while only
 `Quality` and `Mocked Web E2E` share the complete contract; reconsider a local
 composite action when a third job adopts it.
 
-Registry-signature verification is visible but advisory until its first GitHub
-runner baseline is reviewed. Dependency policy, install-script coverage, and
-the classified high/critical audit baseline are blocking.
+Registry-signature verification is visible, advisory, and bounded to two
+minutes until its GitHub-runner baseline is promoted. Dependency policy,
+install-script coverage, and the classified high/critical audit baseline are
+blocking.
 
 ## Expected Main Rules
 

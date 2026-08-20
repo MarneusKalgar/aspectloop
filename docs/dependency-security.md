@@ -45,11 +45,12 @@ baseline:
 | Release-age exceptions | None                                                                            |
 
 M03-B promotes the reproducible checks into pull-request CI. The `Quality` job
-installs and asserts the exact toolchain, performs a clean `npm ci`, and blocks
-on dependency policy, install-script coverage, and high/critical audit
-findings. Registry signatures and attestations remain visible but advisory
-until the first GitHub-runner baseline is reviewed. M03-C applies the same exact
-Node/npm pair to development containers.
+installs and asserts the exact toolchain, runs dependency policy directly
+before `npm ci`, and then blocks on install-script coverage, high/critical audit
+findings, deterministic verification, and builds. Registry signatures and
+attestations run last with a two-minute timeout; they remain visible but
+advisory until the GitHub-runner baseline is promoted. M03-C applies the same
+exact Node/npm pair to development containers.
 
 ## Installation Policy
 
@@ -127,10 +128,12 @@ npm run deps:signatures
 
 `deps:policy` checks manifests and the lockfile for prohibited dependency
 sources, verifies both committed and effective npm policy, and rejects
-uncovered lifecycle scripts. Invoke it through the root npm script so it can
-query the exact selected npm executable. Its checker and required-configuration
-model live together under `scripts/dependencies/`; they are handwritten quality
-infrastructure and remain covered by root formatting and linting.
+uncovered lifecycle scripts. Local use goes through the root npm script. CI
+invokes the checker directly before dependency installation, after asserting
+the exact npm version; direct invocation resolves that npm executable from
+`PATH`. Its checker and required-configuration model live together under
+`scripts/dependencies/`; they are handwritten quality infrastructure and remain
+covered by root formatting and linting.
 
 The effective-policy check reads only named security-sensitive keys. It rejects
 higher-precedence environment, user, global, or command configuration that
@@ -145,9 +148,10 @@ expiry.
 
 `deps:signatures` uses `npm audit signatures` to inspect registry signatures
 and supported provenance attestations. Coverage depends on package and registry
-metadata. M03-B runs the check with its full output and job-summary outcome but
-does not initially fail the pull request on this signal. A human reviews the
-first reproducible GitHub-runner baseline before promoting it to blocking.
+metadata. M03-B runs the check after required verification and builds, retains
+its full output and job-summary outcome, and limits it to two minutes. It does
+not initially fail the pull request on this signal. A human reviews the
+reproducible GitHub-runner baseline before promoting it to blocking.
 
 Never automate or use:
 
