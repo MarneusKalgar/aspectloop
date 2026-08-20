@@ -219,16 +219,12 @@ function readEffectiveNpmConfig(expectedConfig) {
 
   for (const key of Object.keys(expectedConfig)) {
     try {
-      const value = execFileSync(
-        npmExecutable,
-        [...npmArguments, 'config', 'get', key],
-        {
-          cwd: repositoryRoot,
-          encoding: 'utf8',
-          env: process.env,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      ).trim();
+      const value = execFileSync(npmExecutable, [...npmArguments, 'config', 'get', key], {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
 
       config.set(key, value);
     } catch {

@@ -51,7 +51,7 @@
     "verify:full": "npm run verify && npm run build && npm run test:e2e:mock"
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
+    "*.{js,mjs,ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
