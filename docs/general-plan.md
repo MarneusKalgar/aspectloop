@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-15
+Last updated: 2026-08-19
 
 ## Table Of Contents
 
@@ -426,7 +426,9 @@ flowchart LR
 
 The gateway owns schema-first GraphQL SDL. This decision aligns the NestJS MVP
 with future Java/Spring implementation and makes the public contract reviewable
-without reading TypeScript decorators.
+without reading TypeScript decorators. `docs/graphql-model.md` is the canonical
+detailed model for SDL ownership, generation, runtime consumption, and drift
+verification; this section retains only the architectural constraints.
 
 Contract principles:
 
@@ -893,6 +895,14 @@ release-age exceptions narrow and time bounded.
 
 ##### M03-B Verification and pull-request gates
 
+Status: In progress. The deterministic root verification command baseline was
+human-verified on 2026-08-16. Canonical GraphQL generation, clean drift checking,
+and the expanded aggregate verification commands are also human-verified. The
+GitHub PR workflow, PR template, and first complete GitHub run are verified. The
+local review process and repository review-router skill were implemented on
+2026-08-20; branch-rule activation and the first independent review trial remain
+human work.
+
 The milestone covers three review layers:
 
 1. **Local verification.** Add non-mutating root checks for formatting, lint,
@@ -909,13 +919,27 @@ The milestone covers three review layers:
 
 CI installs and asserts the exact Node/npm contract selected by M03-A before a
 clean dependency installation. It caches only npm downloads, not `node_modules`.
+The committed workflow exposes independent `Quality`, `Mocked Web E2E`, and
+path-aware `Docker Policy` jobs behind one stable `All Checks Passed` sentinel.
+The Docker job is delegated to a same-commit reusable workflow, while fixed
+dependency and Docker change groups live under `scripts/ci/`. M03-C adds and
+activates the pinned Dockerfile Roast policy after its baseline and exceptions
+are classified. A local Node/npm bootstrap composite action remains deferred
+until at least a third job needs the same complete setup sequence.
 
-M03-B also introduces a committed repository skill under
-`.agents/skills/<new-product-name>-code-review/`. It classifies changed paths
-and risk surfaces, selects only the relevant installed specialist skills, runs
-or requests the appropriate reviews, and produces one normalized review report.
-It must not indiscriminately load every installed skill or modify code unless
-the user separately requests a fix.
+Mocked web E2E uses a lightweight fixed-path scope job. Web-relevant changes run
+inside the digest-pinned Playwright image matching the lockfile; unrelated
+changes intentionally skip the heavy job, and the aggregate sentinel verifies
+that the skip was authorized by the scope output. Manual dispatch may force the
+browser workflow.
+
+M03-B also introduces the committed repository skill at
+`.agents/skills/aspectloop-code-review/`. It classifies changed paths and risk
+surfaces, selects only compatible specialist capabilities available in the
+current environment, and produces one normalized review report. Named external
+skills are optional examples rather than repository dependencies. The router
+must not indiscriminately load every available skill or modify code unless the
+user separately requests a fix.
 
 ##### M03-C Local container hardening
 
@@ -1304,32 +1328,32 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status    | Depends on         | Outcome                                                                                              |
-| ----- | ---------------------------------------------- | -------------- | -------- | --------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                   |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior    |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned    |
-| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Planned   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow       |
-| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Planned   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                  |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content   |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned   | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04              |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned   | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack     |
-| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned   | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation         |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned   | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                             |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned   | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                        |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned   | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                  |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned   | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned   | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                    |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned   | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks            |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned   | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback  |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned   | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                          |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned   | AI00, M05          | One document type extracted from digital PDFs with structured output                                 |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned   | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned   | AI11               | Evidence-based expansion to scans/images and repeated rows                                           |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned   | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                  |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned   | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                 |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned   | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                         |
+| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                              |
+| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                   |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior    |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned    |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | In Progress | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow       |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Planned     | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                  |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned     | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content   |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned     | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04              |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack     |
+| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation         |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                             |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                        |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                  |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                    |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks            |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback  |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                          |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                 |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                           |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                  |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                 |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                         |
 
 #### Dependency view
 

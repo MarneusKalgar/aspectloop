@@ -1,0 +1,45 @@
+export const CHANGE_GROUPS = Object.freeze({
+  dependencies: Object.freeze({
+    changedReason: 'dependency-policy surfaces changed',
+    paths: Object.freeze([
+      '.npmrc',
+      'package.json',
+      'package-lock.json',
+      ':(glob)apps/*/package.json',
+      ':(glob)mocks/*/package.json',
+      ':(glob)packages/*/package.json',
+      ':(glob)scripts/dependencies/**',
+    ]),
+    unchangedReason: 'no dependency-policy changes',
+  }),
+  docker: Object.freeze({
+    changedReason: 'Docker-related changes detected',
+    paths: Object.freeze([
+      '.github/workflows/pr-checks.yml',
+      '.github/workflows/reusable-docker-policy.yml',
+      '.dockerignore',
+      'apps/gateway-api/Dockerfile.dev',
+      'infra/local/compose.local.yml',
+      'mocks/persistence-service/.dockerignore',
+      'mocks/persistence-service/Dockerfile.dev',
+      'droast.toml',
+      'scripts/ci/change-groups.mjs',
+      'scripts/ci/detect-changes.mjs',
+    ]),
+    unchangedReason: 'no Docker-related changes',
+  }),
+  web_e2e: Object.freeze({
+    changedReason: 'web E2E-relevant changes detected',
+    paths: Object.freeze([
+      '.github/workflows/pr-checks.yml',
+      '.npmrc',
+      '.nvmrc',
+      'apps/web/**',
+      'package.json',
+      'package-lock.json',
+      'scripts/ci/change-groups.mjs',
+      'scripts/ci/detect-changes.mjs',
+    ]),
+    unchangedReason: 'no web E2E-relevant changes',
+  }),
+});

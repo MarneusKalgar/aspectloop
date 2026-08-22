@@ -117,8 +117,35 @@ They do not exercise:
 NestJS -> GraphQL transport -> services -> PostgreSQL -> RabbitMQ
 ```
 
-The tests are valid mocked frontend E2E tests, but the current `test:e2e` name
-does not communicate that boundary.
+The tests are valid mocked frontend E2E tests. Their canonical command is
+`npm run test:e2e:mock` from the repository root, which makes that boundary
+explicit.
+
+The configuration defines only the Chromium project and defaults to headless
+execution. The local M03-B baseline installs only the matching Chromium
+headless shell:
+
+```bash
+npm exec --workspace @aspectloop/web -- playwright install --only-shell chromium
+```
+
+The browser binary is stored in Playwright's user cache rather than the
+repository. Repeat the command when an updated Playwright package requires a
+new browser revision. Full Chromium, Firefox, and WebKit are not part of the
+current deterministic test contract.
+
+Pull-request CI does not repeat that host installation. Web-relevant runs use
+the digest-pinned official Noble image matching the exact Playwright package
+resolved by `package-lock.json`; the job verifies the package/image version
+contract before starting tests. This avoids a per-run `apt` refresh and browser
+download on GitHub-hosted runners.
+
+The mocked browser workflow is blocking only when fixed web E2E paths change:
+`apps/web/**`, root Node/npm and dependency inputs, the owning workflow, or the
+fixed CI change-detector files. Backend-only and documentation-only pull
+requests produce a successful intentional skip. A manual workflow dispatch may
+force execution. The aggregate merge sentinel validates both required runs and
+intentional skips rather than treating every skipped job as acceptable.
 
 ### 4.4 Current mock drift
 
@@ -165,12 +192,18 @@ The preferred contract chain is:
 
 ```text
 gateway-owned SDL
+  -> standalone Nest generator emits sorted gateway transport definitions
   -> GraphQL Code Generator validates frontend documents
   -> generated operation and variable types
+  -> non-mutating temporary generation detects tracked-artifact drift
   -> typed MSW handlers and fixtures
 ```
 
-No schema file is copied into `apps/web`.
+No schema file is copied into `apps/web`. Run `npm run graphql:generate` to
+refresh both tracked outputs in gateway-then-web order and
+`npm run graphql:check` to validate them without writing to tracked paths. The
+drift check is part of the root `verify` contract. See `docs/graphql-model.md`
+for the complete source, generated-artifact, runtime, and compatibility model.
 
 ### 5.3 Handler hardening
 
@@ -191,16 +224,17 @@ Storybook scenarios provide a measured reason for it.
 
 ## 6. End-To-End Modes
 
-The intended commands are conceptually:
+The command boundaries are:
 
 ```text
-test:e2e:mock
-test:e2e:local
-test:e2e:stage
+test:e2e:mock  current MSW-backed Playwright suite
+test:e2e:local planned automated local system suite
+test:e2e:stage planned deployed-stage suite
 ```
 
-Exact scripts and Playwright configurations are introduced by their owning
-milestones.
+Only `test:e2e:mock` exists today. Local and stage command implementations are
+introduced by their owning milestones after their infrastructure and fixture
+contracts exist.
 
 ### 6.1 Mocked frontend E2E
 
@@ -256,6 +290,18 @@ Stage testing has two levels:
    asynchronous behavior, and failure recovery.
 
 No MSW worker runs in local or stage system modes.
+
+### 6.4 Current local-stack smoke
+
+The current local Compose stack has a separate human verification flow under
+`Local-Stack Human Verification` in the repository README. It starts the local
+infrastructure, runs migration and seed wrappers, checks gateway and persistence
+health, and exercises sign-up, sign-in, and correction-inbox loading through the
+live web application.
+
+This flow intentionally has no `test:e2e:local` command yet. It uses ignored
+environment configuration and mutable local state, so it is not part of
+`verify` or `verify:full` and must not be reported as an automated system suite.
 
 ## 7. Local Versus Stage System E2E
 
@@ -393,7 +439,7 @@ This avoids maintaining separate local and stage copies of the same workflow.
 | Milestone     | Testing responsibility                                                                                                  |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign |
-| M03           | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow            |
+| M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow            |
 | M04           | Make databases, migrations, seed, MinIO, and local service infrastructure reusable by tests                             |
 | M05-M06       | Add focused extraction and correction service integration and contract coverage                                         |
 | M07           | Add the first portable upload-to-submit local system Playwright workflow                                                |

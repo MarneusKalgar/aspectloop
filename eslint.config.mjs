@@ -19,6 +19,7 @@ export default [
       '**/*.stories.{ts,tsx}',
       'apps/gateway-api/src/graphql/generated/**',
       'apps/web/src/graphql/generated/**',
+      'apps/web/storybook-static',
     ],
   },
   eslint.configs.recommended,
@@ -92,9 +93,14 @@ export default [
   },
   {
     files: ['**/*.{js,mjs}'],
+    ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       globals: {
         ...globals.node,
+      },
+      parserOptions: {
+        project: false,
+        projectService: false,
       },
       sourceType: 'module',
     },
