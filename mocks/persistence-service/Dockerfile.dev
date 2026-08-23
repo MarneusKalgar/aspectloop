@@ -1,10 +1,13 @@
-FROM node:24-alpine
+FROM node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995
 
 WORKDIR /app
 
-COPY package.json ./
-COPY src ./src
+RUN mkdir -p /data && chown node:node /app /data
+
+COPY --chown=node:node src ./src
+
+USER node
 
 EXPOSE 8090
 
-CMD ["npm", "start"]
+CMD ["node", "src/server.mjs"]

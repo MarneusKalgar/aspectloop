@@ -662,6 +662,7 @@ npm run local:up
 npm run local:migrate
 npm run local:seed
 npm run local:reset
+npm run local:db:admin
 npm run local:observability
 ```
 
@@ -670,8 +671,9 @@ seed jobs when requested, remove their containers with
 `docker compose run --rm`, and expose deterministic health/reset operations.
 Application startup must not silently execute migrations.
 
-`local:observability` starts an optional Compose profile. The core local stack
-must remain usable without the additional telemetry services.
+`local:db:admin` and `local:observability` start optional Compose profiles. The
+core local stack must remain usable without database-administration or telemetry
+services.
 
 PostgreSQL initialization creates `platform_db`, `extraction_db`, and
 `correction_db` plus one least-privilege application role for each. Compose
@@ -689,11 +691,46 @@ RabbitMQ
 MinIO
 persistence-service mock (while the black-box adapter remains relevant)
 Redis (optional profile until realtime/multi-instance work)
+pgAdmin (optional local developer-tools profile from M04)
 ```
 
 The optional observability profile adds Prometheus, Grafana, Loki, Tempo, an
 OpenTelemetry Collector, and Grafana Alloy. These services are not dependencies
 of normal application startup.
+
+#### Optional local database administration
+
+M04 adds pgAdmin as P1 developer tooling after `platform_db`, `extraction_db`,
+`correction_db`, and their service roles exist. It is not part of M03-C container
+hardening and must not block M04's P0 data foundation.
+
+The pgAdmin integration follows these boundaries:
+
+- run it only through an optional `devtools` Compose profile and a dedicated
+  root npm wrapper such as `local:db:admin`;
+- keep `local:up` and every application service independent of pgAdmin;
+- connect to PostgreSQL through the Compose service address `postgres:5432`,
+  while binding the browser UI only to `127.0.0.1` on a documented local port;
+- pin the image version and reviewed digest, and give pgAdmin an explicit named
+  configuration volume rather than an anonymous hash-named volume;
+- register separate connections using each service's least-privilege role so
+  database ownership remains visible; an administrative connection is local-only
+  troubleshooting access and is not an application credential;
+- use the UI primarily for inspection and diagnostics. Schema and durable data
+  changes still go through human-generated migrations and explicit seed commands;
+- do not deploy pgAdmin to stage or expose it publicly;
+- do not commit pgAdmin credentials, saved connection secrets, or exported
+  server definitions containing secrets.
+
+The current detached anonymous pgAdmin volume is retained until its saved
+connections are reviewed. M04 either recreates useful non-secret configuration
+in the named volume or discards the anonymous volume; its hash must not become a
+durable Compose dependency.
+
+The tradeoff is accepted only as optional tooling: pgAdmin provides convenient
+schema, migration-history, role, and seed-data inspection, but adds a large
+image, memory/startup cost, another administrative attack surface, and a risk of
+normalizing manual database changes.
 
 Concerns:
 
@@ -702,6 +739,7 @@ Concerns:
 - give each backend application an independent datasource, migration job, and
   seed command;
 - keep fixture resets explicit to avoid surprising data loss;
+- keep optional administrative UIs local-only and outside default startup;
 - do not put secrets in checked-in local env files.
 
 ### Cloud And Delivery
@@ -942,6 +980,15 @@ must not indiscriminately load every available skill or modify code unless the
 user separately requests a fix.
 
 ##### M03-C Local container hardening
+
+M03-C completed on 2026-08-23 after human verification. The clean-cache gateway
+image decreased from `1.99 GB` to `600.9 MB`; the intentionally minimal
+persistence mock remained `230.05 MB`. Both became healthy with Node `24.19.0`
+and npm `12.0.2`, migration and seed jobs retained their one-shot cleanup,
+GraphQL and GraphiQL responded, and the gateway contained neither frontend
+dependencies nor unused compiler tools. Dockerfile Roast reported zero errors;
+its retained `DF011` persistence-mock warning is classified as accepted
+development-image behavior rather than globally suppressed.
 
 M03-C corrects the existing local development images without turning them into
 production artifacts:
@@ -1328,32 +1375,32 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                              |
-| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ---------------------------------------------------------------------------------------------------- |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                   |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior    |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned    |
-| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | In Progress | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow       |
-| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Planned     | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                  |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned     | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content   |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned     | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04              |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0       | Planned     | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack     |
-| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation         |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                             |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                        |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                  |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                    |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks            |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback  |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                          |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                 |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                           |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                  |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                 |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                         |
+| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                                                  |
+| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                                       |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior                        |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned                        |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared                     |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | In Progress | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                           |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                                      |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned     | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                       |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned     | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04                                  |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Planned     | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack, optional local pgAdmin |
+| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                             |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                                 |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                                            |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                                      |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                                    |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                                        |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, cross-service telemetry, runbooks                                |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Hardened immutable backend images, static web delivery, stage probes, SBOM/security gates, rollback                      |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                                              |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                                     |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                                    |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                                               |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                                      |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                                     |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                                             |
 
 #### Dependency view
 

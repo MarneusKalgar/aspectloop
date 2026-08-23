@@ -31,6 +31,7 @@
     "deps:audit": "npm audit --audit-level=high",
     "deps:signatures": "npm audit signatures",
     "deps:scripts:pending": "npm install-scripts ls",
+    "docker:policy": "bash scripts/docker/check-policy.sh",
     "local:up": "bash infra/local/scripts/local-compose.sh up --build -d",
     "local:start": "bash infra/local/scripts/local-compose.sh up -d",
     "local:migrate": "bash infra/local/scripts/local-migrate.sh",

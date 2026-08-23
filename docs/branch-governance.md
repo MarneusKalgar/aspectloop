@@ -71,13 +71,13 @@ version contract and does not run host `apt` or download a browser at runtime.
 
 The Docker job is isolated in
 `.github/workflows/reusable-docker-policy.yml` and reports a successful
-intentional skip when no Docker-owned path changed. During M03-B it validates
-Compose and the relevant development images. M03-C task 10.7 owns
-`droast.toml`, the pinned Dockerfile Roast integration, and the final blocking
-Docker policy; the M03-B job rejects a Roast configuration that appears without
-its execution step so that policy cannot be mistakenly bypassed. The Docker
-path group includes both owning workflows and the shared change-detector files,
-so changes to Docker-policy implementation trigger the policy itself.
+intentional skip when no Docker-owned path changed. Required runs validate
+Compose, enforce the committed `droast.toml` policy, and build the gateway and
+persistence-mock development images. Dockerfile Roast uses a full-SHA-pinned
+action and its matching pinned runtime image; configured error findings block
+the job while warnings remain visible. The Docker path group includes both
+owning workflows and the shared change-detector files, so changes to
+Docker-policy implementation trigger the policy itself.
 
 ## Workflow Implementation Conventions
 

@@ -146,9 +146,33 @@ human validation of AI findings are defined in `docs/review-process.md`. The
 repository router is `.agents/skills/aspectloop-code-review/SKILL.md`.
 
 GitHub has registered the workflow check names. The human repository rules must
-require the stable `All Checks Passed` aggregate. Dockerfile Roast configuration
-and final activation belong to M03-C. See `docs/branch-governance.md` for the
-remaining human GitHub settings.
+require the stable `All Checks Passed` aggregate. See
+`docs/branch-governance.md` for the remaining human GitHub settings.
+
+### Dockerfile Policy
+
+Docker-owned pull requests run the `production` Dockerfile Roast preset before
+building the development images. The action and its runtime image are pinned to
+release `1.4.13`. Error-level findings block the Docker policy job; warnings
+remain visible for review. The only configured rule exception is `DF012` because
+the current development services define their health probes in Compose rather
+than in reusable production images.
+
+A human can run the same repository policy from the repository root without
+installing another local binary:
+
+```bash
+npm run docker:policy
+```
+
+This command lints container definitions only. It does not build images, inspect
+installed layers, scan image packages, or prove runtime health.
+
+The retained `DF011` warning for the persistence mock is classified as accepted
+development-image behavior: the mock has no dependency installation or build
+stage, so a multi-stage Dockerfile would not reduce its runtime contents. The
+warning remains visible instead of being globally suppressed because the rule
+can apply to future production Dockerfiles.
 
 ### Local-Stack Human Verification
 
@@ -340,6 +364,8 @@ M03-A is complete. The repository now has an explicit Node/npm contract,
 reviewed install-script policy, registry-source checks, a reproducible clean
 install, and a zero-vulnerability audit baseline. M03-B has implemented its
 deterministic commands and GitHub workflow; GitHub activation and the local
-review workflow remain. See
+review workflow remain. M03-C is complete with scoped Node/npm development
+images, healthy Compose services, verified one-shot database jobs, and a
+classified Dockerfile Roast policy. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

@@ -44,22 +44,18 @@ jobs:
         if: steps.docker_changes.outputs.changed == 'true'
         run: docker compose -f infra/local/compose.local.yml config --quiet
 
+      - name: Enforce Dockerfile policy
+        id: dockerfile_roast
+        if: steps.docker_changes.outputs.changed == 'true'
+        uses: immanuwell/dockerfile-roast@82698f68cdc4f4cde884b8ead3bebb1ace820e29 # v1.4.13
+        with:
+          files: .
+          image-tag: 1.4.13
+
       - name: Build development images
         id: docker_build
         if: steps.docker_changes.outputs.changed == 'true'
         run: docker compose -f infra/local/compose.local.yml build gateway-api persistence-mock
-
-      - name: Record pending Dockerfile Roast activation
-        if: steps.docker_changes.outputs.changed == 'true' && hashFiles('droast.toml') == ''
-        run: |
-          echo "Dockerfile Roast configuration and blocking policy belong to M03-C task 10.7." \
-            >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Reject unintegrated Dockerfile Roast configuration
-        if: steps.docker_changes.outputs.changed == 'true' && hashFiles('droast.toml') != ''
-        run: |
-          echo "::error title=Dockerfile Roast integration missing::droast.toml exists, but this workflow has no pinned Roast execution step. Complete M03-C task 10.7."
-          exit 1
 
       - name: Write Docker policy summary
         if: always()
@@ -68,6 +64,7 @@ jobs:
           CHANGED: ${{ steps.docker_changes.outputs.changed }}
           COMPOSE_OUTCOME: ${{ steps.compose.outcome }}
           REASON: ${{ steps.docker_changes.outputs.reason }}
+          ROAST_OUTCOME: ${{ steps.dockerfile_roast.outcome }}
         run: |
           {
             echo "## Docker Policy"
@@ -75,5 +72,6 @@ jobs:
             echo "Docker validation required: ${CHANGED:-unknown}."
             echo "Reason: ${REASON:-unavailable}."
             echo "Compose validation: ${COMPOSE_OUTCOME:-skipped}."
+            echo "Dockerfile Roast: ${ROAST_OUTCOME:-skipped}."
             echo "Development image build: ${BUILD_OUTCOME:-skipped}."
           } >> "$GITHUB_STEP_SUMMARY"

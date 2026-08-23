@@ -1,0 +1,8 @@
+preset = "production"
+min-severity = "warning"
+fail-on = "error"
+no-roast = true
+
+# M03-C owns development Dockerfiles whose runtime health is defined in Compose.
+# Remove this global exception when M11 introduces production Dockerfiles.
+skip = ["DF012"]
