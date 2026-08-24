@@ -192,14 +192,14 @@ contract boundary.
 
 #### Workspace ownership
 
-| Area                      | Owns                                                                      | Must not own                                          |
-| ------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `apps/web`                | Browser UI, routing, form state, GraphQL operations                       | Backend domain rules or internal service DTOs         |
-| `apps/gateway-api`        | Public GraphQL, auth/authz, request composition, realtime gateway         | PDF processing, correction state transitions, prompts |
-| `apps/extraction-service` | Extraction jobs, provider adapters, artifact validation, retries          | User-facing GraphQL or correction decisions           |
-| `apps/correction-service` | Sessions, overlays, validation, provenance assembly, submit, audit/outbox | Model-provider details or public auth                 |
-| `packages/backend-*`      | Code with genuine backend consumers in more than one application          | Service-owned entities and repositories               |
-| `packages/contracts`      | Framework-free event and internal transport contracts                     | NestJS decorators, TypeORM entities, React components |
+| Area                        | Owns                                                                                       | Must not own                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `apps/web`                  | Browser UI, routing, form state, GraphQL operations                                        | Backend domain rules or internal service DTOs                       |
+| `apps/gateway-api`          | Public GraphQL, auth/authz, request composition, realtime gateway                          | PDF processing, correction state transitions, prompts               |
+| `apps/extraction-service`   | Extraction jobs, provider adapters, artifact validation, retries                           | User-facing GraphQL or correction decisions                         |
+| `apps/correction-service`   | Sessions, overlays, validation, provenance assembly, submit, audit/outbox                  | Model-provider details or public auth                               |
+| `packages/backend-platform` | Shared environment-validation and bounded logging mechanics with multiple NestJS consumers | Service-owned schemas, entities, repositories, and service identity |
+| `packages/contracts`        | Framework-free event and internal transport contracts                                      | NestJS decorators, TypeORM entities, React components               |
 
 #### Monorepo decision
 
@@ -1047,8 +1047,8 @@ backend workflows increase telemetry volume:
 
 - request-scoped application logs carry a request ID and bounded business
   context instead of serializing the complete request object;
-- each HTTP request produces one compact completion event containing the
-  request ID, method, normalized route, status, duration, and error outcome;
+- each non-health HTTP request produces one compact completion event containing
+  the request ID, method, normalized route, status, duration, and error outcome;
 - GraphQL telemetry records a bounded operation name and outcome, never the
   operation document, variables, or response payload;
 - authentication and security events use internal identifiers rather than raw
@@ -1383,7 +1383,7 @@ only at milestone granularity.
 | M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared                     |
 | M03-B | Verification and pull-request gates            | Governance/QA  | P0       | In Progress | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                           |
 | M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                                      |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Planned     | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                       |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                       |
 | M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned     | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04                                  |
 | M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Planned     | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack, optional local pgAdmin |
 | M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                             |

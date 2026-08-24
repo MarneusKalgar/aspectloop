@@ -10,6 +10,12 @@ export class TokenService {
 
   constructor(private readonly jwtService: JwtService) {}
 
+  /**
+   * Generates an access token while logging only the internal subject identifier.
+   *
+   * @param user Authenticated user represented by the token.
+   * @returns A signed access token.
+   */
   generateAccessToken(user: User): Promise<string> {
     const payload: JwtPayload = {
       displayName: user.displayName,
@@ -19,7 +25,10 @@ export class TokenService {
       sub: user.id,
     };
 
-    this.logger.debug(`Generating access token for user ${user.id}`);
+    this.logger.debug({
+      event: 'auth.access_token.generating',
+      userId: user.id,
+    });
 
     return this.jwtService.signAsync(payload);
   }

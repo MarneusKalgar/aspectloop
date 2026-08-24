@@ -39,44 +39,99 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Authenticates a reviewer and emits a success event only after token creation.
+   *
+   * @param input Sign-in credentials from the GraphQL boundary.
+   * @returns The authenticated user and newly generated access token.
+   */
   async signIn(input: SignInInput): Promise<AuthPayload> {
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
 
     if (!email || !password) {
+      this.logger.warn({
+        event: 'auth.sign_in.failed',
+        outcome: 'failure',
+        reason: 'invalid_input',
+      });
       throw new BadRequestException('Email and password are required');
     }
 
     const user = await this.usersService.findByEmailWithPassword(email);
 
     if (!user?.passwordHash) {
+      this.logger.warn({
+        event: 'auth.sign_in.failed',
+        outcome: 'failure',
+        reason: 'invalid_credentials',
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await this.passwordService.verify(password, user.passwordHash);
 
     if (!isPasswordValid) {
+      this.logger.warn({
+        event: 'auth.sign_in.failed',
+        outcome: 'failure',
+        reason: 'invalid_credentials',
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    this.logger.log(`User signed in: ${user.email}`);
+    let accessToken: string;
+
+    try {
+      accessToken = await this.tokenService.generateAccessToken(user);
+    } catch (error) {
+      this.logger.error({
+        event: 'auth.sign_in.failed',
+        outcome: 'failure',
+        reason: 'token_generation_failed',
+        userId: user.id,
+      });
+      throw error;
+    }
+
+    this.logger.log({
+      event: 'auth.sign_in.succeeded',
+      outcome: 'success',
+      userId: user.id,
+    });
 
     return {
-      accessToken: await this.tokenService.generateAccessToken(user),
+      accessToken,
       user,
     };
   }
 
+  /**
+   * Records completion of the current stateless sign-out flow.
+   *
+   * @param authUser Authenticated request identity.
+   * @returns A successful sign-out payload.
+   */
   async signOut(authUser: AuthUser): Promise<SignOutPayload> {
     const user = await this.getCurrentUser(authUser);
 
-    this.logger.log(`User signed out: ${user.email}`);
+    this.logger.log({
+      event: 'auth.sign_out.succeeded',
+      outcome: 'success',
+      userId: user.id,
+    });
 
     return {
       success: true,
     };
   }
 
+  /**
+   * Creates a reviewer account without logging supplied identity or credentials.
+   *
+   * @param input Registration values from the GraphQL boundary.
+   * @returns The created user in the stable sign-up payload.
+   */
   async signUp(input: SignUpInput): Promise<SignUpPayload> {
     const email = normalizeEmail(input.email);
     const displayName = input.displayName.trim();
@@ -97,6 +152,11 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(email);
 
     if (existingUser) {
+      this.logger.warn({
+        event: 'auth.sign_up.failed',
+        outcome: 'failure',
+        reason: 'identity_conflict',
+      });
       throw new ConflictException('User with this email already exists');
     }
 
@@ -107,7 +167,11 @@ export class AuthService {
       passwordHash,
     });
 
-    this.logger.log(`User signed up: ${user.email}`);
+    this.logger.log({
+      event: 'auth.sign_up.succeeded',
+      outcome: 'success',
+      userId: user.id,
+    });
 
     return {
       success: true,

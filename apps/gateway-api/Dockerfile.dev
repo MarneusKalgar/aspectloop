@@ -12,6 +12,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json .npmrc ./
 COPY apps/gateway-api/package.json ./apps/gateway-api/package.json
+COPY packages/backend-platform/package.json ./packages/backend-platform/package.json
 
 RUN HUSKY=0 npm ci \
       --workspace @aspectloop/gateway-api \
@@ -25,6 +26,9 @@ WORKDIR /app
 COPY --from=dependencies --chown=node:node /app ./
 COPY --chown=node:node tsconfig.base.json ./
 COPY --chown=node:node apps/gateway-api ./apps/gateway-api
+COPY --chown=node:node packages/backend-platform ./packages/backend-platform
+
+RUN npm run build --workspace @aspectloop/backend-platform
 
 USER node
 

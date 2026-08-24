@@ -122,23 +122,25 @@ The tests are valid mocked frontend E2E tests. Their canonical command is
 explicit.
 
 The configuration defines only the Chromium project and defaults to headless
-execution. The local M03-B baseline installs only the matching Chromium
-headless shell:
+execution. Before each mocked E2E run, the workspace `pretest` lifecycle asks
+Playwright to ensure that only the matching Chromium headless shell is present:
 
 ```bash
-npm exec --workspace @aspectloop/web -- playwright install --only-shell chromium
+npm run test:e2e:mock
 ```
 
-The browser binary is stored in Playwright's user cache rather than the
-repository. Repeat the command when an updated Playwright package requires a
-new browser revision. Full Chromium, Firefox, and WebKit are not part of the
-current deterministic test contract.
+The check is idempotent and does not download anything when the required shell
+already exists. The browser binary is stored in Playwright's user cache rather
+than the repository, so the guard restores it after cache cleanup and obtains a
+new revision after a Playwright update. It can also be run independently with
+`npm run test:e2e:browser:ensure --workspace @aspectloop/web`. Full Chromium,
+Firefox, and WebKit are not part of the current deterministic test contract.
 
-Pull-request CI does not repeat that host installation. Web-relevant runs use
-the digest-pinned official Noble image matching the exact Playwright package
-resolved by `package-lock.json`; the job verifies the package/image version
-contract before starting tests. This avoids a per-run `apt` refresh and browser
-download on GitHub-hosted runners.
+The same guard runs in pull-request CI, where the digest-pinned official Noble
+image already contains the browser matching the exact Playwright package
+resolved by `package-lock.json`. The job verifies the package/image version
+contract before starting tests, so the guard reuses the image artifact without
+a per-run `apt` refresh or browser download.
 
 The mocked browser workflow is blocking only when fixed web E2E paths change:
 `apps/web/**`, root Node/npm and dependency inputs, the owning workflow, or the

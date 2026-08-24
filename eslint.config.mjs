@@ -59,15 +59,22 @@ export default [
     },
   },
   {
-    files: [
-      'apps/web/codegen.ts',
-      'apps/web/vite.config.ts',
-    ],
+    files: ['apps/web/codegen.ts', 'apps/web/vite.config.ts'],
     languageOptions: {
       parserOptions: {
         project: './apps/web/tsconfig.node.json',
         projectService: false,
         tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['apps/gateway-api/test/**/*.ts', 'packages/backend-platform/test/**/*.ts'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      parserOptions: {
+        project: false,
+        projectService: false,
       },
     },
   },

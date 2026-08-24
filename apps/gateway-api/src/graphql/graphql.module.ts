@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { JsonScalar } from './scalars/json.scalar';
 import { createDisableIntrospectionPlugin } from './utils/createDisableIntrospectionPlugin';
+import { createGraphqlLoggingPlugin } from './utils/createGraphqlLoggingPlugin';
 import { maskGraphqlError } from './utils/maskGraphqlError';
 
 @Module({
@@ -22,6 +23,11 @@ import { maskGraphqlError } from './utils/maskGraphqlError';
           ? 'dist/graphql/schema/**/*.graphql'
           : 'src/graphql/schema/**/*.graphql';
         const disableIntrospectionPlugin = createDisableIntrospectionPlugin(isRuntimeBuild);
+        const plugins = [createGraphqlLoggingPlugin()];
+
+        if (disableIntrospectionPlugin) {
+          plugins.push(disableIntrospectionPlugin);
+        }
 
         return {
           context: ({ req }: { req: unknown }) => ({ req }),
@@ -30,7 +36,7 @@ import { maskGraphqlError } from './utils/maskGraphqlError';
           logging: false,
           maskedErrors: { maskError: maskGraphqlError },
           path: '/graphql',
-          plugins: disableIntrospectionPlugin ? [disableIntrospectionPlugin] : [],
+          plugins,
           sortSchema: true,
           stopOnApplicationShutdown: false,
           typePaths: [join(process.cwd(), schemaGlob)],

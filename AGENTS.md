@@ -37,6 +37,14 @@
   human verification, completion criteria, risks, and explicit exclusions.
 - Keep the general plan high level; do not duplicate milestone implementation
   details there.
+- During implementation, record status, deviations, open questions, and human
+  verification results in the working milestone plan only. Do not repeatedly
+  update canonical documentation for behavior that is still changing or has
+  not been human-verified.
+- After the human confirms the desired behavior, perform one documentation
+  synchronization pass for affected canonical docs, ADRs, and the general-plan
+  milestone status. Update them earlier only when documentation is itself the
+  deliverable or the user explicitly requests it.
 - Transfer durable decisions to `docs/decisions/` and durable feature behavior
   to canonical feature documentation instead of preserving stale plans.
 - Reference paths rather than fragile line numbers. Include code only when a

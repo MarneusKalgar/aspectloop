@@ -27,7 +27,11 @@ export function maskGraphqlError(error: unknown): Error {
     return error;
   }
 
-  logger.error(error);
+  logger.error({
+    errorType: getErrorType(error),
+    event: 'graphql.operation.failed',
+    outcome: 'failure',
+  });
 
   return new GraphQLError('Unexpected error.', {
     extensions: {
@@ -80,6 +84,19 @@ function findHttpException(error: unknown): HttpException | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Extracts only a bounded error category for internal diagnostics.
+ *
+ * @param error GraphQL or resolver error to classify.
+ * @returns A safe error class name without message, stack, or source document.
+ */
+function getErrorType(error: unknown): string {
+  const candidate = error instanceof GraphQLError ? error.originalError : error;
+  const name = candidate instanceof Error ? candidate.name : 'UnknownError';
+
+  return /^[_A-Za-z][_0-9A-Za-z]{0,63}$/.test(name) ? name : 'UnknownError';
 }
 
 /**

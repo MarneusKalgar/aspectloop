@@ -38,13 +38,13 @@ The `PR Checks` workflow runs for pull requests targeting `main`, pushes to
 `main`, and manual diagnostic dispatches. Superseded runs for the same pull
 request or ref are cancelled.
 
-| Check               | Responsibility                                                                                                                           |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `Quality`           | Exact toolchain, pre-install dependency policy, clean lockfile install, audit/signature evidence, deterministic verification, and builds |
-| `Web E2E Scope`     | Fixed-path decision that requires or intentionally skips the mocked browser workflow                                                     |
-| `Mocked Web E2E`    | Lockfile-matched Playwright container and the real Vite UI against browser MSW when required                                             |
-| `Docker Policy`     | Reusable, path-aware Compose validation and development-image builds                                                                     |
-| `All Checks Passed` | Stable aggregate that validates required outcomes and explicitly authorized skips                                                        |
+| Check               | Responsibility                                                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Quality`           | Toolchain, dependency policy, clean install, audit/signatures, deterministic verification, builds, and logging/privacy tests |
+| `Web E2E Scope`     | Fixed-path decision that requires or intentionally skips the mocked browser workflow                                         |
+| `Mocked Web E2E`    | Lockfile-matched Playwright container and the real Vite UI against browser MSW when required                                 |
+| `Docker Policy`     | Reusable, path-aware Compose validation and development-image builds                                                         |
+| `All Checks Passed` | Stable aggregate that validates required outcomes and explicitly authorized skips                                            |
 
 Every trust-isolated application-check job performs its own `npm ci`; only
 npm's download cache is shared through `setup-node`. Actions and external
@@ -53,9 +53,10 @@ bounded, and Playwright failure artifacts expire after three days.
 
 `Quality` runs the dependency-policy checker directly before `npm ci`, after
 the exact Node/npm contract is asserted. Install-tree checks remain after
-installation. Registry-signature verification runs last with a two-minute step
-timeout and remains advisory, so registry latency cannot delay required
-verification or builds beyond that bound.
+installation. The focused logging/privacy contract runs against built backend
+artifacts after all workspace builds. Registry-signature verification runs last
+with a two-minute step timeout and remains advisory, so registry latency cannot
+delay required verification or builds beyond that bound.
 
 Mocked web E2E is required for `apps/web/**`, root toolchain/dependency inputs,
 the owning workflow, and the fixed CI change-detector files. Backend-only and

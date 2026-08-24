@@ -1,23 +1,13 @@
-import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
+import { validateEnvironment } from '@aspectloop/backend-platform/config';
 
 import { EnvironmentVariables } from './env.schema';
 
-export function validateEnv(config: Record<string, unknown>) {
-  const validatedConfig = plainToInstance(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-  });
-
-  const errors = validateSync(validatedConfig, {
-    skipMissingProperties: false,
-  });
-
-  if (errors.length > 0) {
-    const messages = errors
-      .map((error) => Object.values(error.constraints ?? {}).join(', '))
-      .join('\n');
-    throw new Error(`Environment validation failed:\n${messages}`);
-  }
-
-  return validatedConfig;
+/**
+ * Validates raw correction environment values against the service-owned schema.
+ *
+ * @param config Raw environment configuration supplied by NestJS.
+ * @returns A transformed and validated correction-service configuration.
+ */
+export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
+  return validateEnvironment(EnvironmentVariables, config);
 }

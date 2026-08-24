@@ -22,6 +22,12 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
+  /**
+   * Persists a reviewer and logs only its generated internal identifier.
+   *
+   * @param input Validated user creation values.
+   * @returns The persisted user entity.
+   */
   async createUser(input: CreateUserInput): Promise<User> {
     const user = this.usersRepository.create({
       displayName: input.displayName,
@@ -31,9 +37,15 @@ export class UsersService {
       scopes: input.scopes ?? ['corrections:write'],
     });
 
-    this.logger.log(`Creating user ${user.email}`);
+    const savedUser = await this.usersRepository.save(user);
 
-    return this.usersRepository.save(user);
+    this.logger.log({
+      event: 'users.user.created',
+      outcome: 'success',
+      userId: savedUser.id,
+    });
+
+    return savedUser;
   }
 
   async findByEmail(email: string): Promise<null | User> {
