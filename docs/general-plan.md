@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-19
+Last updated: 2026-08-24
 
 ## Table Of Contents
 
@@ -31,6 +31,7 @@ Last updated: 2026-08-19
 - [7. Roadmap And Governance](#7-roadmap-and-governance)
   - [Priority Model](#priority-model)
   - [Milestone Roadmap](#milestone-roadmap)
+  - [External Agent Skill Adoption](#external-agent-skill-adoption)
   - [Key Risks And Responses](#key-risks-and-responses)
   - [Explicit Non-Goals](#explicit-non-goals)
   - [Immediate Next Plan](#immediate-next-plan)
@@ -1435,30 +1436,63 @@ used by every later milestone. M03-E evaluates external automation without
 blocking M04. M11 includes a final public-content and sensitive-material audit,
 but it does not repeat the product rename.
 
+### External Agent Skill Adoption
+
+AspectLoop adopts useful capabilities, not third-party workflow assumptions.
+External skill collections such as `mattpocock/skills` are references and
+optional tooling rather than repository prerequisites. Do not install an entire
+collection through an unreviewed `npx ...@latest` command. Before adapting a
+skill, review and pin its upstream revision, reconcile it with repository
+conventions, and preserve required license attribution when substantial text is
+copied.
+
+The repository router remains capability-based and must work when no optional
+global skill is installed. A project-local skill is justified only after the
+same workflow proves useful repeatedly; it should be a small original
+AspectLoop-specific adaptation rather than a vendored upstream workflow.
+
+| Capability                              | Decision and timing                                                          | AspectLoop constraints                                                                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writing for agents                      | Use as an occasional M03-B+ documentation audit reference                    | Keep `AGENTS.md` concise, link to canonical docs, and avoid duplicating established conventions                                                      |
+| Domain modeling and structured grilling | Pilot during M04 planning before data and artifact concepts become canonical | Ask focused questions and record provisional conclusions in the milestone plan; add a glossary only when demonstrated terminology drift warrants one |
+| Codebase design review                  | Borrow design-pressure questions for M04+ service and package decisions      | Retain legitimate terms such as service, API, and boundary; preserve AspectLoop ownership rules                                                      |
+| External research                       | Use selectively for M04, M10, and AI provider or architecture decisions      | Prefer primary sources, keep exploratory material under ignored `.raw/`, and promote only durable conclusions or ADRs                                |
+| Prototyping                             | Use only for explicitly disposable M07 or AI interaction experiments         | Put UI explorations in `apps/web/design/`; do not let unverified prototypes become production foundations                                            |
+| Environment wizard                      | Reconsider for M11 stage setup and runbooks                                  | Produce human-run checklists or scripts; do not execute deployment, secrets, or migrations automatically                                             |
+| Bug diagnosis                           | Borrow the hypothesis and feedback-loop method when useful                   | The agent may design the verification loop, but the human executes tests and smoke checks                                                            |
+
+Do not adopt unchanged skills that mandate TDD, autonomous implementation,
+parallel subagents, automatic canonical-document edits, or an issue-tracker
+workflow. Those conflict with AspectLoop's implementation-first approach,
+human-owned verification, delayed documentation synchronization, and approved
+`.plan/` milestone process. Existing review automation remains authoritative;
+a generic external code-review skill must not create a competing review path.
+
 ### Key Risks And Responses
 
-| Risk                                         | Response                                                                                   |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                 |
-| Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                  |
-| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views       |
-| Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys  |
-| Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                              |
-| Browser shows stale authenticated state      | Validate server-side at startup; refresh once, then clear and redirect                     |
-| Refresh-token replay extends a session       | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse         |
-| AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory        |
-| Too many skills dilute review focus          | Route by changed area and risk; select only a small relevant specialist set                |
-| Dockerfile lint is mistaken for image safety | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates          |
-| Artifact model duplicates too much data      | Store immutable blobs cheaply; DB keeps references and workflow metadata                   |
-| RabbitMQ/Compose complexity slows local work | One-command scripts, health checks, narrow service profiles, deterministic fixtures        |
-| Observability stack slows normal local work  | Keep it in an optional Compose profile with short retention and single-node components     |
-| Logs expose request or identity data         | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity |
-| Telemetry cardinality or volume grows        | Bound labels, sample traces, redact payloads, and set explicit retention limits            |
-| WebSocket introduces false consistency       | Notification-only events followed by authoritative refetch                                 |
-| AI output is trusted without evidence        | Strict schemas, eval thresholds, provenance, human approval, failure artifacts             |
-| Provider lock-in                             | Provider-neutral interfaces and shared eval datasets, with provider details isolated       |
-| Python course diverges from TS product       | Implement product harness in TS; use Python only where ecosystem value is concrete         |
-| Former name implies Elemica affiliation      | Use AspectLoop and a non-affiliation statement; audit public content before release        |
+| Risk                                         | Response                                                                                      |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                    |
+| Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                     |
+| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views          |
+| Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys     |
+| Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                                 |
+| Browser shows stale authenticated state      | Validate server-side at startup; refresh once, then clear and redirect                        |
+| Refresh-token replay extends a session       | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse            |
+| AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory           |
+| Too many skills dilute review focus          | Route by changed area and risk; select only a small relevant specialist set                   |
+| External skills impose conflicting workflows | Adapt capabilities selectively; keep repository conventions and human execution authoritative |
+| Dockerfile lint is mistaken for image safety | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates             |
+| Artifact model duplicates too much data      | Store immutable blobs cheaply; DB keeps references and workflow metadata                      |
+| RabbitMQ/Compose complexity slows local work | One-command scripts, health checks, narrow service profiles, deterministic fixtures           |
+| Observability stack slows normal local work  | Keep it in an optional Compose profile with short retention and single-node components        |
+| Logs expose request or identity data         | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity    |
+| Telemetry cardinality or volume grows        | Bound labels, sample traces, redact payloads, and set explicit retention limits               |
+| WebSocket introduces false consistency       | Notification-only events followed by authoritative refetch                                    |
+| AI output is trusted without evidence        | Strict schemas, eval thresholds, provenance, human approval, failure artifacts                |
+| Provider lock-in                             | Provider-neutral interfaces and shared eval datasets, with provider details isolated          |
+| Python course diverges from TS product       | Implement product harness in TS; use Python only where ecosystem value is concrete            |
+| Former name implies Elemica affiliation      | Use AspectLoop and a non-affiliation statement; audit public content before release           |
 
 ### Explicit Non-Goals
 
@@ -1474,6 +1508,7 @@ but it does not repeat the product rename.
   startup.
 - Coupling application instrumentation to a cloud-provider-specific telemetry
   SDK.
+- Blindly installing or vendoring third-party agent-skill collections.
 - Adding Promtail, Mimir, or a distributed observability deployment for the
   initial stage.
 - Splitting repositories before independent ownership/release pressure exists.
