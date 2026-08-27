@@ -9,7 +9,8 @@ affiliated with or endorsed by Elemica.
 The M01 repository-boundary refactor, M01.1 GraphQL remediation, M02 product
 rebrand, and M03-A toolchain and dependency-security foundation are complete.
 M03-B verification and pull-request gates are in progress; its deterministic
-root command baseline is complete and human-verified.
+root command baseline is complete and human-verified. M03-C local container
+hardening and M03-D logging/privacy baseline are complete.
 The existing product behavior remains in the gateway while the extraction and
 correction runtimes are independent health-only NestJS shells.
 
@@ -47,15 +48,19 @@ Expected versions are `v24.19.0` and `12.0.2`. `npm ci` is the normal clean,
 lockfile-based installation command. Dependency changes remain human-owned and
 use reviewed npm uninstall/install commands rather than manifest edits.
 
-The mocked browser suite uses only Playwright's Chromium project. Install its
-headless shell after the initial dependency installation and again after a
-Playwright update changes the required browser revision:
+The mocked browser suite uses only Playwright's Chromium project. Its canonical
+test command first asks Playwright to ensure the matching headless shell is in
+the local user cache:
 
 ```bash
-npm exec --workspace @aspectloop/web -- playwright install --only-shell chromium
+npm run test:e2e:mock
 ```
 
-This intentionally does not install Firefox, WebKit, or full headed Chromium.
+Playwright's install operation is idempotent: an existing matching shell is
+reused, while a missing shell is downloaded before the tests start. Run the
+guard independently with
+`npm run test:e2e:browser:ensure --workspace @aspectloop/web`. This
+intentionally does not install Firefox, WebKit, or full headed Chromium.
 
 ## Dependency Security
 
@@ -93,6 +98,7 @@ npm run type-check
 npm run graphql:check
 npm run test:unit:run
 npm run test:integration:run
+npm run test:logging:run
 npm run test:e2e:mock
 npm run verify
 npm run verify:full
@@ -102,10 +108,13 @@ The task 10.4 command baseline and the task 10.5 aggregate commands with
 GraphQL drift checking were human-verified on 2026-08-16 with Node `24.19.0`,
 npm `12.0.2`, and the Chromium headless shell.
 
-`verify` is the fast, non-mutating merge-preparation command. It checks
-formatting, lint, types, generated GraphQL drift, web unit tests, and web
-integration tests.
-`verify:full` adds every workspace build and the MSW-backed Playwright suite.
+`verify` is the fast merge-preparation command. It checks formatting, lint,
+types, generated GraphQL drift, web unit tests, and web integration tests. The
+backend lint/type commands prepare the ignored `backend-platform/dist` output
+required by NestJS workspace consumers; they do not modify tracked generated
+artifacts.
+`verify:full` adds every workspace build, the backend logging/privacy contract
+tests, and the MSW-backed Playwright suite.
 The Playwright command is named `test:e2e:mock` because it runs the real Vite
 UI against a mocked GraphQL backend, not the local Compose stack.
 
@@ -145,10 +154,37 @@ Local verification, read-only AI diff review, optional specialist routing, and
 human validation of AI findings are defined in `docs/review-process.md`. The
 repository router is `.agents/skills/aspectloop-code-review/SKILL.md`.
 
+The bounded backend event vocabulary, request-ID rules, environment behavior,
+and prohibited fields are defined in `docs/logging-and-privacy.md`.
+
 GitHub has registered the workflow check names. The human repository rules must
-require the stable `All Checks Passed` aggregate. Dockerfile Roast configuration
-and final activation belong to M03-C. See `docs/branch-governance.md` for the
-remaining human GitHub settings.
+require the stable `All Checks Passed` aggregate. See
+`docs/branch-governance.md` for the remaining human GitHub settings.
+
+### Dockerfile Policy
+
+Docker-owned pull requests run the `production` Dockerfile Roast preset before
+building the development images. The action and its runtime image are pinned to
+release `1.4.13`. Error-level findings block the Docker policy job; warnings
+remain visible for review. The only configured rule exception is `DF012` because
+the current development services define their health probes in Compose rather
+than in reusable production images.
+
+A human can run the same repository policy from the repository root without
+installing another local binary:
+
+```bash
+npm run docker:policy
+```
+
+This command lints container definitions only. It does not build images, inspect
+installed layers, scan image packages, or prove runtime health.
+
+The retained `DF011` warning for the persistence mock is classified as accepted
+development-image behavior: the mock has no dependency installation or build
+stage, so a multi-stage Dockerfile would not reduce its runtime contents. The
+warning remains visible instead of being globally suppressed because the rule
+can apply to future production Dockerfiles.
 
 ### Local-Stack Human Verification
 
@@ -233,11 +269,11 @@ M01 changes no schema and therefore creates no migration.
 
 ```bash
 npm run build
-npm run build:web
+npm run build --workspace @aspectloop/web
 npm run build:gateway
 npm run build:extraction
 npm run build:correction
-npm run build:contracts
+npm run build --workspace @aspectloop/contracts
 npm run graphql:generate:gateway
 npm run graphql:generate:web
 npm run graphql:generate
@@ -340,6 +376,8 @@ M03-A is complete. The repository now has an explicit Node/npm contract,
 reviewed install-script policy, registry-source checks, a reproducible clean
 install, and a zero-vulnerability audit baseline. M03-B has implemented its
 deterministic commands and GitHub workflow; GitHub activation and the local
-review workflow remain. See
+review workflow remain. M03-C is complete with scoped Node/npm development
+images, healthy Compose services, verified one-shot database jobs, and a
+classified Dockerfile Roast policy. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

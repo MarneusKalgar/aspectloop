@@ -16,6 +16,8 @@
     "test:unit:run": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest --config vitest.integration.config.ts",
     "test:integration:run": "vitest run --config vitest.integration.config.ts",
+    "test:e2e:browser:ensure": "playwright install --only-shell chromium",
+    "pretest:e2e:mock": "npm run test:e2e:browser:ensure",
     "test:e2e:mock": "playwright test",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build"

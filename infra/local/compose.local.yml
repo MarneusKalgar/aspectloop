@@ -16,13 +16,26 @@ services:
       - ../../apps/gateway-api/tsconfig.json:/app/apps/gateway-api/tsconfig.json:ro
       - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
       - /app/node_modules
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:' + (process.env.API_PORT || '8080') +
+          '/health').then((response) => { if (!response.ok) process.exit(1);
+          }).catch(() => process.exit(1));
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       persistence-mock:
-        condition: service_started
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -72,6 +85,19 @@ services:
     volumes:
       - ../../mocks/persistence-service/src:/app/src
       - aspectloop_api_persistence_mock_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:' + (process.env.PERSISTENCE_MOCK_PORT ||
+          '8090') + '/health').then((response) => { if (!response.ok)
+          process.exit(1); }).catch(() => process.exit(1));
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   migrate:
     image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_migrate_tmp

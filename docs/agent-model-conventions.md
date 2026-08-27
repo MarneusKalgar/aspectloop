@@ -1,7 +1,7 @@
 # Agent, Planning, And Model Conventions
 
 Status: Active  
-Last updated: 2026-08-02
+Last updated: 2026-08-24
 
 ## 1. Purpose
 
@@ -90,6 +90,33 @@ Plans should:
 After completion, remove or archive the working plan unless it still provides
 durable value. Transfer lasting architectural decisions to `docs/decisions/`
 and lasting feature behavior to canonical feature documentation.
+
+### Documentation timing
+
+The working milestone plan is the implementation journal. Update it during
+execution when task status, assumptions, scope, deviations, open questions, or
+human verification results change.
+
+Canonical documentation is synchronized once, near milestone completion, after
+the human has verified and accepted the intended behavior. Until then, do not
+continually revise `README.md`, the general plan, feature documentation,
+knowledge-base material, or ADRs to describe provisional implementation. This
+avoids documentation churn and prevents unverified behavior from appearing as
+an established contract.
+
+The final synchronization pass must:
+
+- update only canonical documents affected by the confirmed behavior;
+- record a durable architectural decision as an ADR when one is warranted;
+- update the general-plan status only when the whole milestone changes state;
+- remove or correct superseded statements introduced by the milestone;
+- leave implementation history and intermediate verification notes in the
+  working plan rather than copying them into canonical docs.
+
+Earlier canonical-document edits are allowed only when documentation is the
+requested deliverable, an atomic policy or contract change must accompany the
+code, or the user explicitly requests the update. Even in those cases, avoid
+repeated edits and complete a final consistency pass after verification.
 
 Plan states:
 

@@ -1,0 +1,42 @@
+{
+  "name": "@aspectloop/backend-platform",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "config": [
+        "dist/config/index.d.ts"
+      ],
+      "logging": [
+        "dist/logging/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "require": "./dist/config/index.js"
+    },
+    "./logging": {
+      "types": "./dist/logging/index.d.ts",
+      "require": "./dist/logging/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "reflect-metadata": "^0.2.2"
+  }
+}
