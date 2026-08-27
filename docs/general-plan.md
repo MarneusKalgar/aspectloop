@@ -1078,12 +1078,17 @@ M03-B provides stable deterministic checks.
 - Pilot hosted Renovate for npm workspaces, GitHub Actions, Dockerfiles, and
   Docker Compose. Keep GitHub dependency graph and Dependabot alerts, but allow
   only one dependency updater to create PRs.
-- Require dashboard approval, weekly scheduling, a three-day minimum release
-  age, low PR concurrency, human lockfile review, and no automerge.
+- Allow eligible patch/minor updates to create PRs on the weekly schedule, but
+  require dashboard approval for majors and explicitly high-risk platform/data
+  dependencies. Preserve the three-day npm release age, two-PR concurrency,
+  human lockfile review, and no automerge.
 - Validate one npm 12 update PR against the human-owned npm 12 workflow. If the
   hosted updater cannot reproduce the lockfile and strict install policy,
   restrict it to Actions/Docker references or remove it rather than weakening
   repository policy.
+- Keep coupled references such as Dockerfile Roast's action SHA and runtime
+  image under manual coordinated updates until one bounded manager can update
+  both values reproducibly.
 
 The Greptile sample may span M04 or later feature work because representative
 review evidence cannot be manufactured inside a single quality-only PR. An
@@ -1382,10 +1387,10 @@ only at milestone granularity.
 | M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior                        |
 | M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned                        |
 | M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared                     |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | In Progress | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                           |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                           |
 | M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                                      |
 | M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                       |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | Planned     | M03-B              | Evidence-based Greptile and Renovate retain/restrict/remove decisions; never blocks M04                                  |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B              | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory             |
 | M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Planned     | M03-A, B, C, D     | Per-service databases, document lifecycle, MinIO/S3 adapter, migrations, seed, one-command stack, optional local pgAdmin |
 | M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                             |
 | M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                                 |

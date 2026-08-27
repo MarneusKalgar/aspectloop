@@ -5,10 +5,10 @@
   "timezone": "Europe/Kyiv",
   "schedule": ["before 9am on Monday"],
   "dependencyDashboard": true,
-  "dependencyDashboardApproval": true,
   "prConcurrentLimit": 2,
   "branchConcurrentLimit": 2,
   "automerge": false,
+  "ignoreDeps": ["immanuwell/dockerfile-roast"],
   "lockFileMaintenance": {
     "enabled": false
   },
@@ -18,6 +18,37 @@
       "matchManagers": ["npm"],
       "minimumReleaseAge": "3 days",
       "internalChecksFilter": "strict"
+    },
+    {
+      "description": "Require dashboard approval for major updates",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Require dashboard approval for platform and data dependencies",
+      "matchPackageNames": [
+        "/^@nestjs\\//",
+        "/^@graphql-codegen\\//",
+        "@graphql-yoga/nestjs",
+        "graphql",
+        "graphql-yoga",
+        "typeorm",
+        "pg",
+        "amqplib",
+        "passport",
+        "passport-jwt",
+        "bcryptjs",
+        "jose",
+        "@hookform/resolvers",
+        "ajv-formats"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Keep the Playwright package and CI image under coordinated human review",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "dependencyDashboardApproval": true,
+      "groupName": "playwright runtime pair"
     }
   ]
 }
