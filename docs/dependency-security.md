@@ -1,7 +1,7 @@
 # Dependency Security
 
 Status: Active
-Last updated: 2026-08-19
+Last updated: 2026-08-27
 
 ## Toolchain Contract
 
@@ -153,7 +153,7 @@ its full output and job-summary outcome, and limits it to two minutes. It does
 not initially fail the pull request on this signal. A human reviews the
 reproducible GitHub-runner baseline before promoting it to blocking.
 
-Never automate or use:
+Never use:
 
 - `npm audit fix --force`;
 - `--legacy-peer-deps`;
@@ -210,11 +210,62 @@ Active exceptions:
 Never set `min-release-age=0` or remove the policy globally to unblock one
 package.
 
+## Renovate Operating Model
+
+Hosted Renovate is the repository's only dependency-update PR bot. GitHub's
+dependency graph and Dependabot alerts remain enabled, while Dependabot version
+and security update PRs remain disabled to avoid duplicate proposals.
+
+Renovate automates discovery, branch and lockfile preparation, release-note
+collection, rebasing, and CI execution. It does not decide that an update is
+semantically safe and it never authorizes a merge.
+
+The retained policy is deliberately tiered:
+
+- eligible patch and minor updates may create PRs automatically during the
+  weekly Monday window;
+- all major updates require explicit Dependency Dashboard approval;
+- NestJS, GraphQL/code generation, persistence, messaging, identity, and the
+  temporary React Hook Form/AJV compatibility pair require dashboard approval
+  at every update level;
+- the Playwright npm package and CI image are grouped and require coordinated
+  human approval;
+- exact Node/npm toolchain references and Dockerfile Roast references remain
+  manual coordinated updates because each contract spans multiple files;
+- npm releases must satisfy the same three-day quarantine as local installs;
+- at most two Renovate branches and two Renovate PRs may exist concurrently;
+- broad lockfile-maintenance PRs and automerge remain disabled.
+
+The Dependency Dashboard is the update backlog. A Renovate PR represents an
+update ready for evaluation, not a pre-approved change. Before merging, the
+human maintainer reviews release and migration notes, peer and engine changes,
+manifest/lockfile scope, lifecycle-script coverage, vulnerability impact, and
+the deterministic CI result. Major updates normally receive a dedicated
+migration PR or milestone rather than being treated as routine maintenance.
+
+The initial npm 12 pilot PR updated the resolved ESLint version from `10.8.1`
+to `10.9.0`. Renovate changed only the expected lockfile entry, the release was
+older than the quarantine, and all configured PR checks passed. Final merge
+authorization remained human-owned.
+
+### Updater Exceptions
+
+| Dependency                    | Automation | Owner    | Reason                                                                                                                                                                                                                         | Review condition                                                                                                                                                                               |
+| ----------------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node`                        | Manual     | Platform | The exact toolchain contract spans `.nvmrc`, root `packageManager`/`engines`, Docker `FROM` references, and Docker `NPM_VERSION`; a Dockerfile-only proposal could pass ordinary CI while local and container runtimes diverge | Update and review every toolchain surface as one change; reconsider automation only after a cross-file assertion enforces the same Node/npm contract in local, CI, and container configuration |
+| `immanuwell/dockerfile-roast` | Manual     | Platform | Its SHA-pinned GitHub Action, workflow `image-tag`, and local `scripts/docker/check-policy.sh` image must move together; the GitHub Actions manager cannot safely update all three fields as one dependency                    | Reconsider when a narrowly scoped, reproducible manager can update all three values together or the action removes the separate runtime-image pin                                              |
+
+The workflow's Dockerfile Roast version comment uses the upstream tag form
+without a `v` prefix. Update the action SHA, workflow `image-tag`, and local
+`DROAST_IMAGE` in `scripts/docker/check-policy.sh` as one unit. Do not approve
+or create a bot PR that changes only a subset of those references.
+
 ## Dependency Change Workflow
 
 1. Select Node `24.19.0` and npm `12.0.2`; remove unsupported user npm keys.
-2. Mutate dependencies only through reviewed npm uninstall/install commands;
-   never hand-edit dependency declarations, `allowScripts`, or
+2. Human-initiated dependency changes use reviewed npm uninstall/install
+   commands. Renovate may generate proposal branches under the operating model
+   above. Never hand-edit dependency declarations, `allowScripts`, or
    `package-lock.json`.
 3. Review and record every newly uncovered lifecycle script through npm's
    version-pinned approval or explicit denial command.

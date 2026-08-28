@@ -7,10 +7,10 @@ AspectLoop is an independent learning and portfolio project and is not
 affiliated with or endorsed by Elemica.
 
 The M01 repository-boundary refactor, M01.1 GraphQL remediation, M02 product
-rebrand, and M03-A toolchain and dependency-security foundation are complete.
-M03-B verification and pull-request gates are in progress; its deterministic
-root command baseline is complete and human-verified. M03-C local container
-hardening and M03-D logging/privacy baseline are complete.
+rebrand, M03-A toolchain and dependency-security foundation, M03-B verification
+and pull-request gates, M03-C local container hardening, and M03-D
+logging/privacy baseline are complete. M03-E is evaluating advisory GitHub
+review and dependency-update automation without blocking feature work.
 The existing product behavior remains in the gateway while the extraction and
 correction runtimes are independent health-only NestJS shells.
 
@@ -82,6 +82,12 @@ npm run deps:signatures
 attestations. It does not replace vulnerability review. Never use
 `npm audit fix --force`, `--legacy-peer-deps`, or a blanket install-script
 approval.
+
+Hosted Renovate is the only dependency-update PR bot. Eligible patch/minor
+updates may open at most two weekly PRs, while majors and explicitly high-risk
+platform dependencies remain behind Dependency Dashboard approval. All updates
+require human review and merge authorization; automerge is disabled. The exact
+policy and manual exceptions are documented in `docs/dependency-security.md`.
 
 If npm reports the machine-local legacy `python` configuration, remove it from
 the user npm configuration outside this repository before running npm with the
@@ -372,12 +378,11 @@ generated-artifact, runtime-consumption, and drift-check boundaries.
 `docs/knowledge-base/` contains educational mental models and is not a source
 of normative architecture or governance rules.
 
-M03-A is complete. The repository now has an explicit Node/npm contract,
-reviewed install-script policy, registry-source checks, a reproducible clean
-install, and a zero-vulnerability audit baseline. M03-B has implemented its
-deterministic commands and GitHub workflow; GitHub activation and the local
-review workflow remain. M03-C is complete with scoped Node/npm development
-images, healthy Compose services, verified one-shot database jobs, and a
-classified Dockerfile Roast policy. See
+M03-A through M03-D are complete: the repository has an explicit Node/npm and
+dependency-security contract, deterministic local and pull-request gates,
+scoped healthy development containers, a classified Dockerfile Roast policy,
+and bounded privacy-aware logging. M03-E continues as a non-blocking Renovate
+and Greptile evaluation while M04 becomes the next required implementation
+milestone. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

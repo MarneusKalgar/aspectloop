@@ -1,7 +1,7 @@
 # AspectLoop Review Process
 
 Status: Active  
-Last updated: 2026-08-20
+Last updated: 2026-08-27
 
 ## Table Of Contents
 
@@ -65,6 +65,15 @@ behavior before they are accepted, fixed, or rejected.
 When Codex GitHub review is available, use the configured automatic review or
 an explicit `@codex review` request. Its comments remain advisory and follow the
 same independent-validation rule as a local review.
+
+Greptile is currently a repository-scoped, non-blocking evaluation. It is not a
+required status check and does not replace the local review router, deterministic
+verification, or human approval. The initial Renovate-configuration review
+produced an accurate summary and no actionable finding, but that single
+configuration-only PR is not representative evidence. Retain/remove evaluation
+continues across frontend, backend/GraphQL, Docker/CI, and cross-boundary PRs;
+revoke access if the trial becomes paid beyond the accepted budget or the
+validated signal does not justify its permissions and review noise.
 
 Merge only when required checks pass, material conversations are resolved, and
 the maintainer accepts the recorded residual risk.
