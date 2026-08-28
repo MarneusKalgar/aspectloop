@@ -1086,9 +1086,12 @@ M03-B provides stable deterministic checks.
   hosted updater cannot reproduce the lockfile and strict install policy,
   restrict it to Actions/Docker references or remove it rather than weakening
   repository policy.
-- Keep coupled references such as Dockerfile Roast's action SHA and runtime
-  image under manual coordinated updates until one bounded manager can update
-  both values reproducibly.
+- Keep all Dockerfile Roast references under manual coordinated updates until
+  one bounded manager can update the action SHA, workflow image tag, and local
+  policy image reproducibly.
+- Keep the exact Node/npm toolchain manual until a cross-file assertion covers
+  `.nvmrc`, root package-manager metadata, Docker images, and Docker npm pins;
+  do not accept Dockerfile-only Node updates.
 
 The Greptile sample may span M04 or later feature work because representative
 review evidence cannot be manufactured inside a single quality-only PR. An
@@ -1520,8 +1523,9 @@ a generic external code-review skill must not create a competing review path.
 
 ### Immediate Next Plan
 
-Write the focused M03-B implementation plan for deterministic local
-verification and pull-request gates. It must consume the completed M03-A
-Node/npm and dependency-security contract, add no product functionality, and
-leave container cleanup, logging changes, and external automation to M03-C,
-M03-D, and M03-E respectively.
+Write the focused M04 implementation plan for the local data and artifact
+foundation. It must preserve the completed M03-A through M03-D contracts while
+defining per-service database ownership, the document lifecycle, S3-compatible
+artifact storage, human-generated migrations, seed behavior, and the local
+Compose workflow. M03-E remains a non-blocking advisory pilot and does not
+delay M04.

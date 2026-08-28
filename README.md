@@ -378,12 +378,11 @@ generated-artifact, runtime-consumption, and drift-check boundaries.
 `docs/knowledge-base/` contains educational mental models and is not a source
 of normative architecture or governance rules.
 
-M03-A is complete. The repository now has an explicit Node/npm contract,
-reviewed install-script policy, registry-source checks, a reproducible clean
-install, and a zero-vulnerability audit baseline. M03-B has implemented its
-deterministic commands and GitHub workflow; GitHub activation and the local
-review workflow remain. M03-C is complete with scoped Node/npm development
-images, healthy Compose services, verified one-shot database jobs, and a
-classified Dockerfile Roast policy. See
+M03-A through M03-D are complete: the repository has an explicit Node/npm and
+dependency-security contract, deterministic local and pull-request gates,
+scoped healthy development containers, a classified Dockerfile Roast policy,
+and bounded privacy-aware logging. M03-E continues as a non-blocking Renovate
+and Greptile evaluation while M04 becomes the next required implementation
+milestone. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

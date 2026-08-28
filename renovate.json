@@ -8,7 +8,7 @@
   "prConcurrentLimit": 2,
   "branchConcurrentLimit": 2,
   "automerge": false,
-  "ignoreDeps": ["immanuwell/dockerfile-roast"],
+  "ignoreDeps": ["immanuwell/dockerfile-roast", "node"],
   "lockFileMaintenance": {
     "enabled": false
   },
@@ -28,6 +28,7 @@
       "description": "Require dashboard approval for platform and data dependencies",
       "matchPackageNames": [
         "/^@nestjs\\//",
+        "/^@apollo\\//",
         "/^@graphql-codegen\\//",
         "@graphql-yoga/nestjs",
         "graphql",

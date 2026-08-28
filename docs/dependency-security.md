@@ -230,6 +230,8 @@ The retained policy is deliberately tiered:
   at every update level;
 - the Playwright npm package and CI image are grouped and require coordinated
   human approval;
+- exact Node/npm toolchain references and Dockerfile Roast references remain
+  manual coordinated updates because each contract spans multiple files;
 - npm releases must satisfy the same three-day quarantine as local installs;
 - at most two Renovate branches and two Renovate PRs may exist concurrently;
 - broad lockfile-maintenance PRs and automerge remain disabled.
@@ -248,13 +250,15 @@ authorization remained human-owned.
 
 ### Updater Exceptions
 
-| Dependency                    | Automation | Owner    | Reason                                                                                                                                                  | Review condition                                                                                                                             |
-| ----------------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `immanuwell/dockerfile-roast` | Manual     | Platform | Its SHA-pinned GitHub Action and separate `image-tag` must move together; the GitHub Actions manager cannot safely update both fields as one dependency | Reconsider when a narrowly scoped, reproducible manager can update both values together or the action removes the separate runtime-image pin |
+| Dependency                    | Automation | Owner    | Reason                                                                                                                                                                                                                         | Review condition                                                                                                                                                                               |
+| ----------------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node`                        | Manual     | Platform | The exact toolchain contract spans `.nvmrc`, root `packageManager`/`engines`, Docker `FROM` references, and Docker `NPM_VERSION`; a Dockerfile-only proposal could pass ordinary CI while local and container runtimes diverge | Update and review every toolchain surface as one change; reconsider automation only after a cross-file assertion enforces the same Node/npm contract in local, CI, and container configuration |
+| `immanuwell/dockerfile-roast` | Manual     | Platform | Its SHA-pinned GitHub Action, workflow `image-tag`, and local `scripts/docker/check-policy.sh` image must move together; the GitHub Actions manager cannot safely update all three fields as one dependency                    | Reconsider when a narrowly scoped, reproducible manager can update all three values together or the action removes the separate runtime-image pin                                              |
 
 The workflow's Dockerfile Roast version comment uses the upstream tag form
-without a `v` prefix. Do not approve or create a bot PR that changes only the
-action SHA or only `image-tag`.
+without a `v` prefix. Update the action SHA, workflow `image-tag`, and local
+`DROAST_IMAGE` in `scripts/docker/check-policy.sh` as one unit. Do not approve
+or create a bot PR that changes only a subset of those references.
 
 ## Dependency Change Workflow
 
