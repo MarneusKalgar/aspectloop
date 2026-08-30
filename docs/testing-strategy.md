@@ -100,6 +100,12 @@ current Vitest configurations.
 - integration tests exercise React, routing, Apollo, auth state, and MSW
   together without starting the backend.
 
+The root `test:backend:run` command runs database-independent gateway and
+backend-platform tests and remains part of `verify:full`. The opt-in
+`test:typeorm:run` command verifies TypeORM behavior against disposable
+PostgreSQL and remains a human-run compatibility check until M04-F/M04-G
+provide a reusable persistence test environment suitable for CI.
+
 ### 4.3 Playwright
 
 `apps/web/playwright.config.ts` starts Vite with

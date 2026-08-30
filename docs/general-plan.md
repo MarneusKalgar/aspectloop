@@ -1223,20 +1223,15 @@ replacement.
 
 #### M10 recovery runbook and failure testing
 
-M10 converts the authoritative-state and recovery boundaries established by
-M04 into an executable operational runbook. It adds deterministic failure
-testing for unavailable databases, missing or corrupt artifact objects,
-RabbitMQ interruption, incomplete backup input, and failed or partial restore.
-The runbook must identify detection signals, containment, recovery ordering,
-data-integrity checks, queue/outbox implications, escalation, and the point at
-which rollback or reprocessing is safer than repair.
+M10 turns the authoritative-state and recovery boundaries established by M04
+into an executable runbook and deterministic local failure-testing program.
+Its focused plan will define scenarios, recovery sequencing, integrity checks,
+operational evidence, and rollback or reprocessing decisions against
+disposable infrastructure.
 
-M10 demonstrates recovery locally against disposable infrastructure and keeps
-evidence such as request/correlation identifiers, logs, traces, object
-checksums, and restore-validation output. It does not claim production RPO or
-RTO and does not substitute a local Compose-volume copy for a backup. Real
-stage backup schedules, retention, provider controls, measurable RPO/RTO, and
-an isolated stage restore remain M11 responsibilities.
+M10 makes no production RPO or RTO claim. M11 owns real stage backup schedules,
+retention and provider controls, measurable RPO/RTO, and a demonstrated
+isolated stage restore.
 
 ## 5. AI Tracks
 
@@ -1432,7 +1427,7 @@ only at milestone granularity.
 | M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                               |
 | M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                |
 | M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B              | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory      |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Planned     | M03-A, B, C, D     | Three databases, Garage/S3 artifacts, recovery boundaries, migrations, seed, one-command stack, optional recovery |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | In Progress | M03-A, B, C, D     | Three databases, Garage/S3 artifacts, recovery boundaries, migrations, seed, one-command stack, optional recovery |
 | M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                      |
 | M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                          |
 | M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                                     |
