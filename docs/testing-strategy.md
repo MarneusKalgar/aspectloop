@@ -442,13 +442,13 @@ This avoids maintaining separate local and stage copies of the same workflow.
 | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign |
 | M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow            |
-| M04           | Make databases, migrations, seed, MinIO, and local service infrastructure reusable by tests                             |
+| M04           | Make databases, migrations, seed, Garage-backed S3 storage, and local service infrastructure reusable by tests          |
 | M05-M06       | Add focused extraction and correction service integration and contract coverage                                         |
 | M07           | Add the first portable upload-to-submit local system Playwright workflow                                                |
 | M08           | Add deterministic retry, DLQ, idempotency, outbox, and reprocess failure coverage                                       |
 | M09           | Add realtime integration coverage without coupling Socket.IO tests to GraphQL subscriptions                             |
-| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, and failure diagnostics                        |
-| M11           | Execute portable system specifications against stage and make the smoke subset a deployment gate                        |
+| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, recovery runbooks, and failure diagnostics     |
+| M11           | Execute portable system and backup-restore specifications against stage; gate deployment on smoke checks                |
 | AI milestones | Add eval harnesses and provider comparisons separately from deterministic software gates                                |
 
 ## 11. Priority Summary

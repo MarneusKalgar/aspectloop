@@ -13,6 +13,7 @@ interface TypeOrmConfig {
   slowQueryThresholdMs?: number;
 }
 
+/** Builds the shared gateway datasource contract for Nest and TypeORM CLI use. */
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
   const { migrations } = getTypeOrmPaths(config.nodeEnv);
 
@@ -22,6 +23,10 @@ export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOp
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       max: config.poolSize ?? 10,
+    },
+    invalidWhereValuesBehavior: {
+      null: 'throw',
+      undefined: 'throw',
     },
     logging: config.nodeEnv === 'development' ? ['error', 'warn'] : ['error'],
     maxQueryExecutionTime: config.slowQueryThresholdMs ?? 1000,
