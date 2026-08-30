@@ -104,7 +104,7 @@ npm run type-check
 npm run graphql:check
 npm run test:unit:run
 npm run test:integration:run
-npm run test:logging:run
+npm run test:backend:run
 npm run test:e2e:mock
 npm run verify
 npm run verify:full

@@ -86,7 +86,7 @@ acceptable diagnostic shortcut.
 Run the focused source-based contract tests directly from the repository root:
 
 ```bash
-npm run test:logging:run
+npm run test:backend:run
 ```
 
 The platform tests import `packages/backend-platform/src`; the gateway GraphQL
