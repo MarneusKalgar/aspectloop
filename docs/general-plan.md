@@ -793,11 +793,13 @@ Compute, broker, and hosting provider selection remains deferred because
 free-tier products and prices change. The architecture must remain portable
 across self-hosted, managed open-compatible, and lower-cost providers.
 
-The stage observability deployment is selected during M11. It may be a
-single-node self-hosted stack with short retention or a managed free-tier
-backend compatible with Prometheus and OTLP. Application code must not use a
-provider-specific telemetry SDK. A managed backend is acceptable only when the
-instrumentation and export contracts remain portable.
+M11 deploys the same OpenTelemetry, Prometheus, Grafana, Loki, and Tempo stack
+established locally in M10, isolated for stage. Hosting, capacity, storage,
+retention, and access controls are environment-specific; they do not change
+the selected telemetry components or instrumentation contracts. Stage must not
+switch to an alternative telemetry platform or duplicate its telemetry into
+a parallel hosted stack. Application code must not use a provider-specific
+telemetry SDK.
 
 #### CI/CD boundaries
 
@@ -1155,6 +1157,14 @@ and milestone responsibilities are maintained in
 The project uses open protocols and self-hostable components rather than a
 cloud-provider-specific telemetry SDK.
 
+The selected baseline is one isolated stack per environment, using the same
+OpenTelemetry SDK/Collector, Prometheus, Grafana, Loki, and Tempo components
+with Grafana Alloy for stdout log collection. Reuse instrumentation,
+dashboard definitions, and alert rules with environment-specific
+configuration. Local development keeps the stack optional; stage and future
+production size and secure their deployments independently. Better Stack is
+not selected as either a replacement or a parallel telemetry platform.
+
 ```mermaid
 flowchart LR
   Apps["NestJS services"]
@@ -1232,6 +1242,32 @@ disposable infrastructure.
 M10 makes no production RPO or RTO claim. M11 owns real stage backup schedules,
 retention and provider controls, measurable RPO/RTO, and a demonstrated
 isolated stage restore.
+
+#### Incident response
+
+incident.io is a candidate for an optional M11 incident-response pilot, not an
+adopted dependency or a prerequisite for M04-M10. It would sit downstream of
+Grafana alerts for paging, Slack/Teams coordination, incident timelines, status
+communication, and optional GitHub follow-ups. It must not replace the
+selected telemetry stack, store the application's authoritative state, or
+become an application runtime dependency. See its
+[Grafana integration](https://docs.incident.io/integrations/grafana) and
+[GitHub follow-up integration](https://docs.incident.io/integrations/github).
+
+M10 defines vendor-neutral alert severity, response ownership, and runbook
+references. M11 may evaluate incident.io once stage has actionable alerts and
+a real notification or coordination need. The focused M11 plan owns setup,
+current plan/price and access review, and a demonstrated alert-to-resolution
+exercise. Adoption requires useful response value relative to maintenance
+overhead; deferral does not block stage delivery.
+
+Keep alert evaluation in Prometheus/Grafana and one paging route per alert and
+environment. Any pilot starts with outbound alert webhooks and redacted
+operational metadata plus dashboard/runbook links, not raw telemetry,
+document contents, prompts, identities, or credentials. Additional integration
+access requires a separate least-privilege review; public status updates remain
+human-approved. Repository runbooks remain canonical and usable without
+incident.io.
 
 ## 5. AI Tracks
 

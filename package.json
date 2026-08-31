@@ -38,6 +38,7 @@
     "local:down": "bash infra/local/scripts/local-compose.sh down --remove-orphans",
     "local:reset": "bash infra/local/scripts/local-compose.sh down -v --remove-orphans",
     "local:db:generate:gateway": "bash infra/local/scripts/local-compose.sh exec -w /app/apps/gateway-api gateway-api npm run db:generate:local --",
+    "local:garage:spike": "node infra/local/spikes/garage/spike.mjs",
     "format": "prettier --write \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
     "prelint": "npm run build:backend-platform",
@@ -64,6 +65,8 @@
     ]
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "3.1112.0",
+    "@aws-sdk/s3-request-presigner": "3.1112.0",
     "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
