@@ -1,7 +1,10 @@
 # Data Authority And Recovery
 
+Status: Accepted M04-B contract (2026-08-31)
+
 This is the M04 authoritative-state contract, not a claim that backup/restore
-is implemented. M04-B delivers the boundary; later submilestones implement it.
+is implemented. M04-B completed the boundary and disposable S3 compatibility
+proof; later submilestones implement the normal-stack and recovery tooling.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints.
 
@@ -141,7 +144,9 @@ databases or artifacts were backed up.
 
 ## Milestone Ownership
 
-- **M04-B P0:** authority, provider/recovery boundaries, and disposable S3 proof.
+- **M04-B P0, completed:** accepted authority and provider/recovery boundaries,
+  with disposable S3 proof on native arm64 and amd64. This did not replace the
+  persistence mock or add Garage to the normal application stack.
 - **M04-E/F/G P0:** normal Garage integration, artifact model/adapter, and
   integrated verification. No automatic recovery claim follows from startup.
 - **M04-H P1:** optional local backup/restore and PG16-to-PG18 rehearsal with a

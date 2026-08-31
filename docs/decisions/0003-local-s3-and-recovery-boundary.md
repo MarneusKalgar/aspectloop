@@ -1,6 +1,7 @@
 # 0003 Local S3 And Recovery Boundary
 
-Status: Proposed implementation; human M04-B acceptance pending  
+Status: Accepted
+
 Date: 2026-08-31
 
 ## Context
@@ -13,7 +14,7 @@ upgrade PostgreSQL, or add Garage to the normal application stack.
 
 ## Decision
 
-Use Garage for local S3-compatible storage, subject to the human spike gates
+Use Garage for local S3-compatible storage, following the accepted M04-B spike
 below. Keep application access behind an S3 port, implemented first in the
 gateway in M04-F using AWS SDK v3. Garage CLI/Admin APIs belong only to
 infrastructure bootstrap and operations. Shared storage code requires a real
@@ -38,10 +39,10 @@ Read-only registry inspection on 2026-08-31 returned these platform manifests:
 | `linux/arm64` | `2d3f94a89a8a02dc49fa75594d6df67ed9c6ffe08fe55ed023d0c9776f71a9bd` |
 | `linux/amd64` | `dac0c92add4f1a0b41035e94b41036a270ffbe88a37c7ac9c3f19e6dc5bdccf2` |
 
-These cover Docker Desktop on Apple Silicon and Intel Macs, and Linux
-amd64/arm64 engines. The index also contains 386/arm images, which are not
-AspectLoop's verification targets. Manifest availability is not execution
-evidence on either architecture.
+These are the selected manifests for native arm64 and amd64 engines. The index
+also contains 386/arm images, which are not AspectLoop's verification targets.
+Manifest availability alone is not execution evidence; the accepted runtime
+environments are recorded below.
 
 Source: [v2.3.0 tag](https://git.deuxfleurs.fr/Deuxfleurs/garage/src/tag/v2.3.0).
 License: `AGPL-3.0`, as declared in the
@@ -53,7 +54,8 @@ curl, wget, or package manager exists in it.
 This records publisher, source tag, license metadata, and registry content
 digests. It is not a claim of independently verified build reproducibility,
 signature/attestation verification, vulnerability clearance, or license approval
-for future redistribution. Human source/license review remains a merge gate.
+for future redistribution. The human accepted the source, license, and image
+selection for this local-storage scope on 2026-08-31.
 
 ### Portable Subset
 
@@ -123,17 +125,41 @@ stand in for those service permissions.
 
 ## Acceptance And Consequences
 
-Run the [M04-B spike procedure](../../infra/local/spikes/garage/README.md).
-Source and manifest research is complete; runtime checks and human license
-review are **not yet accepted**. No image was pulled or run by the agent.
-Record results in the working M04 plan before promoting this ADR to Accepted.
+M04-B was accepted by the human on 2026-08-31, including the reviewed lockfile,
+Garage source/license/image selection, this ADR, and the
+[authoritative-state and recovery contract](../data-and-recovery.md).
 
-Acceptance requires native execution on the available development architecture,
-explicit evidence for the other supported architecture (native preferred;
-label emulated runs honestly), restart persistence, empty-target reset, S3
-operations, metadata/checksums, and both presigning methods. A failed supported
-architecture or a need for Garage-only application APIs reopens the provider
-decision and blocks M04-E.
+The [spike procedure](../../infra/local/spikes/garage/README.md) passed on both
+native architectures with the pinned image and unchanged LMDB configuration:
+
+- `linux/arm64`: human-run Docker Desktop verification on Apple Silicon.
+- `linux/amd64`: GitHub-hosted `ubuntu-24.04`, with native host/Docker and image
+  architecture assertions; [successful spike run](https://github.com/MarneusKalgar/aspectloop/actions/runs/33431118690).
+
+Both runs proved repeated bootstrap, layered readiness, authenticated S3 access
+and access denial, metadata/size/SHA-256, presigned GET/PUT, read-only restart
+persistence, and reset followed by an empty target and fresh verification.
+The amd64 job also completed disposable infrastructure cleanup.
+
+The CI evidence belongs to [PR #24](https://github.com/MarneusKalgar/aspectloop/pull/24),
+head commit `f26a65eebfba375a63237f37d87e127c0640b9df`; the workflow checks out
+the PR merge ref and records its tested SHA in the job summary. The
+[repository gate](https://github.com/MarneusKalgar/aspectloop/actions/runs/33431118922)
+also passed, including `All Checks Passed`, following human-confirmed local
+`deps:policy`, `docker:policy`, and `verify:full` runs. Evidence predates this
+documentation-only closeout; it is not a claim that later revisions were run.
+
+Mac amd64 emulation remains unsuccessful: the initial attempt failed opening
+LMDB with `Function not implemented (os error 38)`, and startup also failed
+after resetting the disposable volumes. The exact emulation failure mechanism
+was not isolated. This does not invalidate the native-amd64 result, and no
+database-engine or security workaround was adopted. Use native architecture
+verification; neither all host configurations nor cross-architecture metadata
+migration is covered by this acceptance.
+
+M04-E's provider-decision prerequisite is satisfied; its normal-stack
+integration remains separate work. A future failure on a supported native
+architecture or a need for Garage-only application APIs reopens this decision.
 
 M04-B does not add backup commands. M04-H is optional local backup/restore;
 M10 owns recovery runbooks and failure testing; M11 owns real stage backups,

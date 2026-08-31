@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-24
+Last updated: 2026-08-31
 
 ## Table Of Contents
 
@@ -1592,11 +1592,16 @@ a generic external code-review skill must not create a competing review path.
 
 ### Immediate Next Plan
 
-Review and approve the focused M04 implementation plan for the local data and
-artifact foundation. It preserves the completed M03-A through M03-D contracts
-while defining per-service database ownership, the document lifecycle,
-Garage-backed S3-compatible artifact storage, authoritative-state and recovery
-boundaries, human-generated migrations, seed behavior, and the local Compose
-workflow. Its optional P1 local backup/restore helper exercises the recovery
-contract without claiming stage guarantees. M03-E remains a non-blocking
-advisory pilot and does not delay M04.
+Continue the approved M04 implementation plan. M04-A's TypeORM compatibility
+baseline and M04-B's Garage compatibility/recovery-contract decision are
+complete. The accepted [local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
+and [data authority and recovery contract](data-and-recovery.md) define the
+boundaries for the remaining implementation; they do not imply that the normal
+stack integration or backup/restore tooling is delivered.
+
+M04-C (PostgreSQL 18 and database ownership) and M04-E (normal-stack Garage
+infrastructure) now have their respective prerequisites satisfied. Continue
+in focused submilestones, preserving the completed M03 contracts and accepted
+TypeORM baseline. M04 remains In Progress through integrated P0 verification;
+its optional P1 local backup/restore helper does not claim stage guarantees.
+M03-E remains a non-blocking advisory pilot and does not delay M04.
