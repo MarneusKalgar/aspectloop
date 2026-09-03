@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-24
+Last updated: 2026-08-31
 
 ## Table Of Contents
 
@@ -793,11 +793,13 @@ Compute, broker, and hosting provider selection remains deferred because
 free-tier products and prices change. The architecture must remain portable
 across self-hosted, managed open-compatible, and lower-cost providers.
 
-The stage observability deployment is selected during M11. It may be a
-single-node self-hosted stack with short retention or a managed free-tier
-backend compatible with Prometheus and OTLP. Application code must not use a
-provider-specific telemetry SDK. A managed backend is acceptable only when the
-instrumentation and export contracts remain portable.
+M11 deploys the same OpenTelemetry, Prometheus, Grafana, Loki, and Tempo stack
+established locally in M10, isolated for stage. Hosting, capacity, storage,
+retention, and access controls are environment-specific; they do not change
+the selected telemetry components or instrumentation contracts. Stage must not
+switch to an alternative telemetry platform or duplicate its telemetry into
+a parallel hosted stack. Application code must not use a provider-specific
+telemetry SDK.
 
 #### CI/CD boundaries
 
@@ -1155,6 +1157,14 @@ and milestone responsibilities are maintained in
 The project uses open protocols and self-hostable components rather than a
 cloud-provider-specific telemetry SDK.
 
+The selected baseline is one isolated stack per environment, using the same
+OpenTelemetry SDK/Collector, Prometheus, Grafana, Loki, and Tempo components
+with Grafana Alloy for stdout log collection. Reuse instrumentation,
+dashboard definitions, and alert rules with environment-specific
+configuration. Local development keeps the stack optional; stage and future
+production size and secure their deployments independently. Better Stack is
+not selected as either a replacement or a parallel telemetry platform.
+
 ```mermaid
 flowchart LR
   Apps["NestJS services"]
@@ -1232,6 +1242,32 @@ disposable infrastructure.
 M10 makes no production RPO or RTO claim. M11 owns real stage backup schedules,
 retention and provider controls, measurable RPO/RTO, and a demonstrated
 isolated stage restore.
+
+#### Incident response
+
+incident.io is a candidate for an optional M11 incident-response pilot, not an
+adopted dependency or a prerequisite for M04-M10. It would sit downstream of
+Grafana alerts for paging, Slack/Teams coordination, incident timelines, status
+communication, and optional GitHub follow-ups. It must not replace the
+selected telemetry stack, store the application's authoritative state, or
+become an application runtime dependency. See its
+[Grafana integration](https://docs.incident.io/integrations/grafana) and
+[GitHub follow-up integration](https://docs.incident.io/integrations/github).
+
+M10 defines vendor-neutral alert severity, response ownership, and runbook
+references. M11 may evaluate incident.io once stage has actionable alerts and
+a real notification or coordination need. The focused M11 plan owns setup,
+current plan/price and access review, and a demonstrated alert-to-resolution
+exercise. Adoption requires useful response value relative to maintenance
+overhead; deferral does not block stage delivery.
+
+Keep alert evaluation in Prometheus/Grafana and one paging route per alert and
+environment. Any pilot starts with outbound alert webhooks and redacted
+operational metadata plus dashboard/runbook links, not raw telemetry,
+document contents, prompts, identities, or credentials. Additional integration
+access requires a separate least-privilege review; public status updates remain
+human-approved. Repository runbooks remain canonical and usable without
+incident.io.
 
 ## 5. AI Tracks
 
@@ -1556,11 +1592,16 @@ a generic external code-review skill must not create a competing review path.
 
 ### Immediate Next Plan
 
-Review and approve the focused M04 implementation plan for the local data and
-artifact foundation. It preserves the completed M03-A through M03-D contracts
-while defining per-service database ownership, the document lifecycle,
-Garage-backed S3-compatible artifact storage, authoritative-state and recovery
-boundaries, human-generated migrations, seed behavior, and the local Compose
-workflow. Its optional P1 local backup/restore helper exercises the recovery
-contract without claiming stage guarantees. M03-E remains a non-blocking
-advisory pilot and does not delay M04.
+Continue the approved M04 implementation plan. M04-A's TypeORM compatibility
+baseline and M04-B's Garage compatibility/recovery-contract decision are
+complete. The accepted [local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
+and [data authority and recovery contract](data-and-recovery.md) define the
+boundaries for the remaining implementation; they do not imply that the normal
+stack integration or backup/restore tooling is delivered.
+
+M04-C (PostgreSQL 18 and database ownership) and M04-E (normal-stack Garage
+infrastructure) now have their respective prerequisites satisfied. Continue
+in focused submilestones, preserving the completed M03 contracts and accepted
+TypeORM baseline. M04 remains In Progress through integrated P0 verification;
+its optional P1 local backup/restore helper does not claim stage guarantees.
+M03-E remains a non-blocking advisory pilot and does not delay M04.

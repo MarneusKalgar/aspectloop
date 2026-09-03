@@ -1,0 +1,163 @@
+name: M04-B Garage Spike
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  garage_amd64:
+    name: Garage Native amd64
+    if: >-
+      github.head_ref == 'M04B-garage-compatibility-spike' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: 'true'
+      HUSKY: '0'
+      M04B_PLATFORM: linux/amd64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js with npm download cache
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Resolve repository toolchain contract
+        id: toolchain
+        run: node scripts/ci/toolchain-contract.mjs export
+
+      - name: Install exact npm version
+        working-directory: ${{ runner.temp }}
+        env:
+          NPM_VERSION: ${{ steps.toolchain.outputs.npm-version }}
+        run: npm install --global "npm@${NPM_VERSION}"
+
+      - name: Assert toolchain contract
+        run: node scripts/ci/toolchain-contract.mjs assert
+
+      - name: Check dependency policy before installation
+        run: node scripts/dependencies/check-policy.mjs
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Record installed SDK versions
+        run: npm ls @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+
+      - name: Assert native amd64 and record tool versions
+        id: architecture
+        run: |
+          uname -m
+          test "$(uname -m)" = 'x86_64'
+          docker version
+          test "$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')" = 'linux/amd64'
+          docker compose version
+          node --version
+          npm --version
+
+      - name: Initialize disposable spike credentials
+        id: initialize
+        run: npm run local:garage:spike -- init
+
+      - name: Start Garage on fresh runner volumes
+        id: startup
+        run: npm run local:garage:spike -- up
+
+      - name: Record image pin and assert selected architecture
+        id: image
+        run: |
+          docker inspect aspectloop_m04b_garage-garage-1 --format 'Image={{.Config.Image}}'
+          image_id="$(docker inspect aspectloop_m04b_garage-garage-1 --format '{{.Image}}')"
+          docker image inspect "$image_id" --format 'Image={{.Id}} Platform={{.Os}}/{{.Architecture}}'
+          test "$(docker image inspect "$image_id" --format '{{.Os}}/{{.Architecture}}')" = 'linux/amd64'
+
+      - name: Prove idempotent bootstrap
+        id: bootstrap
+        run: |
+          npm run local:garage:spike -- bootstrap
+          npm run local:garage:spike -- bootstrap
+
+      - name: Verify empty bucket before writes and S3 compatibility
+        id: s3
+        run: |
+          npm run local:garage:spike -- verify-empty
+          npm run local:garage:spike -- verify
+
+      - name: Verify persistence across restart without rewriting objects
+        id: restart
+        run: npm run local:garage:spike -- restart
+
+      - name: Prove reset and fresh bootstrap, S3, and restart behavior
+        id: reset_drill
+        run: |
+          npm run local:garage:spike -- reset --confirm-disposable
+          npm run local:garage:spike -- up
+          npm run local:garage:spike -- bootstrap
+          npm run local:garage:spike -- bootstrap
+          npm run local:garage:spike -- verify-empty
+          npm run local:garage:spike -- verify
+          npm run local:garage:spike -- restart
+
+      # Never dump container environments, Compose config, or raw S3 request logs.
+      - name: Report bounded container state on failure
+        if: ${{ failure() && steps.initialize.outcome == 'success' }}
+        continue-on-error: true
+        timeout-minutes: 1
+        run: >-
+          docker inspect aspectloop_m04b_garage-garage-1
+          --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}'
+
+      - name: Remove disposable spike containers and volumes
+        id: cleanup
+        if: ${{ always() && steps.initialize.outcome == 'success' }}
+        timeout-minutes: 2
+        run: node infra/local/spikes/garage/spike.mjs reset --confirm-disposable
+
+      - name: Write verification summary
+        if: always()
+        env:
+          ARCHITECTURE_OUTCOME: ${{ steps.architecture.outcome }}
+          STARTUP_OUTCOME: ${{ steps.startup.outcome }}
+          IMAGE_OUTCOME: ${{ steps.image.outcome }}
+          BOOTSTRAP_OUTCOME: ${{ steps.bootstrap.outcome }}
+          S3_OUTCOME: ${{ steps.s3.outcome }}
+          RESTART_OUTCOME: ${{ steps.restart.outcome }}
+          RESET_OUTCOME: ${{ steps.reset_drill.outcome }}
+          CLEANUP_OUTCOME: ${{ steps.cleanup.outcome }}
+        run: |
+          {
+            echo "## M04-B Garage native amd64 verification"
+            echo ""
+            echo "Tested PR merge commit: ${GITHUB_SHA}"
+            echo ""
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Native amd64 host and Docker engine | ${ARCHITECTURE_OUTCOME:-skipped} |"
+            echo "| Fresh-volume startup | ${STARTUP_OUTCOME:-skipped} |"
+            echo "| Selected image architecture | ${IMAGE_OUTCOME:-skipped} |"
+            echo "| Idempotent bootstrap | ${BOOTSTRAP_OUTCOME:-skipped} |"
+            echo "| Empty-before-write and S3 compatibility | ${S3_OUTCOME:-skipped} |"
+            echo "| Read-only restart verification | ${RESTART_OUTCOME:-skipped} |"
+            echo "| Reset and fresh verification | ${RESET_OUTCOME:-skipped} |"
+            echo "| Disposable infrastructure cleanup | ${CLEANUP_OUTCOME:-skipped} |"
+            echo ""
+            echo "Runtime evidence only; human review is required for M04-B acceptance."
+          } >> "$GITHUB_STEP_SUMMARY"

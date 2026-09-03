@@ -1,0 +1,31 @@
+name: aspectloop_m04b_garage
+
+services:
+  garage:
+    image: dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690
+    platform: ${M04B_PLATFORM:?Run the spike init command first}
+    command: ['/garage', 'server']
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Run the spike init command first}
+    ports:
+      - '127.0.0.1:43900:3900'
+      - '127.0.0.1:43903:3903'
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - metadata:/var/lib/garage/meta
+      - objects:/var/lib/garage/data
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD', '/garage', 'status']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  metadata:
+  objects:
