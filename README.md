@@ -227,17 +227,21 @@ full-stack coverage.
 
 ## Environment Files
 
-The gateway and web applications use ignored `.env.local` files. Copy and adapt
-the corresponding templates for a new checkout:
+The applications and local infrastructure use ignored `.env.local` files. Copy
+and adapt the corresponding templates for a new checkout:
 
+- `infra/local/.env.example`
 - `apps/gateway-api/.env.example`
 - `apps/web/.env.example`
 - `apps/extraction-service/.env.example`
 - `apps/correction-service/.env.example`
 
-The gateway template supplies database, RabbitMQ, persistence-mock, JWT, CORS,
-and GraphQL introspection configuration. The service shells need only their
-port and optional log level.
+The infrastructure template supplies the local PostgreSQL administrator, three
+service-owned database/role pairs, and aggregate connection budget. The gateway
+template supplies only its `platform_db` connection plus RabbitMQ,
+persistence-mock, JWT, CORS, and GraphQL introspection configuration. The
+extraction and correction shells need only their port and optional log level
+until M04-D adds their service-owned datasources.
 
 ## Local Development
 

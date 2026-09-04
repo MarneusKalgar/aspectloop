@@ -1,32 +1,40 @@
 # Data Authority And Recovery
 
-Status: Accepted M04-B contract (2026-08-31)
+Status: Accepted M04-B contract and M04-C database baseline (2026-09-03)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
-proof; later submilestones implement the normal-stack and recovery tooling.
+proof; M04-C established the PostgreSQL 18 database ownership baseline. Later
+submilestones implement the remaining service, normal-stack, and recovery
+tooling.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints.
 
 ## Current State
 
-Before M04-C/M04-E/M04-F, the normal local stack has PostgreSQL 16 with one
-`aspectloop` database, RabbitMQ, and a file-backed HTTP persistence mock.
-Extraction and correction service shells do not yet own separate databases.
-There is no source-object catalog, object-store recovery contract in code,
-or executable cross-store backup/restore workflow.
+After M04-C and before M04-D/M04-E/M04-F, the normal local stack has one
+PostgreSQL 18 container with `platform_db`, `extraction_db`, and
+`correction_db`, separate least-privilege owner roles, RabbitMQ, and a
+file-backed HTTP persistence mock. The gateway connects only to `platform_db`.
+The extraction and correction databases are provisioned, but their service
+datasources and migration histories arrive in M04-D. There is no source-object
+catalog, normal-stack Garage integration, or executable cross-store
+backup/restore workflow.
 
 | Current state                                       | Authority and recovery consequence                                                                                                                                          |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gateway PostgreSQL                                  | Users, correction sessions, immutable source snapshots, draft snapshots, edit audit, outbox, and migration history. Preserve together.                                      |
+| Gateway `platform_db` on PostgreSQL 18              | Users, correction sessions, immutable source snapshots, draft snapshots, edit audit, outbox, and migration history. Preserve together.                                      |
+| Provisioned extraction/correction databases         | Ownership boundaries exist, but no service datasource, schema, migration history, or domain rows exist before M04-D.                                                        |
 | Persistence mock JSON files                         | Mutable documents, including documents without an opened session and updates not necessarily committed in PostgreSQL. Non-seed contents are not guaranteed reconstructible. |
 | Mock seeds and document registry                    | Repository-owned fixtures/configuration; restarting the mock adds missing seeds but does not reconstruct user edits.                                                        |
 | RabbitMQ                                            | Delivery transport. The Compose file declares no repository-owned broker data volume; queue contents are not the recovery authority.                                        |
 | Browser state, generated output, dependencies, logs | Not an authoritative export of committed application state. Unsaved browser edits are outside recovery guarantees.                                                          |
 
-The current Compose volumes are `aspectloop_api_postgres_data` and
+The current Compose volume keys are `aspectloop_api_postgres18_data` and
 `aspectloop_api_persistence_mock_data`, prefixed by the selected project name.
-The mock mounts its volume at `/data`, with documents normally under
+The retained PostgreSQL 16 volume is deliberately outside the current Compose
+graph and is never attached to PostgreSQL 18. The mock mounts its volume at
+`/data`, with documents normally under
 `/data/documents`; a custom `PERSISTENCE_MOCK_DATA_DIR` must be checked against
 the actual mount before claiming durability. Host-run mock data defaults to
 `mocks/persistence-service/data/documents`.
@@ -139,7 +147,7 @@ deferred, leaving this as a documented boundary rather than an available tool.
 The PostgreSQL 16 to 18 drill is a logical dump/restore into a new PG18 volume,
 using compatible reviewed client tools. Never mount a PG16 data directory into
 PG18. Preserve the PG16 volume until the human accepts the new state or
-explicitly discards it. A version upgrade is not evidence that all three future
+explicitly discards it. A version upgrade is not evidence that all three
 databases or artifacts were backed up.
 
 ## Milestone Ownership
@@ -147,6 +155,10 @@ databases or artifacts were backed up.
 - **M04-B P0, completed:** accepted authority and provider/recovery boundaries,
   with disposable S3 proof on native arm64 and amd64. This did not replace the
   persistence mock or add Garage to the normal application stack.
+- **M04-C P0, completed:** accepted PostgreSQL 18, three isolated logical
+  databases and owner roles, the PG18-specific volume boundary, checksums, and
+  the aggregate local connection budget. This did not add extraction or
+  correction service datasources.
 - **M04-E/F/G P0:** normal Garage integration, artifact model/adapter, and
   integrated verification. No automatic recovery claim follows from startup.
 - **M04-H P1:** optional local backup/restore and PG16-to-PG18 rehearsal with a

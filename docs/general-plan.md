@@ -688,10 +688,12 @@ Application startup must not silently execute migrations.
 core local stack must remain usable without database-administration or telemetry
 services.
 
-PostgreSQL initialization creates `platform_db`, `extraction_db`, and
-`correction_db` plus one least-privilege application role for each. Compose
-defines separate migration and seed jobs per owner; aggregate npm scripts run
-those jobs in a deterministic order without granting cross-database access.
+The accepted M04-C PostgreSQL 18 baseline initializes `platform_db`,
+`extraction_db`, and `correction_db` plus one least-privilege application role
+for each in one local PostgreSQL container. The gateway and its existing
+migration/seed jobs connect only to `platform_db`; M04-D adds the extraction and
+correction datasources plus separate jobs per owner. Aggregate npm scripts then
+run those jobs in deterministic order without granting cross-database access.
 
 Target local services:
 
@@ -1593,15 +1595,16 @@ a generic external code-review skill must not create a competing review path.
 ### Immediate Next Plan
 
 Continue the approved M04 implementation plan. M04-A's TypeORM compatibility
-baseline and M04-B's Garage compatibility/recovery-contract decision are
-complete. The accepted [local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
-and [data authority and recovery contract](data-and-recovery.md) define the
+baseline, M04-B's Garage compatibility/recovery-contract decision, and M04-C's
+PostgreSQL 18/database-ownership baseline are complete. The accepted
+[local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md) and
+[data authority and recovery contract](data-and-recovery.md) define the
 boundaries for the remaining implementation; they do not imply that the normal
-stack integration or backup/restore tooling is delivered.
+Garage stack integration or backup/restore tooling is delivered.
 
-M04-C (PostgreSQL 18 and database ownership) and M04-E (normal-stack Garage
-infrastructure) now have their respective prerequisites satisfied. Continue
-in focused submilestones, preserving the completed M03 contracts and accepted
-TypeORM baseline. M04 remains In Progress through integrated P0 verification;
-its optional P1 local backup/restore helper does not claim stage guarantees.
-M03-E remains a non-blocking advisory pilot and does not delay M04.
+Proceed with M04-D service persistence/runtime foundations and M04-E
+normal-stack Garage infrastructure in focused submilestones, preserving the
+completed M03 contracts and accepted TypeORM/PostgreSQL baselines. M04 remains
+In Progress through integrated P0 verification; its optional P1 local
+backup/restore helper does not claim stage guarantees. M03-E remains a
+non-blocking advisory pilot and does not delay M04.
