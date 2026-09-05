@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+# Keep verifier inputs explicit so missing capacity or owner settings fail closed.
 required_variables=(
   PGHOST
   PGPORT
@@ -33,6 +34,7 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
+# Capacity inputs participate in shell arithmetic and must be validated first.
 numeric_variables=(
   POSTGRES_MAX_CONNECTIONS
   POSTGRES_SUPERUSER_RESERVED_CONNECTIONS
@@ -66,6 +68,7 @@ role_passwords=(
   "$CORRECTION_DATABASE_PASSWORD"
 )
 
+# Read the running PostgreSQL version, checksum mode, and connection ceiling once.
 admin_result="$(
   PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \
     --username "$POSTGRES_ADMIN_USER" \
@@ -98,6 +101,7 @@ if [[ "$reserved_connections" != "$POSTGRES_SUPERUSER_RESERVED_CONNECTIONS" ]]; 
   exit 1
 fi
 
+# Reserve all runtime pools, the sequential tool pool, and operational headroom.
 available_connections=$((max_connections - reserved_connections))
 planned_connections=$((
   PLATFORM_DB_POOL_SIZE +
@@ -112,6 +116,7 @@ if ((planned_connections > available_connections)); then
   exit 1
 fi
 
+# Prove every role owns its schema and cannot connect to another service database.
 for index in "${!database_names[@]}"; do
   database_name="${database_names[$index]}"
   role_name="${role_names[$index]}"

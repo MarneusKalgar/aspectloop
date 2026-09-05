@@ -21,6 +21,7 @@ export const CHANGE_GROUPS = Object.freeze({
       '.dockerignore',
       ':(glob)apps/*/Dockerfile.dev',
       ':(glob)infra/local/compose.*.yml',
+      ':(glob)infra/local/scripts/**',
       'mocks/persistence-service/.dockerignore',
       'mocks/persistence-service/Dockerfile.dev',
       'droast.toml',

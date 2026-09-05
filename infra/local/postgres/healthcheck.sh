@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
+# Check daemon responsiveness before evaluating the repository-specific database contract.
 pg_isready --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --quiet
 
+# Readiness requires all owners, isolation rules, checksums, and server limits to agree.
 readiness="$(
   psql \
     --username "$POSTGRES_USER" \

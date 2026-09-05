@@ -17,7 +17,6 @@ services:
       - ../../apps/gateway-api/tsconfig.app.json:/app/apps/gateway-api/tsconfig.app.json:ro
       - ../../apps/gateway-api/tsconfig.json:/app/apps/gateway-api/tsconfig.json:ro
       - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
-      - /app/node_modules
     healthcheck:
       test:
         - CMD
@@ -57,7 +56,6 @@ services:
       - ../../apps/extraction-service/tsconfig.app.json:/app/apps/extraction-service/tsconfig.app.json:ro
       - ../../apps/extraction-service/tsconfig.json:/app/apps/extraction-service/tsconfig.json:ro
       - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
-      - /app/node_modules
     healthcheck:
       test:
         - CMD
@@ -93,7 +91,6 @@ services:
       - ../../apps/correction-service/tsconfig.app.json:/app/apps/correction-service/tsconfig.app.json:ro
       - ../../apps/correction-service/tsconfig.json:/app/apps/correction-service/tsconfig.json:ro
       - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
-      - /app/node_modules
     healthcheck:
       test:
         - CMD

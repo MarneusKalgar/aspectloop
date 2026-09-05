@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+# Resolve every path from this script so root commands work from any directory.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 GATEWAY_DIR="$REPOSITORY_ROOT/apps/gateway-api"
@@ -11,6 +12,7 @@ CORRECTION_ENV_FILE="$REPOSITORY_ROOT/apps/correction-service/.env.local"
 INFRA_ENV_FILE="$REPOSITORY_ROOT/infra/local/.env.local"
 
 APP_ENV_FILES=("$GATEWAY_ENV_FILE" "$EXTRACTION_ENV_FILE" "$CORRECTION_ENV_FILE")
+# Fail before invoking Compose when a required ignored local environment file is absent.
 for env_file in "${APP_ENV_FILES[@]}" "$INFRA_ENV_FILE"; do
   if [[ ! -f "$env_file" ]]; then
     echo "Missing local env file: $env_file" >&2
@@ -37,6 +39,7 @@ COMPOSE_PROJECT_BASE_NAME="${COMPOSE_PROJECT_NAME:-aspectloop}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_BASE_NAME}_api_local"
 export COMPOSE_PROJECT_NAME
 
+# Keep runtime services and opt-in tools in one consistently configured Compose project.
 COMPOSE=(
   docker
   compose

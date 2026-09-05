@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+# PostgreSQL supplies the administrator variables; Compose injects the three owner contracts.
 required_variables=(
   POSTGRES_USER
   POSTGRES_PASSWORD
@@ -40,6 +41,7 @@ role_passwords=(
   "$CORRECTION_DATABASE_PASSWORD"
 )
 
+# Reject administrator collisions and duplicate owner identities before issuing any SQL.
 for first_index in "${!database_names[@]}"; do
   if [[ "${database_names[$first_index]}" == "$POSTGRES_DB" ]]; then
     echo "Service database names must differ from the bootstrap database." >&2
@@ -70,6 +72,7 @@ done
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 
+# Prevent service roles and PUBLIC from connecting to bootstrap databases.
 psql \
   --host "${PGHOST:-/var/run/postgresql}" \
   --port "${PGPORT:-5432}" \
@@ -82,6 +85,7 @@ SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', :'admin_database') \g
 REVOKE CONNECT ON DATABASE template1 FROM PUBLIC;
 SQL
 
+# Create or normalize each least-privilege role and its exclusively owned database.
 for index in "${!database_names[@]}"; do
   database_name="${database_names[$index]}"
   role_name="${role_names[$index]}"
@@ -118,6 +122,7 @@ SELECT format('REVOKE ALL ON DATABASE %I FROM PUBLIC', :'database_name') \gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'database_name', :'role_name') \gexec
 SQL
 
+  # Give the database owner exclusive DDL access to its public schema.
   psql \
     --host "${PGHOST:-/var/run/postgresql}" \
     --port "${PGPORT:-5432}" \

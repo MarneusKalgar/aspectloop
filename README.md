@@ -283,6 +283,11 @@ npm run local:db:generate:extraction -- <migration-name>
 npm run local:db:generate:correction -- <migration-name>
 ```
 
+Migration names must start with a letter and contain only letters or digits.
+The wrappers place generated files in the owning service's
+`src/db/migrations` directory and cap the TypeORM CLI at the shared local tool
+connection allowance.
+
 M04-D adds no extraction or correction domain schema. Its accepted generation
 checks therefore report no schema changes and create no placeholder migration.
 
