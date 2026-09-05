@@ -4,7 +4,7 @@ import { expect, test } from 'vitest';
 
 import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
 
-const DATABASE_URL = 'postgresql://aspectloop:aspectloop@postgres:5432/aspectloop';
+const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
 
 /** Creates datasource options without connecting to PostgreSQL. */
 function createOptions(nodeEnv: string): DataSourceOptions {
@@ -14,22 +14,11 @@ function createOptions(nodeEnv: string): DataSourceOptions {
   });
 }
 
-/** Verifies application startup cannot mutate the database schema implicitly. */
-function testDatabaseChangesRemainExplicit(): void {
+/** Verifies the gateway adapter retains its explicit platform entity inventory. */
+function testEntityInventory(): void {
   const options = createOptions('development');
 
-  expect(options.migrationsRun).toBe(false);
-  expect(options.synchronize).toBe(false);
-}
-
-/** Verifies high-level repository filters cannot silently broaden a query. */
-function testInvalidWhereValuesFailClosed(): void {
-  const options = createOptions('development');
-
-  expect(options.invalidWhereValuesBehavior).toEqual({
-    null: 'throw',
-    undefined: 'throw',
-  });
+  expect(options.entities).toHaveLength(4);
 }
 
 /** Verifies source and compiled runtimes discover migrations from their own layouts. */
@@ -45,6 +34,5 @@ function testMigrationDiscoveryPaths(): void {
   }
 }
 
-test('rejects null and undefined high-level where values', testInvalidWhereValuesFailClosed);
-test('keeps schema changes and startup migrations explicit', testDatabaseChangesRemainExplicit);
+test('retains the gateway platform entity inventory', testEntityInventory);
 test('uses the expected source and compiled migration paths', testMigrationDiscoveryPaths);

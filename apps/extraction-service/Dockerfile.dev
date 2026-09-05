@@ -1,0 +1,39 @@
+FROM node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995 AS npm-runtime
+
+ARG NPM_VERSION=12.0.2
+
+RUN npm install --global --ignore-scripts "npm@${NPM_VERSION}" && \
+    test "$(npm --version)" = "${NPM_VERSION}" && \
+    npm cache clean --force
+
+FROM npm-runtime AS dependencies
+
+WORKDIR /app
+
+COPY package.json package-lock.json .npmrc ./
+COPY apps/extraction-service/package.json ./apps/extraction-service/package.json
+COPY packages/backend-platform/package.json ./packages/backend-platform/package.json
+
+RUN HUSKY=0 npm ci \
+      --workspace @aspectloop/extraction-service \
+      --include-workspace-root && \
+    npm cache clean --force
+
+FROM npm-runtime AS development
+
+WORKDIR /app
+
+COPY --from=dependencies --chown=node:node /app ./
+COPY --chown=node:node tsconfig.base.json ./
+COPY --chown=node:node apps/extraction-service ./apps/extraction-service
+COPY --chown=node:node packages/backend-platform ./packages/backend-platform
+
+RUN npm run build --workspace @aspectloop/backend-platform
+
+USER node
+
+WORKDIR /app/apps/extraction-service
+
+EXPOSE 8081
+
+CMD ["npm", "run", "dev"]

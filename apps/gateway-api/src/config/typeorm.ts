@@ -1,6 +1,11 @@
-import { ConfigService } from '@nestjs/config';
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { DataSourceOptions } from 'typeorm';
+import type { ConfigService } from '@nestjs/config';
+import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import type { DataSourceOptions } from 'typeorm';
+
+import {
+  createPostgresDataSourceOptions,
+  getTypeOrmDiscoveryPaths,
+} from '@aspectloop/backend-platform/database';
 
 import { CorrectionSession } from '../correction-sessions/correction-session.entity';
 import { CorrectionEdit, CorrectionEventOutbox } from '../corrections/correction-edit.entity';
@@ -15,29 +20,19 @@ interface TypeOrmConfig {
 
 /** Builds the shared gateway datasource contract for Nest and TypeORM CLI use. */
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
-  const { migrations } = getTypeOrmPaths(config.nodeEnv);
+  const { migrations } = getTypeOrmDiscoveryPaths(config.nodeEnv);
 
-  return {
+  return createPostgresDataSourceOptions({
+    databaseUrl: config.databaseUrl,
     entities: [User, CorrectionSession, CorrectionEdit, CorrectionEventOutbox],
-    extra: {
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 30000,
-      max: config.poolSize ?? 10,
-    },
-    invalidWhereValuesBehavior: {
-      null: 'throw',
-      undefined: 'throw',
-    },
-    logging: config.nodeEnv === 'development' ? ['error', 'warn'] : ['error'],
-    maxQueryExecutionTime: config.slowQueryThresholdMs ?? 1000,
     migrations,
-    migrationsRun: false,
-    synchronize: false,
-    type: 'postgres',
-    url: config.databaseUrl,
-  };
+    nodeEnv: config.nodeEnv,
+    poolSize: config.poolSize,
+    slowQueryThresholdMs: config.slowQueryThresholdMs,
+  });
 }
 
+/** Builds Nest's gateway datasource options from validated configuration. */
 export function getTypeOrmModuleOptions(configService: ConfigService): TypeOrmModuleOptions {
   return {
     ...getTypeOrmDataSourceOptions({
@@ -47,21 +42,5 @@ export function getTypeOrmModuleOptions(configService: ConfigService): TypeOrmMo
       slowQueryThresholdMs: configService.get<number>('DB_SLOW_QUERY_THRESHOLD_MS'),
     }),
     autoLoadEntities: true,
-  };
-}
-
-function getTypeOrmPaths(nodeEnv?: string) {
-  const isRuntimeBuild = nodeEnv === 'production' || nodeEnv === 'stage';
-
-  if (isRuntimeBuild) {
-    return {
-      entities: ['dist/**/*.entity.js'],
-      migrations: ['dist/db/migrations/*.js'],
-    };
-  }
-
-  return {
-    entities: [`src/**/*.entity{.ts,.js}`],
-    migrations: ['src/db/migrations/*{.ts,.js}'],
   };
 }

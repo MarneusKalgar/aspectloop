@@ -1,3 +1,4 @@
+import { getEnvFilePaths } from '@aspectloop/backend-platform/config';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,7 +8,6 @@ import { AuthModule } from './auth/auth.module';
 import { validateEnv } from './config/env.validation';
 import { getPinoLoggerConfig } from './config/logger.config';
 import { getTypeOrmModuleOptions } from './config/typeorm';
-import { getEnvFilePaths } from './core/environment';
 import { CorrectionSessionsModule } from './correction-sessions/correction-sessions.module';
 import { CorrectionsModule } from './corrections/corrections.module';
 import { DocumentRegistryModule } from './document-registry/document-registry.module';
