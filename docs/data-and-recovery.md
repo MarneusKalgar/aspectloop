@@ -1,30 +1,32 @@
 # Data Authority And Recovery
 
-Status: Accepted M04-B contract and M04-C database baseline (2026-09-03)
+Status: Accepted M04-B contract and M04-C/M04-D database foundations (2026-09-05)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
-proof; M04-C established the PostgreSQL 18 database ownership baseline. Later
-submilestones implement the remaining service, normal-stack, and recovery
-tooling.
+proof; M04-C established the PostgreSQL 18 database ownership baseline; and
+M04-D established each backend service's datasource, migration, seed, and local
+runtime boundary. Later submilestones implement the remaining object-storage,
+domain-data, integrated-stack, and recovery tooling.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints.
 
 ## Current State
 
-After M04-C and before M04-D/M04-E/M04-F, the normal local stack has one
+After M04-D and before M04-E/M04-F, the normal local stack has one
 PostgreSQL 18 container with `platform_db`, `extraction_db`, and
 `correction_db`, separate least-privilege owner roles, RabbitMQ, and a
-file-backed HTTP persistence mock. The gateway connects only to `platform_db`.
-The extraction and correction databases are provisioned, but their service
-datasources and migration histories arrive in M04-D. There is no source-object
-catalog, normal-stack Garage integration, or executable cross-store
-backup/restore workflow.
+file-backed HTTP persistence mock. Gateway, extraction, and correction each
+connect only to their owned database with a bounded pool. All three have
+explicit service-owned migration and seed commands; extraction and correction
+still have no domain entities, migrations, or seed data. There is no
+source-object catalog, normal-stack Garage integration, or executable
+cross-store backup/restore workflow.
 
 | Current state                                       | Authority and recovery consequence                                                                                                                                          |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Gateway `platform_db` on PostgreSQL 18              | Users, correction sessions, immutable source snapshots, draft snapshots, edit audit, outbox, and migration history. Preserve together.                                      |
-| Provisioned extraction/correction databases         | Ownership boundaries exist, but no service datasource, schema, migration history, or domain rows exist before M04-D.                                                        |
+| Extraction/correction databases on PostgreSQL 18    | Each has an owner-only datasource plus explicit migration/seed boundaries. No domain schema or rows exist yet; an empty migration history is expected.                      |
 | Persistence mock JSON files                         | Mutable documents, including documents without an opened session and updates not necessarily committed in PostgreSQL. Non-seed contents are not guaranteed reconstructible. |
 | Mock seeds and document registry                    | Repository-owned fixtures/configuration; restarting the mock adds missing seeds but does not reconstruct user edits.                                                        |
 | RabbitMQ                                            | Delivery transport. The Compose file declares no repository-owned broker data volume; queue contents are not the recovery authority.                                        |

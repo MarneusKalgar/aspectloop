@@ -1,15 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { config as loadDotEnv } from 'dotenv';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 
-export function getEnvFilePaths(cwd: string = process.cwd()): string[] {
-  const candidates = [resolve(cwd, '.env.local'), resolve(cwd, '.env')];
-
-  return candidates.filter((filePath, index) => candidates.indexOf(filePath) === index);
-}
-
+/** Returns a required value from the application's validated configuration. */
 export function getEnvVariable<T>(app: INestApplication, key: string): T {
   const configService = app.get(ConfigService);
   const value = configService.get<T>(key);
@@ -19,12 +11,4 @@ export function getEnvVariable<T>(app: INestApplication, key: string): T {
   }
 
   return value;
-}
-
-export function loadEnvFiles(cwd: string = process.cwd()): void {
-  for (const filePath of getEnvFilePaths(cwd)) {
-    if (existsSync(filePath)) {
-      loadDotEnv({ override: false, path: filePath });
-    }
-  }
 }

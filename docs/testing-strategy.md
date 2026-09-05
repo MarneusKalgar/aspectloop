@@ -100,8 +100,9 @@ current Vitest configurations.
 - integration tests exercise React, routing, Apollo, auth state, and MSW
   together without starting the backend.
 
-The root `test:backend:run` command runs database-independent gateway and
-backend-platform tests and remains part of `verify:full`. The opt-in
+The root `test:backend:run` command runs database-independent gateway,
+extraction, correction, and backend-platform configuration tests and remains
+part of `verify:full`. The opt-in
 `test:typeorm:run` command verifies TypeORM behavior against disposable
 PostgreSQL and remains a human-run compatibility check until M04-F/M04-G
 provide a reusable persistence test environment suitable for CI.
@@ -303,9 +304,9 @@ No MSW worker runs in local or stage system modes.
 
 The current local Compose stack has a separate human verification flow under
 `Local-Stack Human Verification` in the repository README. It starts the local
-infrastructure, runs migration and seed wrappers, checks gateway and persistence
-health, and exercises sign-up, sign-in, and correction-inbox loading through the
-live web application.
+infrastructure, runs all three service-owned migration and seed paths, checks
+gateway, extraction, correction, and persistence health, and exercises sign-up,
+sign-in, and correction-inbox loading through the live web application.
 
 This flow intentionally has no `test:e2e:local` command yet. It uses ignored
 environment configuration and mutable local state, so it is not part of

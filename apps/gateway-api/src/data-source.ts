@@ -1,8 +1,8 @@
 import 'reflect-metadata';
+import { loadEnvFiles } from '@aspectloop/backend-platform/config';
 import { DataSource } from 'typeorm';
 
 import { getTypeOrmDataSourceOptions } from './config/typeorm';
-import { loadEnvFiles } from './core/environment';
 
 loadEnvFiles();
 

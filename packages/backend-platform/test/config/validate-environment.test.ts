@@ -1,7 +1,7 @@
 import { IsNumber, IsString } from 'class-validator';
 import { expect, test } from 'vitest';
 
-import { validateEnvironment } from '../../src/config';
+import { getEnvFilePaths, validateEnvironment } from '../../src/config';
 
 class TestEnvironment {
   PORT!: number;
@@ -10,6 +10,14 @@ class TestEnvironment {
 
 IsNumber()(TestEnvironment.prototype, 'PORT');
 IsString()(TestEnvironment.prototype, 'SERVICE_NAME');
+
+/** Verifies every backend resolves local environment files in override order. */
+function testEnvironmentFilePaths(): void {
+  expect(getEnvFilePaths('/workspace/service')).toEqual([
+    '/workspace/service/.env.local',
+    '/workspace/service/.env',
+  ]);
+}
 
 /** Verifies raw values are instantiated before schema validation. */
 function testEnvironmentTransformation(): void {
@@ -35,3 +43,4 @@ function testEnvironmentValidationFailure(): void {
 
 test('environment values are transformed and validated', testEnvironmentTransformation);
 test('invalid environment values fail startup validation', testEnvironmentValidationFailure);
+test('environment files use the shared override order', testEnvironmentFilePaths);

@@ -9,6 +9,9 @@
       "config": [
         "dist/config/index.d.ts"
       ],
+      "database": [
+        "dist/database/index.d.ts"
+      ],
       "logging": [
         "dist/logging/index.d.ts"
       ]
@@ -17,14 +20,22 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
     "./config": {
       "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js",
       "require": "./dist/config/index.js"
+    },
+    "./database": {
+      "types": "./dist/database/index.d.ts",
+      "import": "./dist/database/index.js",
+      "require": "./dist/database/index.js"
     },
     "./logging": {
       "types": "./dist/logging/index.d.ts",
+      "import": "./dist/logging/index.js",
       "require": "./dist/logging/index.js"
     }
   },
@@ -37,6 +48,8 @@
   "dependencies": {
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "reflect-metadata": "^0.2.2"
+    "dotenv": "^17.4.2",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^1.1.0"
   }
 }

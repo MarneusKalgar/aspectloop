@@ -69,7 +69,12 @@ export default [
     },
   },
   {
-    files: ['apps/gateway-api/test/**/*.ts', 'packages/backend-platform/test/**/*.ts'],
+    files: [
+      'apps/correction-service/test/**/*.ts',
+      'apps/extraction-service/test/**/*.ts',
+      'apps/gateway-api/test/**/*.ts',
+      'packages/backend-platform/test/**/*.ts',
+    ],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       parserOptions: {

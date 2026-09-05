@@ -8,6 +8,8 @@ services:
     init: true
     env_file:
       - ../../apps/gateway-api/.env.local
+    environment:
+      DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-10}
     ports:
       - '${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:
@@ -35,6 +37,78 @@ services:
       rabbitmq:
         condition: service_healthy
       persistence-mock:
+        condition: service_healthy
+
+  extraction-service:
+    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_extraction_service
+    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-extraction-service
+    build:
+      context: ../..
+      dockerfile: ./apps/extraction-service/Dockerfile.dev
+    init: true
+    env_file:
+      - ../../apps/extraction-service/.env.local
+    environment:
+      DB_POOL_SIZE: ${EXTRACTION_DB_POOL_SIZE:-10}
+    ports:
+      - '${EXTRACTION_SERVICE_PORT:-8081}:${EXTRACTION_SERVICE_PORT:-8081}'
+    volumes:
+      - ../../apps/extraction-service/src:/app/apps/extraction-service/src
+      - ../../apps/extraction-service/tsconfig.app.json:/app/apps/extraction-service/tsconfig.app.json:ro
+      - ../../apps/extraction-service/tsconfig.json:/app/apps/extraction-service/tsconfig.json:ro
+      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
+      - /app/node_modules
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:' + (process.env.EXTRACTION_SERVICE_PORT ||
+          '8081') + '/health').then((response) => { if (!response.ok)
+          process.exit(1); }).catch(() => process.exit(1));
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  correction-service:
+    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_correction_service
+    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-correction-service
+    build:
+      context: ../..
+      dockerfile: ./apps/correction-service/Dockerfile.dev
+    init: true
+    env_file:
+      - ../../apps/correction-service/.env.local
+    environment:
+      DB_POOL_SIZE: ${CORRECTION_DB_POOL_SIZE:-10}
+    ports:
+      - '${CORRECTION_SERVICE_PORT:-8082}:${CORRECTION_SERVICE_PORT:-8082}'
+    volumes:
+      - ../../apps/correction-service/src:/app/apps/correction-service/src
+      - ../../apps/correction-service/tsconfig.app.json:/app/apps/correction-service/tsconfig.app.json:ro
+      - ../../apps/correction-service/tsconfig.json:/app/apps/correction-service/tsconfig.json:ro
+      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
+      - /app/node_modules
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:' + (process.env.CORRECTION_SERVICE_PORT ||
+          '8082') + '/health').then((response) => { if (!response.ok)
+          process.exit(1); }).catch(() => process.exit(1));
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
         condition: service_healthy
 
   postgres:
@@ -119,80 +193,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-
-  migrate:
-    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_migrate_tmp
-    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-migrate
-    build:
-      context: ../..
-      dockerfile: ./apps/gateway-api/Dockerfile.dev
-    env_file:
-      - ../../apps/gateway-api/.env.local
-    volumes:
-      - ../../apps/gateway-api/src:/app/apps/gateway-api/src
-      - ../../apps/gateway-api/tsconfig.app.json:/app/apps/gateway-api/tsconfig.app.json:ro
-      - ../../apps/gateway-api/tsconfig.json:/app/apps/gateway-api/tsconfig.json:ro
-      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
-      - /app/node_modules
-    command: ['npm', 'run', 'db:migrate:local']
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - tools
-
-  seed:
-    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_seed_tmp
-    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-seed
-    build:
-      context: ../..
-      dockerfile: ./apps/gateway-api/Dockerfile.dev
-    env_file:
-      - ../../apps/gateway-api/.env.local
-    volumes:
-      - ../../apps/gateway-api/src:/app/apps/gateway-api/src
-      - ../../apps/gateway-api/tsconfig.app.json:/app/apps/gateway-api/tsconfig.app.json:ro
-      - ../../apps/gateway-api/tsconfig.json:/app/apps/gateway-api/tsconfig.json:ro
-      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
-      - /app/node_modules
-    command: ['npm', 'run', 'db:seed:local']
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - tools
-
-  role-verify:
-    image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
-    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-role-verify
-    environment:
-      PGHOST: postgres
-      PGPORT: 5432
-      POSTGRES_ADMIN_USER: ${POSTGRES_ADMIN_USER:-aspectloop_admin}
-      POSTGRES_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-aspectloop_admin}
-      POSTGRES_ADMIN_DATABASE: ${POSTGRES_ADMIN_DATABASE:-postgres}
-      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
-      POSTGRES_SUPERUSER_RESERVED_CONNECTIONS: ${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-3}
-      POSTGRES_OPERATIONAL_HEADROOM: ${POSTGRES_OPERATIONAL_HEADROOM:-20}
-      POSTGRES_TOOL_CONNECTION_BUDGET: ${POSTGRES_TOOL_CONNECTION_BUDGET:-6}
-      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
-      PLATFORM_DATABASE_NAME: ${PLATFORM_DATABASE_NAME:-platform_db}
-      PLATFORM_DATABASE_USER: ${PLATFORM_DATABASE_USER:-platform_app}
-      PLATFORM_DATABASE_PASSWORD: ${PLATFORM_DATABASE_PASSWORD:-platform_app}
-      EXTRACTION_DATABASE_NAME: ${EXTRACTION_DATABASE_NAME:-extraction_db}
-      EXTRACTION_DATABASE_USER: ${EXTRACTION_DATABASE_USER:-extraction_app}
-      EXTRACTION_DATABASE_PASSWORD: ${EXTRACTION_DATABASE_PASSWORD:-extraction_app}
-      CORRECTION_DATABASE_NAME: ${CORRECTION_DATABASE_NAME:-correction_db}
-      CORRECTION_DATABASE_USER: ${CORRECTION_DATABASE_USER:-correction_app}
-      CORRECTION_DATABASE_PASSWORD: ${CORRECTION_DATABASE_PASSWORD:-correction_app}
-    volumes:
-      - ./postgres/verify-roles.sh:/usr/local/bin/aspectloop-role-verify:ro
-    command: ['/bin/bash', '/usr/local/bin/aspectloop-role-verify']
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles:
-      - tools
 
 volumes:
   # The legacy PG16 volume is intentionally undeclared so M04-C cannot attach

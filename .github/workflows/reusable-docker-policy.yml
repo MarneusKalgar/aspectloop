@@ -37,12 +37,19 @@ jobs:
 
       - name: Prepare Compose environment
         if: steps.docker_changes.outputs.changed == 'true'
-        run: cp apps/gateway-api/.env.example apps/gateway-api/.env.local
+        run: |
+          cp apps/gateway-api/.env.example apps/gateway-api/.env.local
+          cp apps/extraction-service/.env.example apps/extraction-service/.env.local
+          cp apps/correction-service/.env.example apps/correction-service/.env.local
 
       - name: Validate Compose configuration
         id: compose
         if: steps.docker_changes.outputs.changed == 'true'
-        run: docker compose -f infra/local/compose.local.yml config --quiet
+        run: >-
+          docker compose
+          -f infra/local/compose.local.yml
+          -f infra/local/compose.tools.yml
+          config --quiet
 
       - name: Enforce Dockerfile policy
         id: dockerfile_roast
@@ -55,7 +62,11 @@ jobs:
       - name: Build development images
         id: docker_build
         if: steps.docker_changes.outputs.changed == 'true'
-        run: docker compose -f infra/local/compose.local.yml build gateway-api persistence-mock
+        run: >-
+          docker compose
+          -f infra/local/compose.local.yml
+          -f infra/local/compose.tools.yml
+          build gateway-api extraction-service correction-service persistence-mock
 
       - name: Write Docker policy summary
         if: always()

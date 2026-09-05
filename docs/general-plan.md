@@ -193,14 +193,14 @@ contract boundary.
 
 #### Workspace ownership
 
-| Area                        | Owns                                                                                       | Must not own                                                        |
-| --------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| `apps/web`                  | Browser UI, routing, form state, GraphQL operations                                        | Backend domain rules or internal service DTOs                       |
-| `apps/gateway-api`          | Public GraphQL, auth/authz, request composition, realtime gateway                          | PDF processing, correction state transitions, prompts               |
-| `apps/extraction-service`   | Extraction jobs, provider adapters, artifact validation, retries                           | User-facing GraphQL or correction decisions                         |
-| `apps/correction-service`   | Sessions, overlays, validation, provenance assembly, submit, audit/outbox                  | Model-provider details or public auth                               |
-| `packages/backend-platform` | Shared environment-validation and bounded logging mechanics with multiple NestJS consumers | Service-owned schemas, entities, repositories, and service identity |
-| `packages/contracts`        | Framework-free event and internal transport contracts                                      | NestJS decorators, TypeORM entities, React components               |
+| Area                        | Owns                                                                      | Must not own                                                     |
+| --------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `apps/web`                  | Browser UI, routing, form state, GraphQL operations                       | Backend domain rules or internal service DTOs                    |
+| `apps/gateway-api`          | Public GraphQL, auth/authz, request composition, realtime gateway         | PDF processing, correction state transitions, prompts            |
+| `apps/extraction-service`   | Extraction jobs, provider adapters, artifact validation, retries          | User-facing GraphQL or correction decisions                      |
+| `apps/correction-service`   | Sessions, overlays, validation, provenance assembly, submit, audit/outbox | Model-provider details or public auth                            |
+| `packages/backend-platform` | Shared environment, datasource, and bounded logging mechanics             | Service schemas, entities, repositories, migrations, or identity |
+| `packages/contracts`        | Framework-free event and internal transport contracts                     | NestJS decorators, TypeORM entities, React components            |
 
 #### Monorepo decision
 
@@ -690,10 +690,11 @@ services.
 
 The accepted M04-C PostgreSQL 18 baseline initializes `platform_db`,
 `extraction_db`, and `correction_db` plus one least-privilege application role
-for each in one local PostgreSQL container. The gateway and its existing
-migration/seed jobs connect only to `platform_db`; M04-D adds the extraction and
-correction datasources plus separate jobs per owner. Aggregate npm scripts then
-run those jobs in deterministic order without granting cross-database access.
+for each in one local PostgreSQL container. Accepted M04-D gives gateway,
+extraction, and correction an owned datasource, bounded pool, migration/seed
+boundary, development image, and normal Compose runtime. Aggregate npm scripts
+reuse each runtime definition as a bounded one-shot job in deterministic owner
+order without granting cross-database access or running migrations at startup.
 
 Target local services:
 
@@ -1595,16 +1596,16 @@ a generic external code-review skill must not create a competing review path.
 ### Immediate Next Plan
 
 Continue the approved M04 implementation plan. M04-A's TypeORM compatibility
-baseline, M04-B's Garage compatibility/recovery-contract decision, and M04-C's
-PostgreSQL 18/database-ownership baseline are complete. The accepted
+baseline, M04-B's Garage compatibility/recovery-contract decision, M04-C's
+PostgreSQL 18/database-ownership baseline, and M04-D's service-owned persistence
+and runtime foundations are complete. The accepted
 [local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md) and
 [data authority and recovery contract](data-and-recovery.md) define the
 boundaries for the remaining implementation; they do not imply that the normal
 Garage stack integration or backup/restore tooling is delivered.
 
-Proceed with M04-D service persistence/runtime foundations and M04-E
-normal-stack Garage infrastructure in focused submilestones, preserving the
-completed M03 contracts and accepted TypeORM/PostgreSQL baselines. M04 remains
-In Progress through integrated P0 verification; its optional P1 local
+Proceed with M04-E normal-stack Garage infrastructure, preserving the completed
+M03 contracts and accepted TypeORM/PostgreSQL/service-runtime baselines. M04
+remains In Progress through integrated P0 verification; its optional P1 local
 backup/restore helper does not claim stage guarantees. M03-E remains a
 non-blocking advisory pilot and does not delay M04.
