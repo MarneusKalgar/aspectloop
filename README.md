@@ -11,18 +11,23 @@ rebrand, M03-A toolchain and dependency-security foundation, M03-B verification
 and pull-request gates, M03-C local container hardening, and M03-D
 logging/privacy baseline are complete. M03-E is evaluating advisory GitHub
 review and dependency-update automation without blocking feature work.
-The existing product behavior remains in the gateway while the extraction and
-correction runtimes are independent health-only NestJS shells.
+M04-A through M04-D have established the accepted TypeORM, PostgreSQL 18,
+database-ownership, and service-runtime foundations. M04 remains in progress.
+Existing product behavior remains in the gateway while extraction and
+correction run as independent NestJS shells with service-owned persistence
+foundations but no domain behavior yet.
 
 ## Application Boundaries
 
 - `@aspectloop/web`: React and Vite browser application.
 - `@aspectloop/gateway-api`: public schema-first GraphQL API, authentication, and
   the current temporary home for correction behavior.
-- `@aspectloop/extraction-service`: extraction runtime shell; no extraction
-  behavior or infrastructure dependency exists yet.
-- `@aspectloop/correction-service`: correction runtime shell; correction behavior
-  remains in the gateway until M06.
+- `@aspectloop/extraction-service`: extraction runtime shell with an owned
+  `extraction_db` datasource, migration, seed, and container boundary; domain
+  behavior arrives in M05.
+- `@aspectloop/correction-service`: correction runtime shell with an owned
+  `correction_db` datasource, migration, seed, and container boundary;
+  correction behavior remains in the gateway until M06.
 - `@aspectloop/contracts`: framework-free public boundary for contracts that are
   genuinely shared by independent runtimes.
 - `@aspectloop/persistence-service-mock`: local file-backed persistence dependency.
@@ -204,6 +209,8 @@ npm run local:up
 npm run local:migrate -- --build
 npm run local:seed -- --build
 curl --fail --silent --show-error http://localhost:8080/health
+curl --fail --silent --show-error http://localhost:8081/health
+curl --fail --silent --show-error http://localhost:8082/health
 curl --fail --silent --show-error http://localhost:8090/health
 ```
 
@@ -227,17 +234,21 @@ full-stack coverage.
 
 ## Environment Files
 
-The gateway and web applications use ignored `.env.local` files. Copy and adapt
-the corresponding templates for a new checkout:
+The applications and local infrastructure use ignored `.env.local` files. Copy
+and adapt the corresponding templates for a new checkout:
 
+- `infra/local/.env.example`
 - `apps/gateway-api/.env.example`
 - `apps/web/.env.example`
 - `apps/extraction-service/.env.example`
 - `apps/correction-service/.env.example`
 
-The gateway template supplies database, RabbitMQ, persistence-mock, JWT, CORS,
-and GraphQL introspection configuration. The service shells need only their
-port and optional log level.
+The infrastructure template supplies the local PostgreSQL administrator, three
+service-owned database/role pairs, and aggregate connection budget. The gateway
+template supplies only its `platform_db` connection plus RabbitMQ,
+persistence-mock, JWT, CORS, and GraphQL introspection configuration. The
+extraction and correction templates each supply only the owning service's
+database URL, bounded pool, slow-query threshold, port, and optional log level.
 
 ## Local Development
 
@@ -250,8 +261,9 @@ npm run dev:extraction
 npm run dev:correction
 ```
 
-The gateway requires PostgreSQL, RabbitMQ, and the persistence mock. Start
-those dependencies, together with the gateway, through the local Compose stack:
+The three backend runtimes require PostgreSQL; the gateway also requires
+RabbitMQ and the persistence mock. Start all backend services and dependencies
+through the local Compose stack:
 
 ```bash
 npm run local:up
@@ -263,13 +275,16 @@ Start an already-built stack with `npm run local:start`. Stop containers while
 preserving data volumes with `npm run local:down`. `npm run local:reset` also
 deletes local volumes and is intentionally explicit.
 
-Generate a future gateway migration only through the human-owned wrapper:
+Generate a future migration only through its human-owned service wrapper:
 
 ```bash
 npm run local:db:generate:gateway -- <migration-name>
+npm run local:db:generate:extraction -- <migration-name>
+npm run local:db:generate:correction -- <migration-name>
 ```
 
-M01 changes no schema and therefore creates no migration.
+M04-D adds no extraction or correction domain schema. Its accepted generation
+checks therefore report no schema changes and create no placeholder migration.
 
 ## Build And GraphQL Commands
 
@@ -338,12 +353,16 @@ not save real tokens in committed queries or browser history.
 `infra/local/compose.local.yml` owns the current shared backend stack:
 
 - `gateway-api`
+- `extraction-service`
+- `correction-service`
 - `postgres`
 - `rabbitmq`
 - `persistence-mock`
-- `migrate` and `seed` profiled one-off services
 
-Extraction and correction shells are intentionally not Compose services yet.
+Aggregate migration and seed commands reuse each runtime service definition as
+a bounded one-shot container in deterministic gateway, extraction, correction
+order. `infra/local/compose.tools.yml` contains distinct profiled infrastructure
+tools and is combined with the normal runtime graph by the repository wrappers.
 
 ## Repository Layout
 

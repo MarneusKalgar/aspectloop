@@ -1,7 +1,9 @@
-import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class EnvironmentVariables {
   @IsNumber()
+  @Type(() => Number)
   API_PORT: number;
 
   @IsOptional()
@@ -10,10 +12,12 @@ export class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   BCRYPT_SALT_ROUNDS?: number = 10;
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   CORRECTION_OUTBOX_FLUSH_INTERVAL_MS?: number = 5000;
 
   @IsString()
@@ -23,16 +27,22 @@ export class EnvironmentVariables {
   @IsString()
   DATABASE_PROVIDER?: string;
 
+  @IsNotEmpty()
   @IsString()
   DATABASE_URL!: string;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  DB_POOL_SIZE?: number;
+  @Max(10)
+  @Min(1)
+  @Type(() => Number)
+  DB_POOL_SIZE = 10;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  DB_SLOW_QUERY_THRESHOLD_MS?: number;
+  @Min(0)
+  @Type(() => Number)
+  DB_SLOW_QUERY_THRESHOLD_MS = 1000;
 
   @IsString()
   JWT_ACCESS_SECRET!: string;
@@ -49,6 +59,7 @@ export class EnvironmentVariables {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   PERSISTENCE_REQUEST_TIMEOUT_MS?: number = 5000;
 
   @IsString()
@@ -58,6 +69,7 @@ export class EnvironmentVariables {
   RABBITMQ_PASSWORD!: string;
 
   @IsNumber()
+  @Type(() => Number)
   RABBITMQ_PORT: number;
 
   @IsString()
