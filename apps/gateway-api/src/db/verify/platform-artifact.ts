@@ -1,12 +1,12 @@
 import 'reflect-metadata';
+import { validateEnv } from '@app/config/env.validation';
+import appDataSource from '@app/data-source';
+import { DocumentObject } from '@app/documents/document-object.entity';
+import { Document } from '@app/documents/document.entity';
+import { ArtifactStorageError } from '@app/storage/artifact-storage.errors';
+import { createPlatformArtifactStorage } from '@app/storage/create-platform-artifact-storage';
 import assert from 'node:assert/strict';
 
-import { validateEnv } from '../../config/env.validation';
-import appDataSource from '../../data-source';
-import { DocumentObject } from '../../documents/document-object.entity';
-import { Document } from '../../documents/document.entity';
-import { ArtifactStorageError } from '../../storage/artifact-storage.errors';
-import { createPlatformArtifactStorage } from '../../storage/create-platform-artifact-storage';
 import {
   PLATFORM_ARTIFACT_SEED,
   platformArtifactSeedBody,

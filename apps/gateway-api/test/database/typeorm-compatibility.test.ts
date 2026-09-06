@@ -2,13 +2,12 @@ import 'reflect-metadata';
 
 import type { EntityManager } from 'typeorm';
 
+import { getTypeOrmDataSourceOptions } from '@gateway/config/typeorm';
+import { CorrectionSession } from '@gateway/correction-sessions/correction-session.entity';
+import { User } from '@gateway/users/user.entity';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { expect, test } from 'vitest';
-
-import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
-import { CorrectionSession } from '../../src/correction-sessions/correction-session.entity';
-import { User } from '../../src/users/user.entity';
 
 const databaseUrl = process.env.TYPEORM_TEST_DATABASE_URL;
 

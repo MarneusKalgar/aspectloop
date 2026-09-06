@@ -1,6 +1,5 @@
+import { validateEnv } from '@gateway/config/env.validation';
 import { expect, test } from 'vitest';
-
-import { validateEnv } from '../../src/config/env.validation';
 
 const VALID_ENVIRONMENT = {
   API_PORT: '8080',

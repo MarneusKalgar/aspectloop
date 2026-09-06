@@ -1,7 +1,6 @@
+import { getBoundedOperationName } from '@gateway/graphql/utils/createGraphqlLoggingPlugin';
 import { parse } from 'graphql';
 import { expect, test } from 'vitest';
-
-import { getBoundedOperationName } from '../../src/graphql/utils/createGraphqlLoggingPlugin';
 
 /** Verifies operation names are bounded without retaining GraphQL source text. */
 function testGraphqlOperationNameContract(): void {

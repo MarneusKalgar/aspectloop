@@ -1,8 +1,7 @@
 import type { DataSourceOptions } from 'typeorm';
 
+import { getTypeOrmDataSourceOptions } from '@gateway/config/typeorm';
 import { expect, test } from 'vitest';
-
-import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
 
 const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
 
