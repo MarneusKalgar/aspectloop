@@ -1,16 +1,18 @@
 import type { DataSourceOptions } from 'typeorm';
 
+import { ConfigService } from '@nestjs/config';
 import { expect, test } from 'vitest';
 
 import { validateEnv } from '../../src/config/env.validation';
-import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
+import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/config/typeorm';
 
 const DATABASE_URL = 'postgresql://correction_app:correction_app@postgres:5432/correction_db';
 
 /** Creates correction datasource options without connecting to PostgreSQL. */
-function createOptions(nodeEnv: string): DataSourceOptions {
+function createOptions(nodeEnv: string, discoveryMode: 'compiled' | 'source'): DataSourceOptions {
   return getTypeOrmDataSourceOptions({
     databaseUrl: DATABASE_URL,
+    discoveryMode,
     nodeEnv,
   });
 }
@@ -20,22 +22,36 @@ function testDatabaseUrlValidation(): void {
   expect(() => validateEnv({ DATABASE_URL: '' })).toThrow('Environment validation failed');
 }
 
-/** Verifies source and compiled runtimes retain explicit non-empty discovery globs. */
+/** Verifies discovery follows the process execution form rather than NODE_ENV. */
 function testDiscoveryPaths(): void {
-  const expectations: [string, string[], string[]][] = [
-    ['development', ['src/**/*.entity{.ts,.js}'], ['src/db/migrations/*{.ts,.js}']],
-    ['production', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
-    ['stage', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
+  const expectations: [string, 'compiled' | 'source', string[], string[]][] = [
+    ['development', 'source', ['src/**/*.entity{.ts,.js}'], ['src/db/migrations/*{.ts,.js}']],
+    ['development', 'compiled', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
+    ['production', 'compiled', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
   ];
 
-  for (const [nodeEnv, expectedEntities, expectedMigrations] of expectations) {
-    const options = createOptions(nodeEnv);
+  for (const [nodeEnv, discoveryMode, expectedEntities, expectedMigrations] of expectations) {
+    const options = createOptions(nodeEnv, discoveryMode);
 
     expect(options.entities).toEqual(expectedEntities);
     expect(options.migrations).toEqual(expectedMigrations);
     expect(expectedEntities).not.toHaveLength(0);
     expect(expectedMigrations).not.toHaveLength(0);
   }
+}
+
+/** Verifies the compiled Nest watcher never asks Node to load source files. */
+function testNestDiscoveryPaths(): void {
+  const options = getTypeOrmModuleOptions(
+    new ConfigService({
+      DATABASE_URL,
+      NODE_ENV: 'development',
+    }),
+  );
+
+  expect(options.entities).toEqual(['dist/**/*.entity.js']);
+  expect(options.migrations).toEqual(['dist/db/migrations/*.js']);
+  expect(options.autoLoadEntities).toBe(true);
 }
 
 /** Verifies TypeORM CLI string values become validated numeric settings. */
@@ -63,6 +79,7 @@ function testPoolBudgetValidation(): void {
 }
 
 test('uses explicit source and compiled datasource discovery paths', testDiscoveryPaths);
+test('uses compiled discovery paths in the Nest development runtime', testNestDiscoveryPaths);
 test('rejects an empty correction database URL', testDatabaseUrlValidation);
 test('rejects a pool above the correction allocation', testPoolBudgetValidation);
 test('coerces correction CLI numeric environment values', testNumericEnvironmentCoercion);

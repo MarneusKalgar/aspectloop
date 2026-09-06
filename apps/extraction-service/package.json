@@ -2,6 +2,9 @@
   "name": "@aspectloop/extraction-service",
   "version": "0.1.0",
   "private": true,
+  "imports": {
+    "#app/*": "./dist/*.js"
+  },
   "scripts": {
     "dev": "NODE_ENV=development nest start --watch",
     "build": "nest build",

@@ -9,6 +9,8 @@ export interface PostgresDataSourceConfig {
   slowQueryThresholdMs?: number;
 }
 
+export type TypeOrmDiscoveryMode = 'compiled' | 'source';
+
 export interface TypeOrmDiscoveryPaths {
   entities: string[];
   migrations: string[];
@@ -47,11 +49,11 @@ export function createPostgresDataSourceOptions(
 /**
  * Selects the repository's source or compiled TypeORM discovery convention.
  *
- * @param nodeEnv Validated service runtime environment.
+ * @param mode Execution form used by the current process.
  * @returns Explicit entity and migration globs for that runtime.
  */
-export function getTypeOrmDiscoveryPaths(nodeEnv?: string): TypeOrmDiscoveryPaths {
-  if (nodeEnv === 'production' || nodeEnv === 'stage') {
+export function getTypeOrmDiscoveryPaths(mode: TypeOrmDiscoveryMode): TypeOrmDiscoveryPaths {
+  if (mode === 'compiled') {
     return {
       entities: ['dist/**/*.entity.js'],
       migrations: ['dist/db/migrations/*.js'],

@@ -59,11 +59,13 @@
   never revert them silently.
 - Use existing project patterns before introducing new abstractions.
 - Keep same-feature and directly adjacent application imports relative. Use the
-  owning application's `@app/*` alias for handwritten cross-feature or
-  multi-parent source imports. In root test runners that cover multiple backend
-  services, use unique service aliases such as `@gateway/*`; never map a shared
-  `@app/*` alias to one service. Keep cross-workspace imports on package exports
-  and do not normalize generated-file imports manually.
+  owning application's Node-native private `#app/*` alias for handwritten
+  cross-feature or multi-parent source imports. Its TypeScript source mapping
+  and package runtime mapping must resolve the same module boundary. In root
+  test runners that cover multiple backend services, use unique service aliases
+  such as `@gateway/*`; never map a shared application alias to one service.
+  Keep cross-workspace imports on package exports and do not normalize
+  generated-file imports manually.
 - Use schema-first GraphQL at the public gateway boundary.
 - Keep domain logic out of the gateway and provider-specific AI logic out of
   extraction/correction contracts.

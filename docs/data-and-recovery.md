@@ -1,38 +1,42 @@
 # Data Authority And Recovery
 
-Status: Accepted M04-B contract and M04-C/M04-D database foundations (2026-09-05)
+Status: Accepted M04 P0 authority and recovery boundary (2026-09-06)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
 proof; M04-C established the PostgreSQL 18 database ownership baseline; and
 M04-D established each backend service's datasource, migration, seed, and local
-runtime boundary. Later submilestones implement the remaining object-storage,
-domain-data, integrated-stack, and recovery tooling.
+runtime boundary. M04-E through M04-G added the normal Garage stack, private
+service buckets, the gateway's document/object metadata and S3 adapter, and the
+integrated local fixture contract. Optional M04-H recovery tooling is deferred.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints.
 
 ## Current State
 
-After M04-D and before M04-E/M04-F, the normal local stack has one
-PostgreSQL 18 container with `platform_db`, `extraction_db`, and
-`correction_db`, separate least-privilege owner roles, RabbitMQ, and a
-file-backed HTTP persistence mock. Gateway, extraction, and correction each
-connect only to their owned database with a bounded pool. All three have
-explicit service-owned migration and seed commands; extraction and correction
-still have no domain entities, migrations, or seed data. There is no
-source-object catalog, normal-stack Garage integration, or executable
-cross-store backup/restore workflow.
+The normal local stack has one PostgreSQL 18 container with `platform_db`,
+`extraction_db`, and `correction_db`, separate least-privilege owner roles,
+RabbitMQ, Garage, and a file-backed HTTP persistence mock. Gateway, extraction,
+and correction each connect only to their owned database with a bounded pool
+and have explicit service-owned migration and seed commands. Garage exposes
+three private owner-specific buckets and credentials. The gateway owns the
+first platform document/source-object metadata and verifies stored bytes by
+size and application SHA-256. Extraction and correction still have no domain
+entities, migrations, or seed data. There is no executable cross-store
+backup/restore workflow.
 
 | Current state                                       | Authority and recovery consequence                                                                                                                                          |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gateway `platform_db` on PostgreSQL 18              | Users, correction sessions, immutable source snapshots, draft snapshots, edit audit, outbox, and migration history. Preserve together.                                      |
+| Gateway `platform_db` on PostgreSQL 18              | Users, correction sessions, document/source-object metadata, immutable snapshots, edit audit, outbox, and migration history. Preserve together.                             |
 | Extraction/correction databases on PostgreSQL 18    | Each has an owner-only datasource plus explicit migration/seed boundaries. No domain schema or rows exist yet; an empty migration history is expected.                      |
+| Garage private buckets                              | Immutable artifact bytes for platform, extraction, and correction owners. Export through S3 APIs; internal Garage volumes are not a portable backup.                        |
 | Persistence mock JSON files                         | Mutable documents, including documents without an opened session and updates not necessarily committed in PostgreSQL. Non-seed contents are not guaranteed reconstructible. |
 | Mock seeds and document registry                    | Repository-owned fixtures/configuration; restarting the mock adds missing seeds but does not reconstruct user edits.                                                        |
 | RabbitMQ                                            | Delivery transport. The Compose file declares no repository-owned broker data volume; queue contents are not the recovery authority.                                        |
 | Browser state, generated output, dependencies, logs | Not an authoritative export of committed application state. Unsaved browser edits are outside recovery guarantees.                                                          |
 
-The current Compose volume keys are `aspectloop_api_postgres18_data` and
+The current Compose volume keys are `aspectloop_api_postgres18_data`,
+`aspectloop_api_garage_metadata`, `aspectloop_api_garage_objects`, and
 `aspectloop_api_persistence_mock_data`, prefixed by the selected project name.
 The retained PostgreSQL 16 volume is deliberately outside the current Compose
 graph and is never attached to PostgreSQL 18. The mock mounts its volume at
@@ -146,10 +150,12 @@ deferred, leaving this as a documented boundary rather than an available tool.
    Retain failed targets for bounded diagnosis; rerun into a clean target rather
    than continuing a partial restore without an explicit recovery procedure.
 
-The PostgreSQL 16 to 18 drill is a logical dump/restore into a new PG18 volume,
-using compatible reviewed client tools. Never mount a PG16 data directory into
-PG18. Preserve the PG16 volume until the human accepts the new state or
-explicitly discards it. A version upgrade is not evidence that all three
+The retroactive PostgreSQL 16 to 18 drill is intentionally dropped because its
+disposable single-database source no longer represents the accepted system.
+Future recovery manifests must still record source server, dump-tool, and
+target versions. Rehearse a real future major upgrade before that upgrade by
+logically restoring into a new target volume; never mount an older major's data
+directory into a newer server. A version upgrade is not evidence that all three
 databases or artifacts were backed up.
 
 ## Milestone Ownership
@@ -161,10 +167,14 @@ databases or artifacts were backed up.
   databases and owner roles, the PG18-specific volume boundary, checksums, and
   the aggregate local connection budget. This did not add extraction or
   correction service datasources.
-- **M04-E/F/G P0:** normal Garage integration, artifact model/adapter, and
-  integrated verification. No automatic recovery claim follows from startup.
-- **M04-H P1:** optional local backup/restore and PG16-to-PG18 rehearsal with a
-  versioned manifest, clean targets, and human-confirmed restore evidence.
+- **M04-E/F/G P0, completed:** accepted normal Garage integration, artifact
+  model/adapter, deterministic local fixture commands, and integrated
+  verification. No automatic recovery claim follows from startup.
+- **M04-H P1, deferred:** no backup or restore helper is currently available.
+  The obsolete PG16-specific rehearsal is dropped. Reconsider the durable PG18
+  plus Garage recovery format immediately after M06 removes or replaces the
+  transitional persistence-mock authority and before M07 builds the complete
+  browser workflow. M10 later hardens the recovery runbook.
 - **M08:** reliable delivery, idempotency, and explicit outbox replay semantics.
 - **M10:** recovery runbook, deterministic failure exercises, and diagnostic
   evidence. Local failure drills are not stage backup acceptance.

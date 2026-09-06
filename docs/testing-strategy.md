@@ -2,6 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
+Last updated: M04 P0 closeout, 2026-09-06
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -102,10 +103,11 @@ current Vitest configurations.
 
 The root `test:backend:run` command runs database-independent gateway,
 extraction, correction, and backend-platform configuration tests and remains
-part of `verify:full`. The opt-in
-`test:typeorm:run` command verifies TypeORM behavior against disposable
-PostgreSQL and remains a human-run compatibility check until M04-F/M04-G
-provide a reusable persistence test environment suitable for CI.
+part of `verify:full`. The opt-in `test:typeorm:run` command verifies TypeORM
+behavior against disposable PostgreSQL and remains a human-run compatibility
+check. M04 provides reusable local reset, migration, seed, role, and artifact
+verification commands, but it does not yet provide the isolated disposable
+fixture lifecycle required for CI.
 
 ### 4.3 Playwright
 
@@ -304,9 +306,10 @@ No MSW worker runs in local or stage system modes.
 
 The current local Compose stack has a separate human verification flow under
 `Local-Stack Human Verification` in the repository README. It starts the local
-infrastructure, runs all three service-owned migration and seed paths, checks
-gateway, extraction, correction, and persistence health, and exercises sign-up,
-sign-in, and correction-inbox loading through the live web application.
+infrastructure, runs all three service-owned migration and seed paths, verifies
+database roles and the seeded Garage artifact, checks gateway, extraction,
+correction, and persistence health, and exercises sign-up, sign-in, and
+correction-inbox loading through the live web application.
 
 This flow intentionally has no `test:e2e:local` command yet. It uses ignored
 environment configuration and mutable local state, so it is not part of
@@ -370,6 +373,14 @@ Stage smoke remains mandatory once stage deployment exists, regardless of
 whether a dedicated local E2E stack has been introduced.
 
 ## 8. Infrastructure Strategy
+
+M04 establishes the reusable human-operated real-infrastructure fixture
+contract through `local:reset`, `local:up`, `local:migrate`, `local:seed`,
+`local:db:verify-roles`, and `local:artifact:verify`. These commands provide
+bounded PostgreSQL and Garage readiness plus deterministic seed and verification
+entry points without exposing Compose internals to tests. `local:reset` is
+destructive and explicit. This contract is a foundation for later suites, not
+an automated `test:e2e:local` command or a parallel CI fixture.
 
 ### 8.1 Dedicated local E2E stack
 
@@ -445,18 +456,18 @@ This avoids maintaining separate local and stage copies of the same workflow.
 
 ## 10. Milestone Ownership
 
-| Milestone     | Testing responsibility                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign |
-| M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow            |
-| M04           | Make databases, migrations, seed, Garage-backed S3 storage, and local service infrastructure reusable by tests          |
-| M05-M06       | Add focused extraction and correction service integration and contract coverage                                         |
-| M07           | Add the first portable upload-to-submit local system Playwright workflow                                                |
-| M08           | Add deterministic retry, DLQ, idempotency, outbox, and reprocess failure coverage                                       |
-| M09           | Add realtime integration coverage without coupling Socket.IO tests to GraphQL subscriptions                             |
-| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, recovery runbooks, and failure diagnostics     |
-| M11           | Execute portable system and backup-restore specifications against stage; gate deployment on smoke checks                |
-| AI milestones | Add eval harnesses and provider comparisons separately from deterministic software gates                                |
+| Milestone     | Testing responsibility                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign         |
+| M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow                    |
+| M04           | Provides reusable local database, migration, seed, Garage, role, and artifact fixture commands; CI isolation remains later work |
+| M05-M06       | Add focused extraction and correction service integration and contract coverage                                                 |
+| M07           | Add the first portable upload-to-submit local system Playwright workflow                                                        |
+| M08           | Add deterministic retry, DLQ, idempotency, outbox, and reprocess failure coverage                                               |
+| M09           | Add realtime integration coverage without coupling Socket.IO tests to GraphQL subscriptions                                     |
+| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, recovery runbooks, and failure diagnostics             |
+| M11           | Execute portable system and backup-restore specifications against stage; gate deployment on smoke checks                        |
+| AI milestones | Add eval harnesses and provider comparisons separately from deterministic software gates                                        |
 
 ## 11. Priority Summary
 

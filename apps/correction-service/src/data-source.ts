@@ -11,6 +11,7 @@ const environment = validateEnv(process.env);
 const appDataSource = new DataSource(
   getTypeOrmDataSourceOptions({
     databaseUrl: environment.DATABASE_URL,
+    discoveryMode: 'source',
     nodeEnv: environment.NODE_ENV,
     poolSize: environment.DB_POOL_SIZE,
     slowQueryThresholdMs: environment.DB_SLOW_QUERY_THRESHOLD_MS,

@@ -1,5 +1,6 @@
-import { DocumentTypeConfig } from '@app/document-registry/document-registry.types';
 import { Injectable } from '@nestjs/common';
+
+import { DocumentTypeConfig } from '#app/document-registry/document-registry.types';
 
 import {
   CorrectionFieldMetadataView,

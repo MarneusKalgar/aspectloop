@@ -33,6 +33,7 @@ async function testTypeOrmCompatibility(): Promise<void> {
   const dataSource = new DataSource(
     getTypeOrmDataSourceOptions({
       databaseUrl,
+      discoveryMode: 'source',
       nodeEnv: 'development',
     }),
   );

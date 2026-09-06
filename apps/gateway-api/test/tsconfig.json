@@ -5,6 +5,7 @@
     "noEmit": true,
     "rootDir": "..",
     "paths": {
+      "#app/*": ["src/*"],
       "@gateway/*": ["src/*"]
     }
   },

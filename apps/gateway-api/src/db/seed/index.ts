@@ -1,16 +1,18 @@
 import 'reflect-metadata';
 
-import type { S3ArtifactStorage } from '@app/storage/s3-artifact-storage';
 import type { EntityManager } from 'typeorm';
 
-import { validateEnv } from '@app/config/env.validation';
-import appDataSource from '@app/data-source';
-import { DocumentObject } from '@app/documents/document-object.entity';
-import { Document } from '@app/documents/document.entity';
-import { ArtifactStorageError } from '@app/storage/artifact-storage.errors';
-import { createPlatformArtifactStorage } from '@app/storage/create-platform-artifact-storage';
-import { User } from '@app/users/user.entity';
 import assert from 'node:assert/strict';
+
+import type { S3ArtifactStorage } from '#app/storage/s3-artifact-storage';
+
+import { validateEnv } from '#app/config/env.validation';
+import appDataSource from '#app/data-source';
+import { DocumentObject } from '#app/documents/document-object.entity';
+import { Document } from '#app/documents/document.entity';
+import { ArtifactStorageError } from '#app/storage/artifact-storage.errors';
+import { createPlatformArtifactStorage } from '#app/storage/create-platform-artifact-storage';
+import { User } from '#app/users/user.entity';
 
 import {
   PLATFORM_ARTIFACT_SEED,

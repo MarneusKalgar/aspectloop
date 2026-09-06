@@ -8,7 +8,7 @@ const DATABASE_URL = 'postgresql://service_app:service_app@postgres:5432/service
 
 /** Creates shared datasource options without connecting to PostgreSQL. */
 function createOptions(nodeEnv = 'development', poolSize?: number): DataSourceOptions {
-  const paths = getTypeOrmDiscoveryPaths(nodeEnv);
+  const paths = getTypeOrmDiscoveryPaths('source');
 
   return createPostgresDataSourceOptions({
     databaseUrl: DATABASE_URL,
@@ -46,17 +46,13 @@ function testDatasourceSafetyContract(): void {
   expect(options.synchronize).toBe(false);
 }
 
-/** Verifies every supported runtime selects explicit non-empty discovery paths. */
+/** Verifies source and compiled processes select explicit non-empty discovery paths. */
 function testDiscoveryContract(): void {
-  expect(getTypeOrmDiscoveryPaths('development')).toEqual({
+  expect(getTypeOrmDiscoveryPaths('source')).toEqual({
     entities: ['src/**/*.entity{.ts,.js}'],
     migrations: ['src/db/migrations/*{.ts,.js}'],
   });
-  expect(getTypeOrmDiscoveryPaths('production')).toEqual({
-    entities: ['dist/**/*.entity.js'],
-    migrations: ['dist/db/migrations/*.js'],
-  });
-  expect(getTypeOrmDiscoveryPaths('stage')).toEqual({
+  expect(getTypeOrmDiscoveryPaths('compiled')).toEqual({
     entities: ['dist/**/*.entity.js'],
     migrations: ['dist/db/migrations/*.js'],
   });

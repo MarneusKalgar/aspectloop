@@ -72,8 +72,9 @@ The application contract is deliberately narrower than
   API design still require M07 verification.
 
 `ListObjectsV2` is used by the spike's empty-target check. Portable object
-export/import, pagination, large files, streaming, and multipart behavior
-remain separate M04-F/M04-H gates, not implied by the small fixture.
+export/import, pagination, large files, streaming, and multipart behavior are
+not implied by the accepted small M04 fixture; they remain future upload and
+recovery gates.
 
 The probe explicitly sets SDK `requestChecksumCalculation` and
 `responseChecksumValidation` to `WHEN_REQUIRED`; it does not depend on optional
@@ -157,11 +158,12 @@ database-engine or security workaround was adopted. Use native architecture
 verification; neither all host configurations nor cross-architecture metadata
 migration is covered by this acceptance.
 
-M04-E's provider-decision prerequisite is satisfied; its normal-stack
-integration remains separate work. A future failure on a supported native
-architecture or a need for Garage-only application APIs reopens this decision.
+M04-E and M04-F subsequently completed the normal-stack integration, three
+private service buckets, and the gateway's first checksum-verified S3 artifact
+adapter. A future failure on a supported native architecture or a need for
+Garage-only application APIs reopens this decision.
 
-M04-B does not add backup commands. M04-H is optional local backup/restore;
-M10 owns recovery runbooks and failure testing; M11 owns real stage backups,
-retention, RPO/RTO, and a demonstrated stage restore. Single-node local storage
-is not high availability and no named volume is a backup.
+M04-B does not add backup commands, and M04-H is explicitly deferred after M04
+P0 closeout. M10 owns recovery runbooks and failure testing; M11 owns real stage
+backups, retention, RPO/RTO, and a demonstrated stage restore. Single-node
+local storage is not high availability and no named volume is a backup.

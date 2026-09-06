@@ -228,13 +228,14 @@ Concerns and mitigations:
 
 Path aliases are resolver configuration, not ownership boundaries. Each alias
 must resolve consistently in the owning application's compiler, runtime,
-development server, and test runner before source or tests adopt it. A generic
-alias such as `@app/*` may remain local to one application-specific toolchain,
-but a root backend test configuration must not map that alias to one service
-while it discovers tests from multiple services. Cross-application backend
-tests use relative imports, unique service aliases, or application-specific
-test configurations with matching test tsconfigs. Aliases never authorize
-imports across the workspace ownership boundaries above.
+development server, and test runner before source or tests adopt it. Backend
+applications use a Node-native private alias such as `#app/*`, with TypeScript
+mapping it to source and the package runtime mapping it to compiled output. A
+root backend test configuration must not map a shared application alias to one
+service while it discovers tests from multiple services. Cross-application
+backend tests use relative imports, unique service aliases, or
+application-specific test configurations with matching test tsconfigs. Aliases
+never authorize imports across the workspace ownership boundaries above.
 
 Repository splitting is reconsidered only when team ownership, security,
 release cadence, or scaling requirements create a real boundary. It is not a
@@ -667,8 +668,8 @@ Local operation is the first deployment target. The React application runs
 directly through Vite; backend applications and dependencies run on one Docker
 Compose network.
 
-The backend stack launches through root npm commands backed by dedicated shell
-scripts, following the useful operational pattern from `rd_shop`:
+The target local command surface uses root npm commands backed by dedicated
+shell scripts, following the useful operational pattern from `rd_shop`:
 
 ```text
 npm run local:up
@@ -679,13 +680,15 @@ npm run local:db:admin
 npm run local:observability
 ```
 
-The scripts build/start the stack, run service-specific one-off migration and
-seed jobs when requested, remove their containers with
+The implemented scripts build/start the stack, run service-specific one-off
+migration and seed jobs when requested, remove their containers with
 `docker compose run --rm`, and expose deterministic health/reset operations.
+Optional profile commands are added only with their owning tooling task.
 Application startup must not silently execute migrations.
 
-`local:db:admin` and `local:observability` start optional Compose profiles. The
-core local stack must remain usable without database-administration or telemetry
+`local:db:admin` starts the implemented optional `devtools` profile.
+`local:observability` remains reserved for its later tooling task. The core
+local stack remains usable without database-administration or telemetry
 services.
 
 The accepted M04-C PostgreSQL 18 baseline initializes `platform_db`,
@@ -695,6 +698,10 @@ extraction, and correction an owned datasource, bounded pool, migration/seed
 boundary, development image, and normal Compose runtime. Aggregate npm scripts
 reuse each runtime definition as a bounded one-shot job in deterministic owner
 order without granting cross-database access or running migrations at startup.
+Accepted M04-E through M04-G add Garage with three private service buckets,
+the gateway's first checksum-verified source artifact, and reusable local reset,
+migration, seed, role, and artifact verification entry points. The persistence
+mock remains authoritative for mutable correction documents until M06.
 
 Target local services:
 
@@ -716,32 +723,37 @@ of normal application startup.
 
 #### Optional local database administration
 
-M04 adds pgAdmin as P1 developer tooling after `platform_db`, `extraction_db`,
-`correction_db`, and their service roles exist. It is not part of M03-C container
-hardening and must not block M04's P0 data foundation.
+The optional tooling follow-up after M04 P0 adds pgAdmin now that `platform_db`,
+`extraction_db`, `correction_db`, and their service roles exist. It is not part
+of M03-C container hardening or the completed M04 P0 data foundation.
 
 The pgAdmin integration follows these boundaries:
 
-- run it only through an optional `devtools` Compose profile and a dedicated
-  root npm wrapper such as `local:db:admin`;
+- run it only through the optional `devtools` Compose profile and the dedicated
+  root `local:db:admin` wrapper;
 - keep `local:up` and every application service independent of pgAdmin;
 - connect to PostgreSQL through the Compose service address `postgres:5432`,
   while binding the browser UI only to `127.0.0.1` on a documented local port;
 - pin the image version and reviewed digest, and give pgAdmin an explicit named
   configuration volume rather than an anonymous hash-named volume;
 - register separate connections using each service's least-privilege role so
-  database ownership remains visible; an administrative connection is local-only
-  troubleshooting access and is not an application credential;
+  database ownership remains visible; do not pre-register the PostgreSQL
+  administrator or persist any database password;
 - use the UI primarily for inspection and diagnostics. Schema and durable data
   changes still go through human-generated migrations and explicit seed commands;
 - do not deploy pgAdmin to stage or expose it publicly;
 - do not commit pgAdmin credentials, saved connection secrets, or exported
   server definitions containing secrets.
 
-The current detached anonymous pgAdmin volume is retained until its saved
-connections are reviewed. M04 either recreates useful non-secret configuration
-in the named volume or discards the anonymous volume; its hash must not become a
-durable Compose dependency.
+The accepted implementation uses pgAdmin 4 9.17 pinned to its reviewed
+multi-platform image digest, a loopback-only UI, dropped Linux capabilities,
+the unauthenticated `/misc/ping` liveness endpoint, and an explicit named
+configuration volume. Its startup wrapper generates the three service-role
+registrations from current local environment values without writing database
+passwords. Login settings initialize only a new named configuration volume;
+changing them later requires the explicit volume-reset path. The prior detached
+anonymous pgAdmin volume is neither imported nor deleted and is not a Compose
+dependency.
 
 The tradeoff is accepted only as optional tooling: pgAdmin provides convenient
 schema, migration-history, role, and seed-data inspection, but adds a large
@@ -1456,32 +1468,32 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                                           |
-| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                                |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior                 |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned                 |
-| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared              |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                    |
-| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                               |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B              | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory      |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | In Progress | M03-A, B, C, D     | Three databases, Garage/S3 artifacts, recovery boundaries, migrations, seed, one-command stack, optional recovery |
-| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                      |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                          |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                                     |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                               |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                             |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                                 |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing          |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback            |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                                       |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                              |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                             |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                                        |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                               |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                              |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                                      |
+| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                                      |
+| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                           |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior            |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned            |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared         |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow               |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                          |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content           |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B              | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed   | M03-A, B, C, D     | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred    |
+| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                 |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                     |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                                |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                          |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                        |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                            |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing     |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback       |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                                  |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                         |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                        |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                                   |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                          |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                         |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                                 |
 
 #### Dependency view
 
@@ -1595,17 +1607,21 @@ a generic external code-review skill must not create a competing review path.
 
 ### Immediate Next Plan
 
-Continue the approved M04 implementation plan. M04-A's TypeORM compatibility
-baseline, M04-B's Garage compatibility/recovery-contract decision, M04-C's
-PostgreSQL 18/database-ownership baseline, and M04-D's service-owned persistence
-and runtime foundations are complete. The accepted
-[local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md) and
-[data authority and recovery contract](data-and-recovery.md) define the
-boundaries for the remaining implementation; they do not imply that the normal
-Garage stack integration or backup/restore tooling is delivered.
+M04 P0 is complete. Its accepted foundation includes TypeORM 1.1, PostgreSQL 18
+with three owned databases, service-specific migration and seed boundaries,
+Garage with three private service buckets, and the gateway's first
+checksum-verified source artifact. The persistence mock remains temporarily
+authoritative for mutable correction documents until M06; Garage does not
+replace that contract.
 
-Proceed with M04-E normal-stack Garage infrastructure, preserving the completed
-M03 contracts and accepted TypeORM/PostgreSQL/service-runtime baselines. M04
-remains In Progress through integrated P0 verification; its optional P1 local
-backup/restore helper does not claim stage guarantees. M03-E remains a
-non-blocking advisory pilot and does not delay M04.
+M04-H local recovery tooling is explicitly deferred and no backup/restore claim
+is made. The historical PG16-to-PG18 rehearsal is intentionally dropped because
+its disposable single-database source no longer represents the accepted system.
+Future recovery tooling remains version-aware and must rehearse a real future
+major upgrade before that upgrade, not retroactively afterward.
+
+Optional pgAdmin tooling is now available through the isolated `devtools`
+profile. Proceed with M04.1 identity/session stabilization and M05 extraction
+work. Reconsider durable PG18 plus Garage recovery immediately after M06 and
+before M07; M10 later hardens the runbook, and M11 still owns demonstrated stage
+recovery. M03-E remains a non-blocking advisory pilot.

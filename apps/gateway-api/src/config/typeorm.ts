@@ -1,3 +1,4 @@
+import type { TypeOrmDiscoveryMode } from '@aspectloop/backend-platform/database';
 import type { ConfigService } from '@nestjs/config';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import type { DataSourceOptions } from 'typeorm';
@@ -9,6 +10,7 @@ import {
 
 interface TypeOrmConfig {
   databaseUrl: string;
+  discoveryMode: TypeOrmDiscoveryMode;
   nodeEnv?: string;
   poolSize?: number;
   slowQueryThresholdMs?: number;
@@ -16,7 +18,7 @@ interface TypeOrmConfig {
 
 /** Builds the shared gateway datasource contract for Nest and TypeORM CLI use. */
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
-  const paths = getTypeOrmDiscoveryPaths(config.nodeEnv);
+  const paths = getTypeOrmDiscoveryPaths(config.discoveryMode);
 
   return createPostgresDataSourceOptions({
     databaseUrl: config.databaseUrl,
@@ -33,6 +35,7 @@ export function getTypeOrmModuleOptions(configService: ConfigService): TypeOrmMo
   return {
     ...getTypeOrmDataSourceOptions({
       databaseUrl: configService.getOrThrow<string>('DATABASE_URL'),
+      discoveryMode: 'compiled',
       nodeEnv: configService.get<string>('NODE_ENV'),
       poolSize: configService.get<number>('DB_POOL_SIZE'),
       slowQueryThresholdMs: configService.get<number>('DB_SLOW_QUERY_THRESHOLD_MS'),
