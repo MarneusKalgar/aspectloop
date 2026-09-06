@@ -294,11 +294,13 @@ npm run local:db:admin
 
 The command starts PostgreSQL when needed, generates password-free registrations
 for the three service roles from `infra/local/.env.local`, and waits for pgAdmin
-health. Sign in with the pgAdmin email/password from that ignored file, then
-enter the selected service-role password when connecting. The UI cannot be
-reached outside the host loopback interface. pgAdmin applies its login settings
-only when its named data volume is first initialized; changing those values
-later requires an explicit `npm run local:reset` before the next start.
+health. Each registration limits Object Explorer to its service-owned database;
+this is a display filter, while PostgreSQL privileges enforce database isolation.
+Sign in with the pgAdmin email/password from that ignored file, then enter the
+selected service-role password when connecting. The UI cannot be reached outside
+the host loopback interface. pgAdmin applies its login settings only when its
+named data volume is first initialized; changing those values later requires an
+explicit `npm run local:reset` before the next start.
 
 Generate a future migration only through its human-owned service wrapper:
 

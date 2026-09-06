@@ -737,8 +737,11 @@ The pgAdmin integration follows these boundaries:
 - pin the image version and reviewed digest, and give pgAdmin an explicit named
   configuration volume rather than an anonymous hash-named volume;
 - register separate connections using each service's least-privilege role so
-  database ownership remains visible; do not pre-register the PostgreSQL
-  administrator or persist any database password;
+  database ownership remains visible, and restrict each registration's Object
+  Explorer database list to its owned database. This pgAdmin visibility filter
+  does not replace PostgreSQL `CONNECT` privileges as the isolation boundary;
+  do not pre-register the PostgreSQL administrator or persist any database
+  password;
 - use the UI primarily for inspection and diagnostics. Schema and durable data
   changes still go through human-generated migrations and explicit seed commands;
 - do not deploy pgAdmin to stage or expose it publicly;
