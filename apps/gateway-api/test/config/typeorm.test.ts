@@ -14,25 +14,20 @@ function createOptions(nodeEnv: string): DataSourceOptions {
   });
 }
 
-/** Verifies the gateway adapter retains its explicit platform entity inventory. */
-function testEntityInventory(): void {
-  const options = createOptions('development');
-
-  expect(options.entities).toHaveLength(4);
-}
-
-/** Verifies source and compiled runtimes discover migrations from their own layouts. */
-function testMigrationDiscoveryPaths(): void {
-  const expectations: [string, string[]][] = [
-    ['development', ['src/db/migrations/*{.ts,.js}']],
-    ['production', ['dist/db/migrations/*.js']],
-    ['stage', ['dist/db/migrations/*.js']],
+/** Verifies source and compiled runtimes discover entities and migrations from their own layouts. */
+function testDiscoveryPaths(): void {
+  const expectations: [string, string[], string[]][] = [
+    ['development', ['src/**/*.entity{.ts,.js}'], ['src/db/migrations/*{.ts,.js}']],
+    ['production', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
+    ['stage', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
   ];
 
-  for (const [nodeEnv, expectedMigrations] of expectations) {
-    expect(createOptions(nodeEnv).migrations).toEqual(expectedMigrations);
+  for (const [nodeEnv, expectedEntities, expectedMigrations] of expectations) {
+    const options = createOptions(nodeEnv);
+
+    expect(options.entities).toEqual(expectedEntities);
+    expect(options.migrations).toEqual(expectedMigrations);
   }
 }
 
-test('retains the gateway platform entity inventory', testEntityInventory);
-test('uses the expected source and compiled migration paths', testMigrationDiscoveryPaths);
+test('uses the expected source and compiled discovery paths', testDiscoveryPaths);

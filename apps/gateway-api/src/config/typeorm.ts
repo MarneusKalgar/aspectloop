@@ -7,10 +7,6 @@ import {
   getTypeOrmDiscoveryPaths,
 } from '@aspectloop/backend-platform/database';
 
-import { CorrectionSession } from '../correction-sessions/correction-session.entity';
-import { CorrectionEdit, CorrectionEventOutbox } from '../corrections/correction-edit.entity';
-import { User } from '../users/user.entity';
-
 interface TypeOrmConfig {
   databaseUrl: string;
   nodeEnv?: string;
@@ -20,12 +16,12 @@ interface TypeOrmConfig {
 
 /** Builds the shared gateway datasource contract for Nest and TypeORM CLI use. */
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
-  const { migrations } = getTypeOrmDiscoveryPaths(config.nodeEnv);
+  const paths = getTypeOrmDiscoveryPaths(config.nodeEnv);
 
   return createPostgresDataSourceOptions({
     databaseUrl: config.databaseUrl,
-    entities: [User, CorrectionSession, CorrectionEdit, CorrectionEventOutbox],
-    migrations,
+    entities: paths.entities,
+    migrations: paths.migrations,
     nodeEnv: config.nodeEnv,
     poolSize: config.poolSize,
     slowQueryThresholdMs: config.slowQueryThresholdMs,

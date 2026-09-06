@@ -6,6 +6,8 @@ import {
   CREDENTIAL_PLACEHOLDER,
   DEFAULT_ASSIGNMENTS,
   ENV_FILE,
+  GATEWAY_ENV_FILE,
+  GATEWAY_S3_DEFAULTS,
 } from './constants.mjs';
 import {
   errorName,
@@ -16,13 +18,17 @@ import {
 } from './utils.mjs';
 
 /**
- * Initializes missing Garage defaults and preserves every established valid secret.
+ * Initializes infrastructure credentials and synchronizes the gateway-local S3 view.
  *
  * @returns {void}
  */
 function main() {
   if (!existsSync(ENV_FILE)) {
     throw new Error('Copy infra/local/.env.example to infra/local/.env.local first');
+  }
+
+  if (!existsSync(GATEWAY_ENV_FILE)) {
+    throw new Error('Copy apps/gateway-api/.env.example to apps/gateway-api/.env.local first');
   }
 
   const original = readFileSync(ENV_FILE, 'utf8');
@@ -56,20 +62,74 @@ function main() {
   }
 
   if (changed) {
-    const temporaryFile = `${ENV_FILE}.${process.pid}.tmp`;
-
-    try {
-      writeFileSync(temporaryFile, content, { mode: 0o600 });
-      renameSync(temporaryFile, ENV_FILE);
-    } finally {
-      rmSync(temporaryFile, { force: true });
-    }
+    writePrivateEnvFile(ENV_FILE, content);
+  } else {
+    chmodSync(ENV_FILE, 0o600);
   }
 
-  chmodSync(ENV_FILE, 0o600);
-  console.log(
-    changed ? 'Initialized ignored local Garage credentials.' : 'Keeping local Garage credentials.',
+  const initializedEnvironment = parseEnv(content);
+  const originalGateway = readFileSync(GATEWAY_ENV_FILE, 'utf8');
+  const gatewayEnvironment = parseEnv(originalGateway);
+  let gatewayContent = originalGateway;
+
+  for (const [name, value] of Object.entries(GATEWAY_S3_DEFAULTS)) {
+    if (gatewayEnvironment[name]) {
+      continue;
+    }
+
+    gatewayContent = setAssignment(gatewayContent, name, value);
+  }
+
+  gatewayContent = setAssignment(
+    gatewayContent,
+    'S3_ENDPOINT',
+    `http://${initializedEnvironment.GARAGE_HOST}:${initializedEnvironment.GARAGE_S3_PORT}`,
   );
+  gatewayContent = setAssignment(
+    gatewayContent,
+    'S3_REGION',
+    initializedEnvironment.GARAGE_S3_REGION,
+  );
+
+  for (const name of [
+    'PLATFORM_S3_BUCKET',
+    'PLATFORM_S3_ACCESS_KEY_ID',
+    'PLATFORM_S3_SECRET_ACCESS_KEY',
+  ]) {
+    gatewayContent = setAssignment(gatewayContent, name, initializedEnvironment[name]);
+  }
+
+  if (gatewayContent !== originalGateway) {
+    writePrivateEnvFile(GATEWAY_ENV_FILE, gatewayContent);
+  } else {
+    chmodSync(GATEWAY_ENV_FILE, 0o600);
+  }
+
+  console.log(
+    changed || gatewayContent !== originalGateway
+      ? 'Initialized ignored local Garage credentials.'
+      : 'Keeping local Garage credentials.',
+  );
+}
+
+/**
+ * Atomically writes one ignored local env file with owner-only permissions.
+ *
+ * @param {string} filePath - Absolute ignored env-file path.
+ * @param {string} content - Complete env-file content.
+ * @returns {void}
+ */
+function writePrivateEnvFile(filePath, content) {
+  const temporaryFile = `${filePath}.${process.pid}.tmp`;
+
+  try {
+    writeFileSync(temporaryFile, content, { mode: 0o600 });
+    renameSync(temporaryFile, filePath);
+  } finally {
+    rmSync(temporaryFile, { force: true });
+  }
+
+  chmodSync(filePath, 0o600);
 }
 
 try {

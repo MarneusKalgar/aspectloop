@@ -8,6 +8,15 @@ import { fileURLToPath } from 'node:url';
 export const ENV_FILE = fileURLToPath(new URL('../.env.local', import.meta.url));
 
 /**
+ * Absolute path to the ignored gateway local environment file.
+ *
+ * @type {string}
+ */
+export const GATEWAY_ENV_FILE = fileURLToPath(
+  new URL('../../../apps/gateway-api/.env.local', import.meta.url),
+);
+
+/**
  * Compose project names start with an alphanumeric character and then allow
  * alphanumeric characters, underscores, and hyphens.
  *
@@ -98,6 +107,16 @@ export const DEFAULT_ASSIGNMENTS = Object.freeze({
   GARAGE_S3_REGION: 'garage',
   GARAGE_ZONE: 'local',
   PLATFORM_S3_BUCKET: 'aspectloop-platform-source',
+});
+
+/**
+ * Gateway-local S3 settings whose values are derived from infrastructure config.
+ *
+ * @type {Readonly<Record<string, string>>}
+ */
+export const GATEWAY_S3_DEFAULTS = Object.freeze({
+  S3_FORCE_PATH_STYLE: 'true',
+  S3_REQUEST_TIMEOUT_MS: '5000',
 });
 
 /**

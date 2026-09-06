@@ -11,10 +11,12 @@
     "db:generate:local": "npm run typeorm -- migration:generate -d ./src/data-source.ts",
     "db:migrate:local": "npm run typeorm -- migration:run -d ./src/data-source.ts",
     "db:revert:local": "npm run typeorm -- migration:revert -d ./src/data-source.ts",
-    "db:seed:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/seed/index.ts"
+    "db:seed:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/seed/index.ts",
+    "db:artifact:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-artifact.ts"
   },
   "dependencies": {
     "@aspectloop/backend-platform": "^0.1.0",
+    "@aws-sdk/client-s3": "3.1112.0",
     "@graphql-yoga/nestjs": "^3.22.2",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",

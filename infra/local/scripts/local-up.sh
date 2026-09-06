@@ -24,7 +24,7 @@ if [[ "${1:-}" == "--build" ]]; then
   UP_ARGS=(up --build -d)
 fi
 
-# Applications remain independent until M04-F adds the first real object-store consumer.
+# Start the runtime graph; the gateway now consumes Garage through its private S3 adapter.
 "${COMPOSE[@]}" "${UP_ARGS[@]}"
 
 # The aggregate startup command succeeds only after layered Garage readiness is complete.

@@ -3,6 +3,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Seed requires the same generated platform key that owns the source bucket.
+node "$REPOSITORY_ROOT/infra/local/garage/init-credentials.mjs"
 source "$SCRIPT_DIR/_local-compose-common.sh"
 
 # Run each seed as a disposable container capped by the shared tool allowance.
@@ -12,8 +16,9 @@ if [[ "${1:-}" == "--build" ]]; then
 fi
 
 echo "Running local seed with project: $COMPOSE_PROJECT_NAME"
-# Start only PostgreSQL; --no-deps prevents runtime-only dependencies from joining tool jobs.
-"${COMPOSE[@]}" up -d --wait postgres
+# Start both authorities and establish the private bucket before running the seed.
+"${COMPOSE[@]}" up -d --wait postgres garage
+node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
 
 STATUS=0
 # Preserve owner order and stop before later databases when one seed command fails.
