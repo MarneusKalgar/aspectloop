@@ -4,8 +4,9 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-pgadmin
     init: true
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in infra/local/.env.local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in infra/local/.env.local}
+      # prepare.mjs enforces both values when the optional profile is requested.
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}
       PGADMIN_DISABLE_POSTFIX: 'true'
       PGADMIN_LISTEN_PORT: '5050'
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: 'True'

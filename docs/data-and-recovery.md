@@ -1,6 +1,6 @@
 # Data Authority And Recovery
 
-Status: Accepted M04 P0 authority and recovery boundary (2026-09-06)
+Status: Accepted M04 P0 authority and recovery boundary (updated 2026-09-10)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
@@ -10,7 +10,9 @@ runtime boundary. M04-E through M04-G added the normal Garage stack, private
 service buckets, the gateway's document/object metadata and S3 adapter, and the
 integrated local fixture contract. Optional M04-H recovery tooling is deferred.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
-for provider and readiness constraints.
+for provider and readiness constraints and
+[the Platform ownership decision](decisions/0004-thin-gateway-and-platform-service.md)
+for the next runtime boundary.
 
 ## Current State
 
@@ -24,6 +26,15 @@ first platform document/source-object metadata and verifies stored bytes by
 size and application SHA-256. Extraction and correction still have no domain
 entities, migrations, or seed data. There is no executable cross-store
 backup/restore workflow.
+
+This is current-state ownership, not the target service boundary. M04.1 moves
+`platform_db`, users/identity behavior, documents, source-object metadata,
+platform storage credentials, migrations, seeds, and the platform outbox into
+`platform-service`. The gateway then reaches Platform through an internal
+contract and no longer holds Platform runtime, migration, or object-store
+credentials. A distinct temporary gateway role may access only the legacy
+correction tables until M06 moves them to `correction_db`. Identity remains part
+of Platform; M04.2 hardens its browser-session behavior.
 
 | Current state                                       | Authority and recovery consequence                                                                                                                                          |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -76,7 +87,7 @@ correction-service transition; M04 does not silently migrate these callers.
 
 | State                                                           | Owner                                     | Backup and recovery treatment                                                                                             |
 | --------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `platform_db`                                                   | Gateway/platform                          | Users, platform documents, object metadata, migration history; temporary gateway correction tables remain here until M06. |
+| `platform_db`                                                   | Gateway currently; Platform after M04.1   | Users, platform documents, object metadata, migration history; temporary correction tables remain transitional until M06. |
 | `extraction_db`                                                 | Extraction service                        | Include schema, migration history, and owned rows, even if domain tables are not present before M05.                      |
 | `correction_db`                                                 | Correction service                        | Include schema, migration history, and owned rows; do not duplicate the temporary gateway tables.                         |
 | Referenced source/artifact bytes                                | Owning private S3 bucket                  | Export bytes and metadata through S3; validate every DB reference using bucket/key, size, and application SHA-256.        |
@@ -94,6 +105,17 @@ stores byte length and lower-case SHA-256. Object custom metadata can carry
 the digest, but restoration must hash the bytes rather than trust metadata or
 ETag. Application writes are write-once; administrative import/reset is a
 separate boundary. No cross-database foreign keys or cross-owner writes.
+
+The current `HeadObject` then `PutObject` adapter is not a concurrent
+create-only guarantee on Garage 2.3. Before M07 exposes uploads, M04.1 must add
+a mutable Platform reservation protected by a database uniqueness constraint;
+only its winner may upload and finalize immutable object metadata. It must also
+separate the schema owner/migrator from the Platform runtime identity. Runtime
+access to finalized `document_object` metadata is `SELECT`/`INSERT`, without
+`UPDATE`, `DELETE`, or `TRUNCATE`; recovery/import uses an explicit privileged
+path. Any temporary gateway correction role is restricted to legacy correction
+tables. These are future migrations/provisioning changes, not properties of
+the currently applied M04 schema.
 
 ## Consistency Boundary
 
@@ -170,6 +192,16 @@ databases or artifacts were backed up.
 - **M04-E/F/G P0, completed:** accepted normal Garage integration, artifact
   model/adapter, deterministic local fixture commands, and integrated
   verification. No automatic recovery claim follows from startup.
+- **M04 post-review corrections:** reconcile every managed Garage permission
+  before applying the intended matrix, verify peer `PutObject` denial, make
+  aggregate startup wait for infrastructure/bootstrap/full-graph readiness,
+  anchor TypeORM discovery to each owning application, and keep local Garage's
+  region single-sourced. Human verification completed on 2026-09-10.
+- **M04.1, planned:** move Platform ownership out of the gateway, add the
+  database-backed artifact reservation, and split migrator/owner privileges
+  from normal runtime privileges before public uploads exist.
+- **M04.2, planned:** stabilize identity and sessions inside Platform after the
+  ownership move.
 - **M04-H P1, deferred:** no backup or restore helper is currently available.
   The obsolete PG16-specific rehearsal is dropped. Reconsider the durable PG18
   plus Garage recovery format immediately after M06 removes or replaces the

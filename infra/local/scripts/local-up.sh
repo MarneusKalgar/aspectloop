@@ -19,14 +19,14 @@ fi
 node "$REPOSITORY_ROOT/infra/local/garage/init-credentials.mjs"
 source "$SCRIPT_DIR/_local-compose-common.sh"
 
-UP_ARGS=(up -d)
+UP_ARGS=(up -d --wait --wait-timeout 120)
 if [[ "${1:-}" == "--build" ]]; then
-  UP_ARGS=(up --build -d)
+  UP_ARGS+=(--build)
 fi
 
-# Start the runtime graph; the gateway now consumes Garage through its private S3 adapter.
-"${COMPOSE[@]}" "${UP_ARGS[@]}"
-
-# The aggregate startup command succeeds only after layered Garage readiness is complete.
-"${COMPOSE[@]}" up -d --wait --wait-timeout 90 garage
+# Start and await infrastructure before any application can access Garage.
+"${COMPOSE[@]}" "${UP_ARGS[@]}" postgres rabbitmq persistence-mock garage
 node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
+
+# Start and await the complete default graph only after Garage bootstrap succeeds.
+"${COMPOSE[@]}" "${UP_ARGS[@]}"

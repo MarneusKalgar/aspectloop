@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-08-31
+Last updated: 2026-09-10
 
 ## Table Of Contents
 
@@ -125,8 +125,8 @@ implementation that should be migrated and improved rather than discarded.
 2. **Preserve working behavior.** Refactor the PoC in controlled milestones;
    do not rebuild it wholesale.
 3. **One monorepo, separate runtimes.** Keep atomic contract changes and shared
-   tooling while giving gateway, extraction, correction, and web independent
-   runtime boundaries.
+   tooling while giving gateway, Platform, extraction, correction, and web
+   independent runtime boundaries.
 4. **Schema-first public API.** The gateway owns the public GraphQL SDL so the
    NestJS implementation remains conceptually aligned with a future
    Java/Spring backend.
@@ -163,6 +163,7 @@ aspectloop/
   apps/
     web/
     gateway-api/
+    platform-service/
     extraction-service/
     correction-service/
 
@@ -193,14 +194,15 @@ contract boundary.
 
 #### Workspace ownership
 
-| Area                        | Owns                                                                      | Must not own                                                     |
-| --------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `apps/web`                  | Browser UI, routing, form state, GraphQL operations                       | Backend domain rules or internal service DTOs                    |
-| `apps/gateway-api`          | Public GraphQL, auth/authz, request composition, realtime gateway         | PDF processing, correction state transitions, prompts            |
-| `apps/extraction-service`   | Extraction jobs, provider adapters, artifact validation, retries          | User-facing GraphQL or correction decisions                      |
-| `apps/correction-service`   | Sessions, overlays, validation, provenance assembly, submit, audit/outbox | Model-provider details or public auth                            |
-| `packages/backend-platform` | Shared environment, datasource, and bounded logging mechanics             | Service schemas, entities, repositories, migrations, or identity |
-| `packages/contracts`        | Framework-free event and internal transport contracts                     | NestJS decorators, TypeORM entities, React components            |
+| Area                        | Owns                                                                                            | Must not own                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `apps/web`                  | Browser UI, routing, form state, GraphQL operations                                             | Backend domain rules or internal service DTOs                    |
+| `apps/gateway-api`          | Public GraphQL, edge auth/authz, transport mapping, request composition, realtime delivery      | Application databases, artifact credentials, domain state/outbox |
+| `apps/platform-service`     | Identity/session behavior, documents, source artifacts, platform workflow/outbox, `platform_db` | Public GraphQL, extraction internals, correction decisions       |
+| `apps/extraction-service`   | Extraction jobs, provider adapters, artifact validation, retries                                | User-facing GraphQL or correction decisions                      |
+| `apps/correction-service`   | Sessions, overlays, validation, provenance assembly, submit, audit/outbox                       | Model-provider details or public auth                            |
+| `packages/backend-platform` | Shared environment, datasource, and bounded logging mechanics                                   | Service schemas, entities, repositories, migrations, or identity |
+| `packages/contracts`        | Framework-free event and internal transport contracts                                           | NestJS decorators, TypeORM entities, React components            |
 
 #### Monorepo decision
 
@@ -249,10 +251,12 @@ flowchart LR
   Web -->|"GraphQL over HTTP"| Gateway["gateway-api"]
   Web -.->|"Socket.IO status events"| Gateway
 
-  Gateway --> Auth["Auth and authorization"]
+  Gateway -->|"Internal HTTP"| Platform["platform-service"]
   Gateway -->|"Internal HTTP"| Correction["correction-service"]
-  Gateway -->|"Extraction command"| MQ["RabbitMQ"]
-  Gateway --> PlatformDB[("platform_db")]
+  Platform --> Auth["Identity and session state"]
+  Platform --> PlatformDB[("platform_db")]
+  Platform --> Store["S3-compatible object storage"]
+  Platform -->|"Extraction command"| MQ["RabbitMQ"]
 
   MQ --> Extraction["extraction-service"]
   Extraction --> Provider["Mock or AI provider"]
@@ -274,8 +278,9 @@ flowchart LR
 | Interaction                | Initial choice                     | Reason                                                  |
 | -------------------------- | ---------------------------------- | ------------------------------------------------------- |
 | Web to gateway             | GraphQL over HTTP                  | One typed public contract optimized for the UI          |
+| Gateway to Platform        | Internal HTTP                      | Synchronous identity, document, and workflow commands   |
 | Gateway to correction      | Internal HTTP                      | Synchronous correction reads and user commands          |
-| Gateway to extraction      | RabbitMQ command                   | Extraction is slow, retryable, and failure-prone        |
+| Platform to extraction     | RabbitMQ command                   | Extraction is slow, retryable, and failure-prone        |
 | Domain events              | RabbitMQ plus transactional outbox | Reliable asynchronous integration                       |
 | Artifact transfer          | S3-compatible object storage       | Avoid large DB rows, HTTP payloads, and queue messages  |
 | Live browser updates       | Socket.IO from gateway             | Fits extraction progress and version notifications      |
@@ -391,7 +396,7 @@ references, not database foreign keys.
 
 | Owner              | Logical database | Primary data                                                          |
 | ------------------ | ---------------- | --------------------------------------------------------------------- |
-| Gateway/platform   | `platform_db`    | Users, identities, documents, source-object metadata, platform outbox |
+| Platform service   | `platform_db`    | Users, identities, documents, source-object metadata, platform outbox |
 | Extraction service | `extraction_db`  | Extraction jobs, attempts, extraction artifacts, extraction outbox    |
 | Correction service | `correction_db`  | Sessions, edits, correction artifacts, correction outbox              |
 
@@ -399,6 +404,13 @@ One PostgreSQL server/container is sufficient locally, but it hosts these
 three databases with separate service roles. Every service owns its own
 TypeORM datasource, `DATABASE_URL`, migrations, migration history, seed scope,
 transactions, and outbox.
+
+The current gateway ownership of `platform_db` is transitional. M04.1 moves the
+Platform datasource, migrations, seeds, and storage credentials to Platform
+and restricts any temporary gateway database role to the legacy correction
+tables. M06 moves that remaining correction state and behavior to
+`correction-service`; the gateway has no application database in the target
+architecture.
 
 Boundary rules:
 
@@ -502,28 +514,63 @@ document.corrected.v1
 
 ### Backend Track
 
+#### Platform Service
+
+Platform owns users and identity behavior, browser-session state, document
+identity and registration, source-artifact metadata and storage, and the
+platform workflow/process manager and outbox. It is the primary owner of
+`platform_db` and the sole owner of the platform source bucket; the temporary
+legacy correction role described below is not Platform ownership. Identity
+stays inside Platform; there is no separate identity service in the current
+roadmap.
+
+M04.1 performs a behavior-preserving move from the transitional gateway before
+M05-M07 add workflows against the wrong owner. During that move, Platform also
+closes the two ownership-sensitive M04 review findings:
+
+- logical artifact identities are first reserved in mutable database state
+  under a uniqueness constraint; only the reservation winner may upload and
+  finalize an immutable `DocumentObject`, because Garage 2.3 conditional writes
+  are not an atomic uniqueness authority;
+- schema ownership/migration credentials are separated from normal runtime
+  credentials; the finalized object table grants runtime `SELECT` and `INSERT`
+  but not `UPDATE`, `DELETE`, or `TRUNCATE`, while recovery uses an explicit
+  privileged path.
+
+The extraction must not hold a database transaction open across an object-store
+request. It requires a real-Garage concurrent-writer test and a new
+human-generated migration or provisioning change rather than edits to applied
+migrations. [ADR 0004](decisions/0004-thin-gateway-and-platform-service.md)
+records the complete decision.
+
 #### Gateway API
 
 Responsibilities:
 
 - schema-first GraphQL and resolver composition;
-- local JWT first, external OIDC later;
-- authorization and user context;
-- upload initiation/presigned URL orchestration;
+- cookie transport and token validation, with local JWT first and external OIDC
+  later;
+- authenticated request context and coarse role/scope authorization;
+- upload initiation transport mapped to Platform commands;
 - extraction/correction status composition;
 - Socket.IO gateway for notification events;
 - request correlation and public rate limits.
 
-The gateway must not own PDF parsing, extraction prompts, correction merge
-rules, correction audit transitions, or domain outbox logic.
+The gateway must not own application databases, migrations, artifact-store
+credentials, durable workflow state, PDF parsing, extraction prompts,
+correction transitions, or domain outbox logic. Resource authorization remains
+with the owning service. Until M04.1 completes, its existing Platform
+persistence and identity code is explicitly transitional; until M06 completes,
+its existing correction implementation is a separately restricted legacy
+exception.
 
 #### Identity and session stabilization
 
 The existing local JWT flow is PoC-level: the gateway has authentication,
 role, and scope guards, but the browser can still render a user decoded from a
 stale access token while protected GraphQL operations return `Unauthorized`.
-M04.1 stabilizes the complete FE/BE session contract after `platform_db` exists
-and before M07 accepts the end-to-end browser workflow.
+M04.2 stabilizes the complete FE/BE session contract inside Platform after the
+M04.1 ownership move and before M07 accepts the end-to-end browser workflow.
 
 Authentication and authorization baseline:
 
@@ -707,6 +754,7 @@ Target local services:
 
 ```text
 gateway-api
+platform-service (from M04.1)
 extraction-service
 correction-service
 PostgreSQL (one container with three service databases and roles)
@@ -1471,32 +1519,33 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status      | Depends on         | Outcome                                                                                                      |
-| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC       | Roadmap, agent/model conventions, and decision process established                                           |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00                | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior            |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01                | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned            |
-| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02                | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared         |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed   | M03-A              | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow               |
-| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B       | Scoped development images, healthy Compose services, and blocking Dockerfile policy                          |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B              | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content           |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B              | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed   | M03-A, B, C, D     | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred    |
-| M04.1 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04                | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                 |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04                | Async job lifecycle, deterministic provider, artifacts, events, failures                                     |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M04, M05 contracts | Overlay model, pure assembler, immutable submit, audit/outbox                                                |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.1, M05, M06    | Authenticated upload/status/inbox/editor/draft/submit works locally                                          |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06           | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                        |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08           | Socket.IO notifications; Redis only when multi-instance is tested                                            |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08           | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing     |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10                | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback       |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10           | Provider-neutral schemas and measurable acceptance baseline                                                  |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05          | One document type extracted from digital PDFs with structured output                                         |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10               | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                        |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11               | Evidence-based expansion to scans/images and repeated rows                                                   |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07     | Typed read/proposal tools and optional MCP exposure                                                          |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20               | Human-approved suggestions, validation explanations, trace/eval loop                                         |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21         | Cost, latency, safety, drift, fallback, and model comparison                                                 |
+| ID    | Milestone                                      | Track          | Priority | Status      | Depends on      | Outcome                                                                                                      |
+| ----- | ---------------------------------------------- | -------------- | -------- | ----------- | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed   | Existing PoC    | Roadmap, agent/model conventions, and decision process established                                           |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed   | M00             | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior            |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed   | M01             | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned            |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed   | M02             | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared         |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed   | M03-A           | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow               |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed   | M03-A, M03-B    | Scoped development images, healthy Compose services, and blocking Dockerfile policy                          |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed   | M03-B           | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content           |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed   | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred    |
+| M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | Planned     | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles     |
+| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned     | M04.1           | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                 |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned     | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                     |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned     | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned     | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                          |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned     | M05, M06        | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                        |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned     | M07, M08        | Socket.IO notifications; Redis only when multi-instance is tested                                            |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned     | M07, M08        | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing     |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned     | M10             | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback       |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned     | M07, M10        | Provider-neutral schemas and measurable acceptance baseline                                                  |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned     | AI00, M05       | One document type extracted from digital PDFs with structured output                                         |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned     | AI10            | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                        |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned     | AI11            | Evidence-based expansion to scans/images and repeated rows                                                   |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned     | AI00, M06, M07  | Typed read/proposal tools and optional MCP exposure                                                          |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned     | AI20            | Human-approved suggestions, validation explanations, trace/eval loop                                         |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned     | AI10, AI21      | Cost, latency, safety, drift, fallback, and model comparison                                                 |
 
 #### Dependency view
 
@@ -1505,13 +1554,14 @@ flowchart LR
   M00 --> M01 --> M02 --> M03A["M03-A"] --> M03B["M03-B"]
   M03B --> M03C["M03-C"]
   M03B --> M03D["M03-D"]
-  M03C --> M04 --> M05
+  M03C --> M04 --> M04_1["M04.1 Platform extraction"]
   M03D --> M04
   M03B -. "non-blocking" .-> M03E["M03-E"]
-  M04 --> M04_1["M04.1 identity/session"]
-  M04 --> M06
+  M04_1 --> M04_2["M04.2 identity/session"]
+  M04_1 --> M05
+  M05 --> M06
   M05 --> M07
-  M04_1 --> M07
+  M04_2 --> M07
   M06 --> M07 --> M08 --> M09
   M07 --> M10
   M08 --> M10 --> M11
@@ -1565,29 +1615,31 @@ a generic external code-review skill must not create a competing review path.
 
 ### Key Risks And Responses
 
-| Risk                                         | Response                                                                                      |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Refactor destroys useful PoC behavior        | Move paths first, extract domains incrementally, verify each existing flow                    |
-| Gateway becomes a new monolith               | Keep domain services/libraries authoritative and enforce import ownership                     |
-| Generated GraphQL types become domain APIs   | Confine them to resolver/adapter boundaries; map to service-owned commands and views          |
-| Service bypasses database ownership          | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys     |
-| Contract drift breaks FE/services            | Schema generation, versioned events, and contract tests in CI                                 |
-| Browser shows stale authenticated state      | Validate server-side at startup; refresh once, then clear and redirect                        |
-| Refresh-token replay extends a session       | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse            |
-| AI review creates false confidence           | Keep deterministic verification as the merge gate and treat AI findings as advisory           |
-| Too many skills dilute review focus          | Route by changed area and risk; select only a small relevant specialist set                   |
-| External skills impose conflicting workflows | Adapt capabilities selectively; keep repository conventions and human execution authoritative |
-| Dockerfile lint is mistaken for image safety | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates             |
-| Artifact model duplicates too much data      | Store immutable blobs cheaply; DB keeps references and workflow metadata                      |
-| RabbitMQ/Compose complexity slows local work | One-command scripts, health checks, narrow service profiles, deterministic fixtures           |
-| Observability stack slows normal local work  | Keep it in an optional Compose profile with short retention and single-node components        |
-| Logs expose request or identity data         | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity    |
-| Telemetry cardinality or volume grows        | Bound labels, sample traces, redact payloads, and set explicit retention limits               |
-| WebSocket introduces false consistency       | Notification-only events followed by authoritative refetch                                    |
-| AI output is trusted without evidence        | Strict schemas, eval thresholds, provenance, human approval, failure artifacts                |
-| Provider lock-in                             | Provider-neutral interfaces and shared eval datasets, with provider details isolated          |
-| Python course diverges from TS product       | Implement product harness in TS; use Python only where ecosystem value is concrete            |
-| Former name implies Elemica affiliation      | Use AspectLoop and a non-affiliation statement; audit public content before release           |
+| Risk                                          | Response                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Refactor destroys useful PoC behavior         | Move paths first, extract domains incrementally, verify each existing flow                               |
+| Gateway becomes a new monolith                | Extract Platform in M04.1, finish correction extraction in M06, and prohibit new gateway state ownership |
+| Generated GraphQL types become domain APIs    | Confine them to resolver/adapter boundaries; map to service-owned commands and views                     |
+| Service bypasses database ownership           | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys                |
+| Contract drift breaks FE/services             | Schema generation, versioned events, and contract tests in CI                                            |
+| Browser shows stale authenticated state       | Validate server-side at startup; refresh once, then clear and redirect                                   |
+| Refresh-token replay extends a session        | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse                       |
+| AI review creates false confidence            | Keep deterministic verification as the merge gate and treat AI findings as advisory                      |
+| Too many skills dilute review focus           | Route by changed area and risk; select only a small relevant specialist set                              |
+| External skills impose conflicting workflows  | Adapt capabilities selectively; keep repository conventions and human execution authoritative            |
+| Dockerfile lint is mistaken for image safety  | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates                        |
+| Artifact model duplicates too much data       | Store immutable blobs cheaply; DB keeps references and workflow metadata                                 |
+| Concurrent source writes overwrite bytes      | Reserve identity under a Platform DB uniqueness constraint before upload; test two instances             |
+| Runtime SQL mutates finalized object metadata | Separate migrator/owner and runtime roles; deny runtime update/delete/truncate on the table              |
+| RabbitMQ/Compose complexity slows local work  | One-command scripts, health checks, narrow service profiles, deterministic fixtures                      |
+| Observability stack slows normal local work   | Keep it in an optional Compose profile with short retention and single-node components                   |
+| Logs expose request or identity data          | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity               |
+| Telemetry cardinality or volume grows         | Bound labels, sample traces, redact payloads, and set explicit retention limits                          |
+| WebSocket introduces false consistency        | Notification-only events followed by authoritative refetch                                               |
+| AI output is trusted without evidence         | Strict schemas, eval thresholds, provenance, human approval, failure artifacts                           |
+| Provider lock-in                              | Provider-neutral interfaces and shared eval datasets, with provider details isolated                     |
+| Python course diverges from TS product        | Implement product harness in TS; use Python only where ecosystem value is concrete                       |
+| Former name implies Elemica affiliation       | Use AspectLoop and a non-affiliation statement; audit public content before release                      |
 
 ### Explicit Non-Goals
 
@@ -1623,8 +1675,22 @@ its disposable single-database source no longer represents the accepted system.
 Future recovery tooling remains version-aware and must rehearse a real future
 major upgrade before that upgrade, not retroactively afterward.
 
-Optional pgAdmin tooling is now available through the isolated `devtools`
-profile. Proceed with M04.1 identity/session stabilization and M05 extraction
-work. Reconsider durable PG18 plus Garage recovery immediately after M06 and
-before M07; M10 later hardens the runbook, and M11 still owns demonstrated stage
-recovery. M03-E remains a non-blocking advisory pilot.
+Post-review corrections reconcile Garage permissions before reapplying the
+intended matrix, verify denied peer writes, make `local:up` a complete phased
+readiness barrier, keep optional pgAdmin variables from breaking ordinary
+Compose commands, anchor TypeORM discovery to each owning application, and pin
+the local Garage server/client region to `garage`. Human verification completed
+on 2026-09-10, including the opt-in TypeORM 1 compatibility check against the
+migrated local PostgreSQL fixture.
+
+Proceed next with M04.1 Platform ownership extraction, including the
+database-backed artifact reservation for finding #1 and runtime/migrator role
+split for finding #7. M04.2 identity/session stabilization and M05 extraction
+follow M04.1 and may proceed in parallel when their contracts do not conflict;
+M06 follows the M05 contracts, and M07 waits for M04.2, M05, and M06. Platform
+extraction must not be postponed until after M06.
+
+Optional pgAdmin tooling remains isolated in the `devtools` profile. Reconsider
+durable PG18 plus Garage recovery immediately after M06 and before M07; M10
+later hardens the runbook, and M11 still owns demonstrated stage recovery.
+M03-E remains a non-blocking advisory pilot.

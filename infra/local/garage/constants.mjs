@@ -25,12 +25,12 @@ export const GATEWAY_ENV_FILE = fileURLToPath(
 export const COMPOSE_PROJECT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /**
- * Garage regions start with a lowercase alphanumeric character and then allow
- * lowercase alphanumeric characters and hyphens.
+ * Garage's local server region. This is infrastructure topology, not an
+ * operator-selectable application setting.
  *
- * @type {RegExp}
+ * @type {string}
  */
-export const GARAGE_REGION_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+export const LOCAL_GARAGE_REGION = 'garage';
 
 /**
  * Garage zones start with an alphanumeric character and then allow alphanumeric
@@ -104,7 +104,6 @@ export const DEFAULT_ASSIGNMENTS = Object.freeze({
   GARAGE_CAPACITY_BYTES: '1000000000',
   GARAGE_HOST: '127.0.0.1',
   GARAGE_S3_PORT: '3900',
-  GARAGE_S3_REGION: 'garage',
   GARAGE_ZONE: 'local',
   PLATFORM_S3_BUCKET: 'aspectloop-platform-source',
 });

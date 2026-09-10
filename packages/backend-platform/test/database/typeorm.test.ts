@@ -1,14 +1,16 @@
 import type { DataSourceOptions } from 'typeorm';
 
+import { join } from 'node:path';
 import { expect, test } from 'vitest';
 
 import { createPostgresDataSourceOptions, getTypeOrmDiscoveryPaths } from '../../src/database';
 
 const DATABASE_URL = 'postgresql://service_app:service_app@postgres:5432/service_db';
+const SERVICE_ROOT = '/workspace/apps/service';
 
 /** Creates shared datasource options without connecting to PostgreSQL. */
 function createOptions(nodeEnv = 'development', poolSize?: number): DataSourceOptions {
-  const paths = getTypeOrmDiscoveryPaths('source');
+  const paths = getTypeOrmDiscoveryPaths('source', SERVICE_ROOT);
 
   return createPostgresDataSourceOptions({
     databaseUrl: DATABASE_URL,
@@ -48,13 +50,13 @@ function testDatasourceSafetyContract(): void {
 
 /** Verifies source and compiled processes select explicit non-empty discovery paths. */
 function testDiscoveryContract(): void {
-  expect(getTypeOrmDiscoveryPaths('source')).toEqual({
-    entities: ['src/**/*.entity{.ts,.js}'],
-    migrations: ['src/db/migrations/*{.ts,.js}'],
+  expect(getTypeOrmDiscoveryPaths('source', SERVICE_ROOT)).toEqual({
+    entities: [join(SERVICE_ROOT, 'src/**/*.entity{.ts,.js}')],
+    migrations: [join(SERVICE_ROOT, 'src/db/migrations/*{.ts,.js}')],
   });
-  expect(getTypeOrmDiscoveryPaths('compiled')).toEqual({
-    entities: ['dist/**/*.entity.js'],
-    migrations: ['dist/db/migrations/*.js'],
+  expect(getTypeOrmDiscoveryPaths('compiled', SERVICE_ROOT)).toEqual({
+    entities: [join(SERVICE_ROOT, 'dist/**/*.entity.js')],
+    migrations: [join(SERVICE_ROOT, 'dist/db/migrations/*.js')],
   });
 }
 

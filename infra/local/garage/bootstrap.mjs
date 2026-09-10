@@ -1,4 +1,9 @@
-import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -13,10 +18,10 @@ import {
   DEFAULT_ASSIGNMENTS,
   ENV_FILE,
   GARAGE_OWNERS,
-  GARAGE_REGION_PATTERN,
   GARAGE_ZONE_PATTERN,
   HEALTHY_STATUS,
   LAYOUT_VERSION,
+  LOCAL_GARAGE_REGION,
   MAX_PORT,
   OPERATION_TIMEOUT_MS,
   READINESS_ATTEMPTS,
@@ -191,12 +196,10 @@ function configuration() {
   const environment = parseEnv(readFileSync(ENV_FILE, 'utf8'));
   const project = required(environment, 'COMPOSE_PROJECT_NAME');
   const host = required(environment, 'GARAGE_HOST');
-  const region = required(environment, 'GARAGE_S3_REGION');
   const zone = required(environment, 'GARAGE_ZONE');
 
   assert.match(project, COMPOSE_PROJECT_NAME_PATTERN, 'Invalid Compose project name');
   assert.equal(host, DEFAULT_ASSIGNMENTS.GARAGE_HOST, 'GARAGE_HOST must remain loopback-only');
-  assert.match(region, GARAGE_REGION_PATTERN, 'Invalid Garage region');
   assert.match(zone, GARAGE_ZONE_PATTERN, 'Invalid Garage zone');
 
   const configuredCapacity = positiveInteger(
@@ -237,10 +240,32 @@ function configuration() {
     capacity: configuredCapacity,
     containerName: `${project}-garage`,
     endpoint: `http://${host}:${positiveInteger(environment, 'GARAGE_S3_PORT', MAX_PORT)}`,
-    region,
+    region: LOCAL_GARAGE_REGION,
     services,
     zone,
   };
+}
+
+/**
+ * Creates one explicit Garage S3 client without retries or ambient credentials.
+ *
+ * @param {GarageConfiguration} configurationValue - Validated Garage configuration.
+ * @param {GarageService} service - Credential owner for the client.
+ * @returns {S3Client} Configured S3 client.
+ */
+function createS3Client(configurationValue, service) {
+  return new S3Client({
+    credentials: {
+      accessKeyId: service.accessKeyId,
+      secretAccessKey: service.secretAccessKey,
+    },
+    endpoint: configurationValue.endpoint,
+    forcePathStyle: true,
+    maxAttempts: 1,
+    region: configurationValue.region,
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
+  });
 }
 
 /**
@@ -264,24 +289,6 @@ function errorStatus(error) {
 }
 
 /**
- * Applies one read/write grant per owner without introducing cross-service access.
- *
- * @param {string} containerName - Garage container name.
- * @param {GarageService[]} services - Expected service storage contracts.
- * @param {Map<string, string>} bucketIds - Bucket identifiers by alias.
- * @returns {void}
- */
-function grantBuckets(containerName, services, bucketIds) {
-  for (const service of services) {
-    admin(containerName, 'AllowBucketKey', {
-      accessKeyId: service.accessKeyId,
-      bucketId: bucketIds.get(service.bucket),
-      permissions: { owner: false, read: true, write: true },
-    });
-  }
-}
-
-/**
  * Executes deterministic layout, key, bucket, grant, and S3 readiness bootstrap.
  *
  * @returns {Promise<void>}
@@ -300,7 +307,7 @@ async function main() {
   bootstrapKeys(configurationValue.containerName, configurationValue.services);
 
   const bucketIds = bootstrapBuckets(configurationValue.containerName, configurationValue.services);
-  grantBuckets(configurationValue.containerName, configurationValue.services, bucketIds);
+  reconcileBucketGrants(configurationValue.containerName, configurationValue.services, bucketIds);
 
   await waitForHealth(configurationValue.adminEndpoint);
   await verifyS3(configurationValue);
@@ -308,10 +315,60 @@ async function main() {
 }
 
 /**
+ * Removes every managed key/bucket permission before applying the intended matrix.
+ * Garage permission updates only change flags set to true, so reconciliation must
+ * explicitly revoke stale grants before allowing each owner access to its bucket.
+ *
+ * @param {string} containerName - Garage container name.
+ * @param {GarageService[]} services - Expected service storage contracts.
+ * @param {Map<string, string>} bucketIds - Bucket identifiers by alias.
+ * @returns {void}
+ */
+function reconcileBucketGrants(containerName, services, bucketIds) {
+  for (const service of services) {
+    for (const bucketId of bucketIds.values()) {
+      admin(containerName, 'DenyBucketKey', {
+        accessKeyId: service.accessKeyId,
+        bucketId,
+        permissions: { owner: true, read: true, write: true },
+      });
+    }
+  }
+
+  for (const service of services) {
+    admin(containerName, 'AllowBucketKey', {
+      accessKeyId: service.accessKeyId,
+      bucketId: bucketIds.get(service.bucket),
+      permissions: { owner: false, read: true, write: true },
+    });
+  }
+}
+
+/**
+ * Removes a permission probe with the bucket owner's credentials if a stale
+ * peer write grant unexpectedly allowed the probe to be created.
+ *
+ * @param {GarageConfiguration} configurationValue - Validated Garage configuration.
+ * @param {GarageService} owner - Owner of the probed bucket.
+ * @param {string} key - Probe object key.
+ * @returns {Promise<void>}
+ */
+async function removePermissionProbe(configurationValue, owner, key) {
+  const ownerClient = createS3Client(configurationValue, owner);
+
+  try {
+    await send(ownerClient, new DeleteObjectCommand({ Bucket: owner.bucket, Key: key }));
+  } finally {
+    ownerClient.destroy();
+  }
+}
+
+/**
  * Sends one bounded S3 request without retries or ambient credentials.
  *
  * @param {S3Client} client - Explicitly configured Garage S3 client.
- * @param {HeadBucketCommand} command - Bounded S3 command.
+ * @param {HeadBucketCommand | PutObjectCommand | DeleteObjectCommand} command -
+ * Bounded S3 command.
  * @returns {Promise<unknown>} AWS SDK command result.
  */
 function send(client, command) {
@@ -336,7 +393,8 @@ function serviceForAccessKey(services, accessKeyId) {
 }
 
 /**
- * Proves each service key owns one bucket and is denied every peer bucket.
+ * Proves each service key accesses its own bucket and is denied both metadata
+ * and object writes against every peer bucket.
  *
  * @param {GarageConfiguration} configurationValue - Validated Garage configuration.
  * @returns {Promise<void>}
@@ -345,18 +403,7 @@ async function verifyS3(configurationValue) {
   step = 'authenticated S3 readiness';
 
   for (const service of configurationValue.services) {
-    const client = new S3Client({
-      credentials: {
-        accessKeyId: service.accessKeyId,
-        secretAccessKey: service.secretAccessKey,
-      },
-      endpoint: configurationValue.endpoint,
-      forcePathStyle: true,
-      maxAttempts: 1,
-      region: configurationValue.region,
-      requestChecksumCalculation: 'WHEN_REQUIRED',
-      responseChecksumValidation: 'WHEN_REQUIRED',
-    });
+    const client = createS3Client(configurationValue, service);
 
     try {
       await send(client, new HeadBucketCommand({ Bucket: service.bucket }));
@@ -366,15 +413,47 @@ async function verifyS3(configurationValue) {
           continue;
         }
 
-        let status;
+        let headStatus;
 
         try {
           await send(client, new HeadBucketCommand({ Bucket: peer.bucket }));
         } catch (error) {
-          status = errorStatus(error);
+          headStatus = errorStatus(error);
         }
 
-        assert.equal(status, ACCESS_DENIED_STATUS, `${service.name} key can access a peer bucket`);
+        assert.equal(
+          headStatus,
+          ACCESS_DENIED_STATUS,
+          `${service.name} key can inspect a peer bucket`,
+        );
+
+        const probeKey = `.aspectloop-permission-probe/${service.name}`;
+        let putStatus;
+        let wroteProbe = false;
+
+        try {
+          await send(
+            client,
+            new PutObjectCommand({
+              Body: 'permission-probe',
+              Bucket: peer.bucket,
+              Key: probeKey,
+            }),
+          );
+          wroteProbe = true;
+        } catch (error) {
+          putStatus = errorStatus(error);
+        }
+
+        if (wroteProbe) {
+          await removePermissionProbe(configurationValue, peer, probeKey);
+        }
+
+        assert.equal(
+          putStatus,
+          ACCESS_DENIED_STATUS,
+          `${service.name} key can write to a peer bucket`,
+        );
       }
     } finally {
       client.destroy();

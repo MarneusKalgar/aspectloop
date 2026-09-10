@@ -7,6 +7,9 @@ import {
   createPostgresDataSourceOptions,
   getTypeOrmDiscoveryPaths,
 } from '@aspectloop/backend-platform/database';
+import { resolve } from 'node:path';
+
+const APPLICATION_ROOT = resolve(__dirname, '../..');
 
 interface TypeOrmConfig {
   databaseUrl: string;
@@ -18,7 +21,7 @@ interface TypeOrmConfig {
 
 /** Builds the shared gateway datasource contract for Nest and TypeORM CLI use. */
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
-  const paths = getTypeOrmDiscoveryPaths(config.discoveryMode);
+  const paths = getTypeOrmDiscoveryPaths(config.discoveryMode, APPLICATION_ROOT);
 
   return createPostgresDataSourceOptions({
     databaseUrl: config.databaseUrl,

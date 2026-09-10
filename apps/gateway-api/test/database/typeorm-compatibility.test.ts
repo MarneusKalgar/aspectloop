@@ -30,13 +30,17 @@ async function testTypeOrmCompatibility(): Promise<void> {
     throw new Error('TYPEORM_TEST_DATABASE_URL must identify a disposable migrated database');
   }
 
-  const dataSource = new DataSource(
-    getTypeOrmDataSourceOptions({
+  const dataSource = new DataSource({
+    ...getTypeOrmDataSourceOptions({
       databaseUrl,
       discoveryMode: 'source',
       nodeEnv: 'development',
     }),
-  );
+    // Vitest transforms these imports; TypeORM's runtime glob loader would ask
+    // Node to parse raw legacy-decorator syntax from the source files instead.
+    entities: [CorrectionSession, User],
+    migrations: [],
+  });
   const documentId = `m04a-${randomUUID()}`;
   const invalidDocumentId = `${documentId}-invalid`;
   const email = `${documentId}@example.test`;

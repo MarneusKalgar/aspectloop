@@ -8,6 +8,7 @@ import {
   ENV_FILE,
   GATEWAY_ENV_FILE,
   GATEWAY_S3_DEFAULTS,
+  LOCAL_GARAGE_REGION,
 } from './constants.mjs';
 import {
   errorName,
@@ -85,11 +86,7 @@ function main() {
     'S3_ENDPOINT',
     `http://${initializedEnvironment.GARAGE_HOST}:${initializedEnvironment.GARAGE_S3_PORT}`,
   );
-  gatewayContent = setAssignment(
-    gatewayContent,
-    'S3_REGION',
-    initializedEnvironment.GARAGE_S3_REGION,
-  );
+  gatewayContent = setAssignment(gatewayContent, 'S3_REGION', LOCAL_GARAGE_REGION);
 
   for (const name of [
     'PLATFORM_S3_BUCKET',

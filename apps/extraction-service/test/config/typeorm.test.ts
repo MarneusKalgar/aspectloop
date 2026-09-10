@@ -1,12 +1,14 @@
 import type { DataSourceOptions } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
+import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 
 import { validateEnv } from '../../src/config/env.validation';
 import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/config/typeorm';
 
 const DATABASE_URL = 'postgresql://extraction_app:extraction_app@postgres:5432/extraction_db';
+const APPLICATION_ROOT = resolve(__dirname, '../..');
 
 /** Creates extraction datasource options without connecting to PostgreSQL. */
 function createOptions(nodeEnv: string, discoveryMode: 'compiled' | 'source'): DataSourceOptions {
@@ -25,9 +27,24 @@ function testDatabaseUrlValidation(): void {
 /** Verifies discovery follows the process execution form rather than NODE_ENV. */
 function testDiscoveryPaths(): void {
   const expectations: [string, 'compiled' | 'source', string[], string[]][] = [
-    ['development', 'source', ['src/**/*.entity{.ts,.js}'], ['src/db/migrations/*{.ts,.js}']],
-    ['development', 'compiled', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
-    ['production', 'compiled', ['dist/**/*.entity.js'], ['dist/db/migrations/*.js']],
+    [
+      'development',
+      'source',
+      [join(APPLICATION_ROOT, 'src/**/*.entity{.ts,.js}')],
+      [join(APPLICATION_ROOT, 'src/db/migrations/*{.ts,.js}')],
+    ],
+    [
+      'development',
+      'compiled',
+      [join(APPLICATION_ROOT, 'dist/**/*.entity.js')],
+      [join(APPLICATION_ROOT, 'dist/db/migrations/*.js')],
+    ],
+    [
+      'production',
+      'compiled',
+      [join(APPLICATION_ROOT, 'dist/**/*.entity.js')],
+      [join(APPLICATION_ROOT, 'dist/db/migrations/*.js')],
+    ],
   ];
 
   for (const [nodeEnv, discoveryMode, expectedEntities, expectedMigrations] of expectations) {
@@ -49,8 +66,8 @@ function testNestDiscoveryPaths(): void {
     }),
   );
 
-  expect(options.entities).toEqual(['dist/**/*.entity.js']);
-  expect(options.migrations).toEqual(['dist/db/migrations/*.js']);
+  expect(options.entities).toEqual([join(APPLICATION_ROOT, 'dist/**/*.entity.js')]);
+  expect(options.migrations).toEqual([join(APPLICATION_ROOT, 'dist/db/migrations/*.js')]);
   expect(options.autoLoadEntities).toBe(true);
 }
 

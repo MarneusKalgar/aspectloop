@@ -103,11 +103,27 @@ current Vitest configurations.
 
 The root `test:backend:run` command runs database-independent gateway,
 extraction, correction, and backend-platform configuration tests and remains
-part of `verify:full`. The opt-in `test:typeorm:run` command verifies TypeORM
-behavior against disposable PostgreSQL and remains a human-run compatibility
-check. M04 provides reusable local reset, migration, seed, role, and artifact
-verification commands, but it does not yet provide the isolated disposable
-fixture lifecycle required for CI.
+part of `verify:full`. TypeORM discovery is anchored to each owning application
+instead of the invoking process's working directory, with source and compiled
+paths covered by the database-independent configuration tests. The opt-in
+`test:typeorm:run` command uses explicitly imported gateway entities to verify
+TypeORM behavior against disposable PostgreSQL; it does not ask TypeORM's Node
+loader to parse untransformed TypeScript decorator syntax. It remains a
+human-run compatibility check. M04 provides reusable local reset, migration,
+seed, role, and artifact verification commands, but it does not yet provide the
+isolated disposable fixture lifecycle required for CI.
+After `local:reset`, `local:up`, and `local:migrate`, the template-default local
+fixture can be checked from the host with:
+
+```bash
+TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
+  npm run test:typeorm:run
+```
+
+The URL must be adapted when ignored local environment files override the
+platform role, password, database name, or published PostgreSQL port. The
+command fails intentionally when `TYPEORM_TEST_DATABASE_URL` is absent; it must
+not report a skipped compatibility check as a pass.
 
 ### 4.3 Playwright
 
@@ -376,11 +392,15 @@ whether a dedicated local E2E stack has been introduced.
 
 M04 establishes the reusable human-operated real-infrastructure fixture
 contract through `local:reset`, `local:up`, `local:migrate`, `local:seed`,
-`local:db:verify-roles`, and `local:artifact:verify`. These commands provide
-bounded PostgreSQL and Garage readiness plus deterministic seed and verification
-entry points without exposing Compose internals to tests. `local:reset` is
-destructive and explicit. This contract is a foundation for later suites, not
-an automated `test:e2e:local` command or a parallel CI fixture.
+`local:db:verify-roles`, and `local:artifact:verify`. `local:up` first waits for
+PostgreSQL, RabbitMQ, the persistence mock, and Garage, then bootstraps Garage,
+then starts and waits for the complete application graph. Bootstrap revokes all
+managed key/bucket permissions before reapplying the intended matrix and checks
+that each key receives `403` for both peer-bucket metadata and object writes.
+Together these commands provide bounded readiness plus deterministic seed and
+verification entry points without exposing Compose internals to tests.
+`local:reset` is destructive and explicit. This contract is a foundation for
+later suites, not an automated `test:e2e:local` command or a parallel CI fixture.
 
 ### 8.1 Dedicated local E2E stack
 
