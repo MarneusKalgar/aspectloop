@@ -1,5 +1,7 @@
 import type { DataSourceOptions } from 'typeorm';
 
+import { join } from 'node:path';
+
 export interface PostgresDataSourceConfig {
   databaseUrl: string;
   entities: NonNullable<DataSourceOptions['entities']>;
@@ -8,6 +10,8 @@ export interface PostgresDataSourceConfig {
   poolSize?: number;
   slowQueryThresholdMs?: number;
 }
+
+export type TypeOrmDiscoveryMode = 'compiled' | 'source';
 
 export interface TypeOrmDiscoveryPaths {
   entities: string[];
@@ -47,19 +51,23 @@ export function createPostgresDataSourceOptions(
 /**
  * Selects the repository's source or compiled TypeORM discovery convention.
  *
- * @param nodeEnv Validated service runtime environment.
+ * @param mode Execution form used by the current process.
+ * @param applicationRoot Absolute root of the datasource-owning application.
  * @returns Explicit entity and migration globs for that runtime.
  */
-export function getTypeOrmDiscoveryPaths(nodeEnv?: string): TypeOrmDiscoveryPaths {
-  if (nodeEnv === 'production' || nodeEnv === 'stage') {
+export function getTypeOrmDiscoveryPaths(
+  mode: TypeOrmDiscoveryMode,
+  applicationRoot: string,
+): TypeOrmDiscoveryPaths {
+  if (mode === 'compiled') {
     return {
-      entities: ['dist/**/*.entity.js'],
-      migrations: ['dist/db/migrations/*.js'],
+      entities: [join(applicationRoot, 'dist/**/*.entity.js')],
+      migrations: [join(applicationRoot, 'dist/db/migrations/*.js')],
     };
   }
 
   return {
-    entities: ['src/**/*.entity{.ts,.js}'],
-    migrations: ['src/db/migrations/*{.ts,.js}'],
+    entities: [join(applicationRoot, 'src/**/*.entity{.ts,.js}')],
+    migrations: [join(applicationRoot, 'src/db/migrations/*{.ts,.js}')],
   };
 }

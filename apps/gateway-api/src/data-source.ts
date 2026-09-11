@@ -13,6 +13,7 @@ if (!process.env.DATABASE_URL) {
 const appDataSource = new DataSource(
   getTypeOrmDataSourceOptions({
     databaseUrl: process.env.DATABASE_URL,
+    discoveryMode: 'source',
     nodeEnv: process.env.NODE_ENV,
     poolSize: process.env.DB_POOL_SIZE ? Number(process.env.DB_POOL_SIZE) : undefined,
     slowQueryThresholdMs: process.env.DB_SLOW_QUERY_THRESHOLD_MS

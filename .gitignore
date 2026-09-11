@@ -24,6 +24,7 @@ test-results
 
 # Local service data
 mocks/persistence-service/data
+/infra/local/pgadmin/servers.local.json
 
 # Operating system metadata
 .DS_Store

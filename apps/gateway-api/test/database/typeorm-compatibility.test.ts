@@ -2,13 +2,12 @@ import 'reflect-metadata';
 
 import type { EntityManager } from 'typeorm';
 
+import { getTypeOrmDataSourceOptions } from '@gateway/config/typeorm';
+import { CorrectionSession } from '@gateway/correction-sessions/correction-session.entity';
+import { User } from '@gateway/users/user.entity';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { expect, test } from 'vitest';
-
-import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
-import { CorrectionSession } from '../../src/correction-sessions/correction-session.entity';
-import { User } from '../../src/users/user.entity';
 
 const databaseUrl = process.env.TYPEORM_TEST_DATABASE_URL;
 
@@ -31,12 +30,17 @@ async function testTypeOrmCompatibility(): Promise<void> {
     throw new Error('TYPEORM_TEST_DATABASE_URL must identify a disposable migrated database');
   }
 
-  const dataSource = new DataSource(
-    getTypeOrmDataSourceOptions({
+  const dataSource = new DataSource({
+    ...getTypeOrmDataSourceOptions({
       databaseUrl,
+      discoveryMode: 'source',
       nodeEnv: 'development',
     }),
-  );
+    // Vitest transforms these imports; TypeORM's runtime glob loader would ask
+    // Node to parse raw legacy-decorator syntax from the source files instead.
+    entities: [CorrectionSession, User],
+    migrations: [],
+  });
   const documentId = `m04a-${randomUUID()}`;
   const invalidDocumentId = `${documentId}-invalid`;
   const email = `${documentId}@example.test`;

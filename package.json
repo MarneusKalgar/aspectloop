@@ -31,16 +31,20 @@
     "deps:signatures": "npm audit signatures",
     "deps:scripts:pending": "npm install-scripts ls",
     "docker:policy": "bash scripts/docker/check-policy.sh",
-    "local:up": "bash infra/local/scripts/local-compose.sh up --build -d",
-    "local:start": "bash infra/local/scripts/local-compose.sh up -d",
+    "local:up": "bash infra/local/scripts/local-up.sh --build",
+    "local:start": "bash infra/local/scripts/local-up.sh",
     "local:migrate": "bash infra/local/scripts/local-migrate.sh",
     "local:seed": "bash infra/local/scripts/local-seed.sh",
+    "local:db:admin": "bash infra/local/scripts/local-db-admin.sh",
     "local:db:verify-roles": "bash infra/local/scripts/local-role-verify.sh",
-    "local:down": "bash infra/local/scripts/local-compose.sh down --remove-orphans",
-    "local:reset": "bash infra/local/scripts/local-compose.sh down -v --remove-orphans",
+    "local:down": "bash infra/local/scripts/local-down.sh",
+    "local:reset": "bash infra/local/scripts/local-down.sh --volumes",
     "local:db:generate:gateway": "bash infra/local/scripts/local-generate-migration.sh gateway-api",
     "local:db:generate:extraction": "bash infra/local/scripts/local-generate-migration.sh extraction-service",
     "local:db:generate:correction": "bash infra/local/scripts/local-generate-migration.sh correction-service",
+    "local:garage:init": "node infra/local/garage/init-credentials.mjs",
+    "local:garage:bootstrap": "bash infra/local/scripts/local-garage-bootstrap.sh",
+    "local:artifact:verify": "bash infra/local/scripts/local-artifact-verify.sh",
     "local:garage:spike": "node infra/local/spikes/garage/spike.mjs",
     "format": "prettier --write \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
@@ -94,5 +98,8 @@
     "esbuild@0.28.1": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true
+  },
+  "overrides": {
+    "multer": "2.3.0"
   }
 }

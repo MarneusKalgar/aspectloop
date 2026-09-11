@@ -4,6 +4,8 @@ Status: Accepted
 
 Date: 2026-08-31
 
+Last amended: 2026-09-10
+
 ## Context
 
 AspectLoop needs private object storage alongside service-owned relational
@@ -72,8 +74,9 @@ The application contract is deliberately narrower than
   API design still require M07 verification.
 
 `ListObjectsV2` is used by the spike's empty-target check. Portable object
-export/import, pagination, large files, streaming, and multipart behavior
-remain separate M04-F/M04-H gates, not implied by the small fixture.
+export/import, pagination, large files, streaming, and multipart behavior are
+not implied by the accepted small M04 fixture; they remain future upload and
+recovery gates.
 
 The probe explicitly sets SDK `requestChecksumCalculation` and
 `responseChecksumValidation` to `WHEN_REQUIRED`; it does not depend on optional
@@ -82,26 +85,45 @@ mandatory. See [AWS's SDK checksum guidance](https://docs.aws.amazon.com/sdk-for
 
 Do not depend on bucket versioning, object lock/WORM, AWS IAM policy or ACL
 syntax, prefix-scoped credentials, event notifications, or provider-specific
-ETag semantics. Local permissions are per key/per bucket. Application
-write-once behavior is an M04-F responsibility, not a Garage retention or
-atomic conditional-write guarantee. The spike may overwrite only its fixed
-synthetic fixtures in its disposable bucket.
+ETag semantics. Local permissions are per key/per bucket. The local server
+region is fixed to `garage`; the provider-neutral application configuration
+retains an explicit region for non-local S3 implementations.
+
+M04's application-generated object keys and metadata checks provide sequential
+write-once behavior, but post-review inspection confirmed that Garage 2.3 does
+not enforce `If-None-Match` as an atomic create-only `PutObject` condition. A
+`HeadObject` followed by `PutObject` therefore cannot prevent two concurrent
+writers from succeeding. [ADR 0004](0004-thin-gateway-and-platform-service.md)
+assigns the durable fix to Platform in M04.1: reserve logical object identity
+under a database uniqueness constraint, then let only the winner upload and
+finalize immutable metadata. This must land before M07 exposes public uploads.
+The spike may overwrite only its fixed synthetic fixtures in its disposable
+bucket.
 
 ### Layered Readiness
 
 1. Compose executes `/garage status` with a five-second timeout and bounded
    retries. This proves the daemon/RPC path responds, not bucket access. In a
    multi-node system, a successful status command alone is not quorum proof.
-2. An idempotent bootstrap establishes the single-node layout, private buckets,
-   and permissions. Unexpected existing layouts fail closed. It must not wait
-   on bucket readiness before creating the buckets.
+2. An idempotent bootstrap establishes the single-node layout and private
+   buckets. It explicitly revokes every managed key/bucket permission before
+   applying the intended owner matrix, because Garage permission updates leave
+   flags that are not named as `true` unchanged. Unexpected existing layouts
+   fail closed. Bootstrap must not wait on bucket readiness before creating the
+   buckets.
 3. An external probe observes Admin API `GET /health`; upstream documents
    `200` for available quorum and `503` otherwise. The spike records its
    pre-bootstrap response and requires `200` after bootstrap. It also checks
    structured cluster health.
-4. An authenticated S3 `HeadBucket` proves the actual service credential can
-   access its bucket. Object read/write/checksum checks are acceptance probes,
-   not repeated liveness writes.
+4. Authenticated S3 checks prove the actual service credential can access its
+   bucket and receives `403` for both `HeadBucket` and `PutObject` against every
+   peer bucket. Object read/write/checksum checks are acceptance probes, not
+   repeated liveness writes.
+
+Aggregate local startup follows the same dependency order: start and await
+PostgreSQL, RabbitMQ, the persistence mock, and Garage; bootstrap Garage; then
+start and await the complete application graph. A successful `local:up` is a
+full-graph readiness barrier, not merely a signal that Garage is running.
 
 The HTTP endpoint is standard health monitoring, but the scratch image has no
 HTTP probe utility. A native CLI Compose check plus an external S3 readiness
@@ -157,11 +179,17 @@ database-engine or security workaround was adopted. Use native architecture
 verification; neither all host configurations nor cross-architecture metadata
 migration is covered by this acceptance.
 
-M04-E's provider-decision prerequisite is satisfied; its normal-stack
-integration remains separate work. A future failure on a supported native
-architecture or a need for Garage-only application APIs reopens this decision.
+M04-E and M04-F subsequently completed the normal-stack integration, three
+private service buckets, and the gateway's first checksum-verified S3 artifact
+adapter. A future failure on a supported native architecture or a need for
+Garage-only application APIs reopens this decision.
 
-M04-B does not add backup commands. M04-H is optional local backup/restore;
-M10 owns recovery runbooks and failure testing; M11 owns real stage backups,
-retention, RPO/RTO, and a demonstrated stage restore. Single-node local storage
-is not high availability and no named volume is a backup.
+The 2026-09-10 post-review correction added explicit permission reconciliation,
+peer-write denial checks, phased full-graph startup readiness, and one local
+Garage region authority. Human verification of the amended revision completed
+on 2026-09-10.
+
+M04-B does not add backup commands, and M04-H is explicitly deferred after M04
+P0 closeout. M10 owns recovery runbooks and failure testing; M11 owns real stage
+backups, retention, RPO/RTO, and a demonstrated stage restore. Single-node
+local storage is not high availability and no named volume is a backup.

@@ -58,6 +58,14 @@
 - Preserve unrelated working-tree changes. Work with overlapping user changes;
   never revert them silently.
 - Use existing project patterns before introducing new abstractions.
+- Keep same-feature and directly adjacent application imports relative. Use the
+  owning application's Node-native private `#app/*` alias for handwritten
+  cross-feature or multi-parent source imports. Its TypeScript source mapping
+  and package runtime mapping must resolve the same module boundary. In root
+  test runners that cover multiple backend services, use unique service aliases
+  such as `@gateway/*`; never map a shared application alias to one service.
+  Keep cross-workspace imports on package exports and do not normalize
+  generated-file imports manually.
 - Use schema-first GraphQL at the public gateway boundary.
 - Keep domain logic out of the gateway and provider-specific AI logic out of
   extraction/correction contracts.
@@ -86,7 +94,24 @@
 - Use `rg`/`rg --files` for search and `apply_patch` for manual file edits.
 - Keep edits ASCII unless an existing file or requirement needs Unicode.
 - Add JSDoc immediately above every function or method added or materially
-  changed by an agent, including private helpers and callback methods.
+  changed by an agent, including private helpers and callback methods. In
+  JavaScript and MJS files, use multiline JSDoc with `@param`, `@returns`, and
+  other applicable tags; a one-line summary alone is not sufficient.
+- In JavaScript and TypeScript, always wrap control-flow bodies in braces and
+  place the body on separate lines, including single-statement `if`, `else`,
+  loop, `try`, and `catch` bodies.
+- When an environment variable is added or changed in an `.env.example`, apply
+  the same key and structural change to the relevant local `.env` file in the
+  same task. Preserve existing machine-specific values and secrets; never copy
+  them back into the example.
+- For every added or changed environment variable, inspect each consuming
+  runtime or tool and its environment validation schema. Update every relevant
+  schema and focused schema coverage in the same task. If an infrastructure-only
+  variable has no application schema, validate it at its consuming boundary
+  rather than duplicating it into unrelated service schemas.
+- Keep `.env.example` and local `.env` files grouped into commented subsystem
+  sections with blank lines between sections. A local env file must remain as
+  readable and structured as its example rather than becoming a flat key list.
 - Do not run broad formatting/fix commands on unrelated files.
 - Do not stage, commit, push, create a PR, deploy, or run destructive Git
   operations unless explicitly requested.

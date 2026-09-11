@@ -1,38 +1,66 @@
 import type { DataSourceOptions } from 'typeorm';
 
+import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '@gateway/config/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 
-import { getTypeOrmDataSourceOptions } from '../../src/config/typeorm';
-
 const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
+const APPLICATION_ROOT = resolve(__dirname, '../..');
 
 /** Creates datasource options without connecting to PostgreSQL. */
-function createOptions(nodeEnv: string): DataSourceOptions {
+function createOptions(nodeEnv: string, discoveryMode: 'compiled' | 'source'): DataSourceOptions {
   return getTypeOrmDataSourceOptions({
     databaseUrl: DATABASE_URL,
+    discoveryMode,
     nodeEnv,
   });
 }
 
-/** Verifies the gateway adapter retains its explicit platform entity inventory. */
-function testEntityInventory(): void {
-  const options = createOptions('development');
-
-  expect(options.entities).toHaveLength(4);
-}
-
-/** Verifies source and compiled runtimes discover migrations from their own layouts. */
-function testMigrationDiscoveryPaths(): void {
-  const expectations: [string, string[]][] = [
-    ['development', ['src/db/migrations/*{.ts,.js}']],
-    ['production', ['dist/db/migrations/*.js']],
-    ['stage', ['dist/db/migrations/*.js']],
+/** Verifies discovery follows the process execution form rather than NODE_ENV. */
+function testDiscoveryPaths(): void {
+  const expectations: [string, 'compiled' | 'source', string[], string[]][] = [
+    [
+      'development',
+      'source',
+      [join(APPLICATION_ROOT, 'src/**/*.entity{.ts,.js}')],
+      [join(APPLICATION_ROOT, 'src/db/migrations/*{.ts,.js}')],
+    ],
+    [
+      'development',
+      'compiled',
+      [join(APPLICATION_ROOT, 'dist/**/*.entity.js')],
+      [join(APPLICATION_ROOT, 'dist/db/migrations/*.js')],
+    ],
+    [
+      'production',
+      'compiled',
+      [join(APPLICATION_ROOT, 'dist/**/*.entity.js')],
+      [join(APPLICATION_ROOT, 'dist/db/migrations/*.js')],
+    ],
   ];
 
-  for (const [nodeEnv, expectedMigrations] of expectations) {
-    expect(createOptions(nodeEnv).migrations).toEqual(expectedMigrations);
+  for (const [nodeEnv, discoveryMode, expectedEntities, expectedMigrations] of expectations) {
+    const options = createOptions(nodeEnv, discoveryMode);
+
+    expect(options.entities).toEqual(expectedEntities);
+    expect(options.migrations).toEqual(expectedMigrations);
   }
 }
 
-test('retains the gateway platform entity inventory', testEntityInventory);
-test('uses the expected source and compiled migration paths', testMigrationDiscoveryPaths);
+/** Verifies the compiled Nest watcher never asks Node to load decorated source files. */
+function testNestDiscoveryPaths(): void {
+  const options = getTypeOrmModuleOptions(
+    new ConfigService({
+      DATABASE_URL,
+      NODE_ENV: 'development',
+    }),
+  );
+
+  expect(options.entities).toEqual([join(APPLICATION_ROOT, 'dist/**/*.entity.js')]);
+  expect(options.migrations).toEqual([join(APPLICATION_ROOT, 'dist/db/migrations/*.js')]);
+  expect(options.autoLoadEntities).toBe(true);
+}
+
+test('uses the expected source and compiled discovery paths', testDiscoveryPaths);
+test('uses compiled discovery paths in the Nest development runtime', testNestDiscoveryPaths);

@@ -1,5 +1,27 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBooleanString,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Length,
+  Matches,
+  Max,
+  Min,
+  NotEquals,
+} from 'class-validator';
+
+import { S3_BUCKET_NAME_PATTERN } from '../storage/artifact-storage.constants';
+import {
+  LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER,
+  MAX_S3_CREDENTIAL_LENGTH,
+  MAX_S3_REQUEST_TIMEOUT_MS,
+  S3_REGION_PATTERN,
+} from './env.constants';
 
 export class EnvironmentVariables {
   @IsNumber()
@@ -63,6 +85,20 @@ export class EnvironmentVariables {
   PERSISTENCE_REQUEST_TIMEOUT_MS?: number = 5000;
 
   @IsString()
+  @Length(1, 128)
+  @NotEquals(LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER)
+  PLATFORM_S3_ACCESS_KEY_ID!: string;
+
+  @IsString()
+  @Matches(S3_BUCKET_NAME_PATTERN)
+  PLATFORM_S3_BUCKET!: string;
+
+  @IsString()
+  @Length(1, MAX_S3_CREDENTIAL_LENGTH)
+  @NotEquals(LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER)
+  PLATFORM_S3_SECRET_ACCESS_KEY!: string;
+
+  @IsString()
   RABBITMQ_HOST!: string;
 
   @IsString()
@@ -74,4 +110,20 @@ export class EnvironmentVariables {
 
   @IsString()
   RABBITMQ_USER!: string;
+
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  S3_ENDPOINT!: string;
+
+  @IsBooleanString()
+  S3_FORCE_PATH_STYLE = 'true';
+
+  @IsString()
+  @Matches(S3_REGION_PATTERN)
+  S3_REGION!: string;
+
+  @IsInt()
+  @Max(MAX_S3_REQUEST_TIMEOUT_MS)
+  @Min(1)
+  @Type(() => Number)
+  S3_REQUEST_TIMEOUT_MS = 5000;
 }
