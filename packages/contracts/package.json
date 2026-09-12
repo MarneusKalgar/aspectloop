@@ -4,10 +4,21 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "platform": [
+        "dist/platform/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "require": "./dist/platform/index.js"
     }
   },
   "files": [
@@ -15,5 +26,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
   }
 }

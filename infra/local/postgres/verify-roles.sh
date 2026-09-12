@@ -13,6 +13,7 @@ required_variables=(
   POSTGRES_SUPERUSER_RESERVED_CONNECTIONS
   POSTGRES_OPERATIONAL_HEADROOM
   POSTGRES_TOOL_CONNECTION_BUDGET
+  GATEWAY_DB_POOL_SIZE
   PLATFORM_DB_POOL_SIZE
   EXTRACTION_DB_POOL_SIZE
   CORRECTION_DB_POOL_SIZE
@@ -40,6 +41,7 @@ numeric_variables=(
   POSTGRES_SUPERUSER_RESERVED_CONNECTIONS
   POSTGRES_OPERATIONAL_HEADROOM
   POSTGRES_TOOL_CONNECTION_BUDGET
+  GATEWAY_DB_POOL_SIZE
   PLATFORM_DB_POOL_SIZE
   EXTRACTION_DB_POOL_SIZE
   CORRECTION_DB_POOL_SIZE
@@ -48,6 +50,21 @@ numeric_variables=(
 for variable_name in "${numeric_variables[@]}"; do
   if [[ ! "${!variable_name}" =~ ^[0-9]+$ ]]; then
     echo "$variable_name must be a non-negative integer." >&2
+    exit 1
+  fi
+done
+
+# Application pool allocations must remain usable as well as arithmetically valid.
+pool_variables=(
+  GATEWAY_DB_POOL_SIZE
+  PLATFORM_DB_POOL_SIZE
+  EXTRACTION_DB_POOL_SIZE
+  CORRECTION_DB_POOL_SIZE
+)
+
+for variable_name in "${pool_variables[@]}"; do
+  if (("${!variable_name}" < 1)); then
+    echo "$variable_name must be a positive integer." >&2
     exit 1
   fi
 done
@@ -104,7 +121,8 @@ fi
 # Reserve all runtime pools, the sequential tool pool, and operational headroom.
 available_connections=$((max_connections - reserved_connections))
 planned_connections=$((
-  PLATFORM_DB_POOL_SIZE +
+  GATEWAY_DB_POOL_SIZE +
+    PLATFORM_DB_POOL_SIZE +
     EXTRACTION_DB_POOL_SIZE +
     CORRECTION_DB_POOL_SIZE +
     POSTGRES_TOOL_CONNECTION_BUDGET +

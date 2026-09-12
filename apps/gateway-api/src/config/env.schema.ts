@@ -15,6 +15,7 @@ import {
   NotEquals,
 } from 'class-validator';
 
+import { MAX_PLATFORM_REQUEST_TIMEOUT_MS } from '../platform/platform.constants';
 import { S3_BUCKET_NAME_PATTERN } from '../storage/artifact-storage.constants';
 import {
   LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER,
@@ -83,6 +84,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @Type(() => Number)
   PERSISTENCE_REQUEST_TIMEOUT_MS?: number = 5000;
+
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  PLATFORM_BASE_URL!: string;
+
+  @IsInt()
+  @IsOptional()
+  @Max(MAX_PLATFORM_REQUEST_TIMEOUT_MS)
+  @Min(1)
+  @Type(() => Number)
+  PLATFORM_REQUEST_TIMEOUT_MS = 5000;
 
   @IsString()
   @Length(1, 128)

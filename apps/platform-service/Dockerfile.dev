@@ -11,12 +11,12 @@ FROM npm-runtime AS dependencies
 WORKDIR /app
 
 COPY package.json package-lock.json .npmrc ./
-COPY apps/gateway-api/package.json ./apps/gateway-api/package.json
+COPY apps/platform-service/package.json ./apps/platform-service/package.json
 COPY packages/backend-platform/package.json ./packages/backend-platform/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 
 RUN HUSKY=0 npm ci \
-      --workspace @aspectloop/gateway-api \
+      --workspace @aspectloop/platform-service \
       --include-workspace-root && \
     npm cache clean --force
 
@@ -26,7 +26,7 @@ WORKDIR /app
 
 COPY --from=dependencies --chown=node:node /app ./
 COPY --chown=node:node tsconfig.base.json ./
-COPY --chown=node:node apps/gateway-api ./apps/gateway-api
+COPY --chown=node:node apps/platform-service ./apps/platform-service
 COPY --chown=node:node packages/backend-platform ./packages/backend-platform
 COPY --chown=node:node packages/contracts ./packages/contracts
 
@@ -35,8 +35,8 @@ RUN npm run build --workspace @aspectloop/backend-platform && \
 
 USER node
 
-WORKDIR /app/apps/gateway-api
+WORKDIR /app/apps/platform-service
 
-EXPOSE 8080
+EXPOSE 8083
 
 CMD ["npm", "run", "dev"]

@@ -5,10 +5,14 @@ import { expect, test } from 'vitest';
 import { createRequestId, isHealthRequest } from '../../src/logging/request-context';
 import { TestResponse } from './test-response';
 
-/** Verifies only the exact health route is excluded from automatic logging. */
+/** Verifies only exact liveness and readiness routes are excluded from automatic logging. */
 function testHealthSuppressionContract(): void {
   expect(isHealthRequest({ url: '/health?probe=readiness' } as IncomingMessage)).toBe(true);
   expect(isHealthRequest({ url: '/health/' } as IncomingMessage)).toBe(true);
+  expect(isHealthRequest({ url: '/internal/v1/health' } as IncomingMessage)).toBe(true);
+  expect(isHealthRequest({ url: '/internal/v1/health/' } as IncomingMessage)).toBe(true);
+  expect(isHealthRequest({ url: '/internal/v1/readiness' } as IncomingMessage)).toBe(true);
+  expect(isHealthRequest({ url: '/internal/v1/readiness/' } as IncomingMessage)).toBe(true);
   expect(
     isHealthRequest({ originalUrl: '/health', url: '/' } as IncomingMessage & {
       originalUrl: string;
@@ -43,4 +47,4 @@ function testRequestIdContract(): void {
 }
 
 test('request IDs are bounded and returned to callers', testRequestIdContract);
-test('health log suppression matches only the health endpoint', testHealthSuppressionContract);
+test('health log suppression matches only exact probe routes', testHealthSuppressionContract);
