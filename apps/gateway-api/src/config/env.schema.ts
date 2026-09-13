@@ -1,6 +1,6 @@
+import { IsNodeEnvironment, type NodeEnvironment } from '@aspectloop/backend-platform/config';
 import { Type } from 'class-transformer';
 import {
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -54,8 +54,8 @@ export class EnvironmentVariables {
   @IsString()
   JWT_ACCESS_SECRET!: string;
 
-  @IsIn(['development', 'test', 'stage', 'production'])
-  NODE_ENV = 'development';
+  @IsNodeEnvironment()
+  NODE_ENV: NodeEnvironment = 'development';
 
   @IsString()
   PERSISTENCE_BASE_URL!: string;

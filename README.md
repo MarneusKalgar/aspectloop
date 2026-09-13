@@ -222,7 +222,7 @@ local infrastructure. Prepare the `.env.local` files and confirm that
 npm run local:up
 npm run local:migrate -- --build
 npm run local:seed -- --build
-TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
+TYPEORM_TEST_DATABASE_URL=postgresql://platform_runtime:platform_runtime@127.0.0.1:5432/platform_db \
   npm run test:typeorm:run
 npm run local:db:verify-roles
 npm run local:artifact:verify
@@ -238,7 +238,7 @@ database. For a freshly reset local stack using the template defaults, run it
 from the host while PostgreSQL is still up:
 
 ```bash
-TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
+TYPEORM_TEST_DATABASE_URL=postgresql://platform_runtime:platform_runtime@127.0.0.1:5432/platform_db \
   npm run test:typeorm:run
 ```
 
@@ -278,8 +278,9 @@ and adapt the corresponding templates for a new checkout:
 - `apps/correction-service/.env.example`
 
 The infrastructure template supplies the local PostgreSQL administrator, three
-service-owned database/role pairs, aggregate connection budget, and Garage
-topology, bucket, service-key, and optional pgAdmin configuration. Local Garage
+logical databases, five scoped database identities, aggregate connection
+budget, and Garage topology, bucket, service-key, and optional pgAdmin
+configuration. Local Garage
 uses the fixed server/client region `garage`; it is not an environment choice.
 The Platform template supplies its `platform_db` connection, JWT issuance,
 password hashing, and platform S3 configuration. The gateway template supplies
@@ -334,9 +335,10 @@ startup:
 npm run local:db:admin
 ```
 
-The command starts PostgreSQL when needed, generates password-free registrations
-for the three service roles from `infra/local/.env.local`, and waits for pgAdmin
-health. Each registration limits Object Explorer to its service-owned database;
+The command starts PostgreSQL when needed, generates password-free
+registrations for the four runtime/service roles from
+`infra/local/.env.local`, and waits for pgAdmin health. Each registration limits
+Object Explorer to its service-owned database;
 this is a display filter, while PostgreSQL privileges enforce database isolation.
 Sign in with the pgAdmin email/password from that ignored file, then enter the
 selected service-role password when connecting. The UI cannot be reached outside
@@ -447,7 +449,10 @@ a bounded one-shot container in deterministic Platform, extraction, correction
 order. `infra/local/compose.tools.yml` contains distinct profiled infrastructure
 tools and is combined with the normal runtime graph by the repository wrappers.
 Its `devtools` profile contains pgAdmin with a dedicated named configuration
-volume; normal application startup does not select it.
+volume; normal application startup does not select it. PostgreSQL, its
+provisioner, and its role verifier share the scoped, tracked
+`infra/local/postgres/control-plane.env` mapping; application and unrelated
+infrastructure secrets are not injected through that control-plane contract.
 
 ## Repository Layout
 

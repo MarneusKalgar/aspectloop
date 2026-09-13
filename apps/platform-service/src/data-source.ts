@@ -2,12 +2,12 @@ import 'reflect-metadata';
 import { loadEnvFiles } from '@aspectloop/backend-platform/config';
 import { DataSource } from 'typeorm';
 
-import { validateEnv } from './config/env.validation';
+import { validateDatabaseEnv } from './config/env.validation';
 import { getTypeOrmDataSourceOptions } from './config/typeorm';
 
 loadEnvFiles();
 
-const environment = validateEnv(process.env);
+const environment = validateDatabaseEnv(process.env);
 const appDataSource = new DataSource(
   getTypeOrmDataSourceOptions({
     databaseUrl: environment.DATABASE_URL,

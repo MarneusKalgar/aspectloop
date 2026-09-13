@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
 import {
   IsBooleanString,
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -15,6 +14,7 @@ import {
 } from 'class-validator';
 
 import { S3_BUCKET_NAME_PATTERN } from '../storage/artifact-storage.constants';
+import { DatabaseEnvironmentVariables } from './database-env.schema';
 import {
   LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER,
   MAX_S3_CREDENTIAL_LENGTH,
@@ -22,7 +22,7 @@ import {
   S3_REGION_PATTERN,
 } from './env.constants';
 
-export class EnvironmentVariables {
+export class EnvironmentVariables extends DatabaseEnvironmentVariables {
   @IsOptional()
   @IsString()
   APP_LOG_LEVEL?: string;
@@ -34,31 +34,11 @@ export class EnvironmentVariables {
 
   @IsNotEmpty()
   @IsString()
-  DATABASE_URL!: string;
-
-  @IsInt()
-  @IsOptional()
-  @Max(5)
-  @Min(1)
-  @Type(() => Number)
-  DB_POOL_SIZE = 5;
-
-  @IsInt()
-  @IsOptional()
-  @Min(0)
-  @Type(() => Number)
-  DB_SLOW_QUERY_THRESHOLD_MS = 1000;
-
-  @IsNotEmpty()
-  @IsString()
   JWT_ACCESS_SECRET!: string;
 
   @IsOptional()
   @IsString()
   JWT_ACCESS_TTL = '15m';
-
-  @IsIn(['development', 'test', 'stage', 'production'])
-  NODE_ENV = 'development';
 
   @IsString()
   @Length(1, 128)

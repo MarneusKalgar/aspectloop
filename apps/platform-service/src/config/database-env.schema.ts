@@ -2,28 +2,18 @@ import { IsNodeEnvironment, type NodeEnvironment } from '@aspectloop/backend-pla
 import { Type } from 'class-transformer';
 import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
-export class EnvironmentVariables {
-  @IsOptional()
-  @IsString()
-  APP_LOG_LEVEL?: string;
-
-  @IsInt()
-  @IsOptional()
-  @Max(65535)
-  @Min(1)
-  @Type(() => Number)
-  CORRECTION_SERVICE_PORT = 8082;
-
+/** Environment required by Platform TypeORM CLI operations. */
+export class DatabaseEnvironmentVariables {
   @IsNotEmpty()
   @IsString()
   DATABASE_URL!: string;
 
   @IsInt()
   @IsOptional()
-  @Max(10)
+  @Max(5)
   @Min(1)
   @Type(() => Number)
-  DB_POOL_SIZE = 10;
+  DB_POOL_SIZE = 5;
 
   @IsInt()
   @IsOptional()

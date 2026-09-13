@@ -1,5 +1,6 @@
+import { IsNodeEnvironment, type NodeEnvironment } from '@aspectloop/backend-platform/config';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class EnvironmentVariables {
   @IsOptional()
@@ -30,6 +31,6 @@ export class EnvironmentVariables {
   @Type(() => Number)
   EXTRACTION_SERVICE_PORT = 8081;
 
-  @IsIn(['development', 'test', 'stage', 'production'])
-  NODE_ENV = 'development';
+  @IsNodeEnvironment()
+  NODE_ENV: NodeEnvironment = 'development';
 }

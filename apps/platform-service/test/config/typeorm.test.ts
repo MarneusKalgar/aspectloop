@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 
-import { validateEnv } from '../../src/config/env.validation';
+import { validateDatabaseEnv, validateEnv } from '../../src/config/env.validation';
 import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/config/typeorm';
 
 const APPLICATION_ROOT = resolve(__dirname, '../..');
@@ -80,7 +80,25 @@ function testNumericEnvironmentCoercion(): void {
   expect(environment.PLATFORM_SERVICE_PORT).toBe(8083);
 }
 
+/** Verifies TypeORM CLI configuration does not require unrelated runtime secrets. */
+function testTypeOrmCliEnvironment(): void {
+  const environment = validateDatabaseEnv({
+    DATABASE_URL,
+    DB_POOL_SIZE: '5',
+    DB_SLOW_QUERY_THRESHOLD_MS: '250',
+    NODE_ENV: 'development',
+  });
+
+  expect(environment).toMatchObject({
+    DATABASE_URL,
+    DB_POOL_SIZE: 5,
+    DB_SLOW_QUERY_THRESHOLD_MS: 250,
+    NODE_ENV: 'development',
+  });
+}
+
 test('uses Platform-owned datasource discovery paths', testDiscoveryPaths);
 test('uses compiled Platform paths in the Nest runtime', testNestDiscoveryPaths);
 test('coerces bounded Platform environment values', testNumericEnvironmentCoercion);
 test('rejects invalid Platform environment values', testInvalidEnvironment);
+test('validates only database settings for TypeORM CLI use', testTypeOrmCliEnvironment);
