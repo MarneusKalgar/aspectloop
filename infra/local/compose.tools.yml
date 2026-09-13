@@ -38,6 +38,59 @@ services:
     profiles:
       - devtools
 
+  database-provision:
+    image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-aspectloop_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-aspectloop_admin}
+      POSTGRES_DB: ${POSTGRES_ADMIN_DATABASE:-postgres}
+      PLATFORM_DATABASE_NAME: ${PLATFORM_DATABASE_NAME:-platform_db}
+      PLATFORM_MIGRATOR_USER: ${PLATFORM_MIGRATOR_USER:-platform_migrator}
+      PLATFORM_MIGRATOR_PASSWORD: ${PLATFORM_MIGRATOR_PASSWORD:-platform_migrator}
+      PLATFORM_RUNTIME_USER: ${PLATFORM_RUNTIME_USER:-platform_runtime}
+      PLATFORM_RUNTIME_PASSWORD: ${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}
+      GATEWAY_CORRECTION_RUNTIME_USER: ${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}
+      GATEWAY_CORRECTION_RUNTIME_PASSWORD: ${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}
+      EXTRACTION_DATABASE_NAME: ${EXTRACTION_DATABASE_NAME:-extraction_db}
+      EXTRACTION_DATABASE_USER: ${EXTRACTION_DATABASE_USER:-extraction_app}
+      EXTRACTION_DATABASE_PASSWORD: ${EXTRACTION_DATABASE_PASSWORD:-extraction_app}
+      CORRECTION_DATABASE_NAME: ${CORRECTION_DATABASE_NAME:-correction_db}
+      CORRECTION_DATABASE_USER: ${CORRECTION_DATABASE_USER:-correction_app}
+      CORRECTION_DATABASE_PASSWORD: ${CORRECTION_DATABASE_PASSWORD:-correction_app}
+    volumes:
+      - ./postgres/init-databases.sh:/usr/local/bin/aspectloop-db-provision:ro
+    command: ['/bin/bash', '/usr/local/bin/aspectloop-db-provision']
+    profiles:
+      - tools
+
+  platform-migrator:
+    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_platform_service
+    build:
+      context: ../..
+      dockerfile: ./apps/platform-service/Dockerfile.dev
+    init: true
+    environment:
+      DATABASE_URL: postgresql://${PLATFORM_MIGRATOR_USER:-platform_migrator}:${PLATFORM_MIGRATOR_PASSWORD:-platform_migrator}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
+      DB_POOL_SIZE: 5
+      DB_SLOW_QUERY_THRESHOLD_MS: 1000
+      JWT_ACCESS_SECRET: migration-tool-unused
+      NODE_ENV: development
+      PLATFORM_S3_ACCESS_KEY_ID: migration-tool-unused
+      PLATFORM_S3_BUCKET: migration-tool-unused
+      PLATFORM_S3_SECRET_ACCESS_KEY: migration-tool-unused
+      S3_ENDPOINT: http://127.0.0.1:3900
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_REGION: garage
+    volumes:
+      - ../../apps/platform-service/src:/app/apps/platform-service/src
+      - ../../apps/platform-service/tsconfig.app.json:/app/apps/platform-service/tsconfig.app.json:ro
+      - ../../apps/platform-service/tsconfig.json:/app/apps/platform-service/tsconfig.json:ro
+      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
+    profiles:
+      - tools
+
   role-verify:
     image: postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
     container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-role-verify
@@ -56,8 +109,12 @@ services:
       EXTRACTION_DB_POOL_SIZE: ${EXTRACTION_DB_POOL_SIZE:-10}
       CORRECTION_DB_POOL_SIZE: ${CORRECTION_DB_POOL_SIZE:-10}
       PLATFORM_DATABASE_NAME: ${PLATFORM_DATABASE_NAME:-platform_db}
-      PLATFORM_DATABASE_USER: ${PLATFORM_DATABASE_USER:-platform_app}
-      PLATFORM_DATABASE_PASSWORD: ${PLATFORM_DATABASE_PASSWORD:-platform_app}
+      PLATFORM_MIGRATOR_USER: ${PLATFORM_MIGRATOR_USER:-platform_migrator}
+      PLATFORM_MIGRATOR_PASSWORD: ${PLATFORM_MIGRATOR_PASSWORD:-platform_migrator}
+      PLATFORM_RUNTIME_USER: ${PLATFORM_RUNTIME_USER:-platform_runtime}
+      PLATFORM_RUNTIME_PASSWORD: ${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}
+      GATEWAY_CORRECTION_RUNTIME_USER: ${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}
+      GATEWAY_CORRECTION_RUNTIME_PASSWORD: ${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}
       EXTRACTION_DATABASE_NAME: ${EXTRACTION_DATABASE_NAME:-extraction_db}
       EXTRACTION_DATABASE_USER: ${EXTRACTION_DATABASE_USER:-extraction_app}
       EXTRACTION_DATABASE_PASSWORD: ${EXTRACTION_DATABASE_PASSWORD:-extraction_app}

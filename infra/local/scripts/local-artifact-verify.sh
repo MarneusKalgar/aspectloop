@@ -23,9 +23,9 @@ source "$SCRIPT_DIR/_local-compose-common.sh"
 "${COMPOSE[@]}" up -d --wait postgres garage
 node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
 
-RUN_ARGS=(run --rm --no-deps -e "DB_POOL_SIZE=$TOOL_DB_POOL_SIZE")
+RUN_ARGS=(run --rm --no-deps -e "DB_POOL_SIZE=$PLATFORM_TOOL_DB_POOL_SIZE")
 if [[ "${1:-}" == "--build" ]]; then
-  RUN_ARGS=(run --rm --no-deps --build -e "DB_POOL_SIZE=$TOOL_DB_POOL_SIZE")
+  RUN_ARGS=(run --rm --no-deps --build -e "DB_POOL_SIZE=$PLATFORM_TOOL_DB_POOL_SIZE")
 fi
 
 "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-service npm run db:artifact:verify:local

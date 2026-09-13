@@ -2,7 +2,7 @@ import { validateEnv } from '@platform/config/env.validation';
 import { expect, test } from 'vitest';
 
 const VALID_ENVIRONMENT = {
-  DATABASE_URL: 'postgresql://platform_app:platform_app@postgres:5432/platform_db',
+  DATABASE_URL: 'postgresql://platform_runtime:platform_runtime@postgres:5432/platform_db',
   JWT_ACCESS_SECRET: 'test-only-secret',
   NODE_ENV: 'test',
   PLATFORM_S3_ACCESS_KEY_ID: 'test-access-key',

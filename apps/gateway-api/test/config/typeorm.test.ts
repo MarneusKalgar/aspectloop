@@ -5,7 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 
-const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
+const DATABASE_URL =
+  'postgresql://gateway_correction_runtime:gateway_correction_runtime@postgres:5432/platform_db';
 const APPLICATION_ROOT = resolve(__dirname, '../..');
 
 /** Creates datasource options without connecting to PostgreSQL. */

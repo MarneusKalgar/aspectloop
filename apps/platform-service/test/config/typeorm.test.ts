@@ -8,7 +8,7 @@ import { validateEnv } from '../../src/config/env.validation';
 import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/config/typeorm';
 
 const APPLICATION_ROOT = resolve(__dirname, '../..');
-const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
+const DATABASE_URL = 'postgresql://platform_runtime:platform_runtime@postgres:5432/platform_db';
 const VALID_ENVIRONMENT = {
   DATABASE_URL,
   JWT_ACCESS_SECRET: 'test-only-secret',

@@ -41,6 +41,13 @@ if [[ ! "$TOOL_DB_POOL_SIZE" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
+# Platform validates a five-connection ceiling; tool jobs may use less than the
+# shared allowance but must never exceed either bound.
+PLATFORM_TOOL_DB_POOL_SIZE="$TOOL_DB_POOL_SIZE"
+if ((PLATFORM_TOOL_DB_POOL_SIZE > 5)); then
+  PLATFORM_TOOL_DB_POOL_SIZE=5
+fi
+
 COMPOSE_PROJECT_BASE_NAME="${COMPOSE_PROJECT_NAME:-aspectloop}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_BASE_NAME}_api_local"
 export COMPOSE_PROJECT_NAME

@@ -4,7 +4,8 @@ import { expect, test } from 'vitest';
 const VALID_ENVIRONMENT = {
   API_PORT: '8080',
   CORS_ALLOWED_ORIGINS: 'http://localhost:5173',
-  DATABASE_URL: 'postgresql://platform_app:platform_app@postgres:5432/platform_db',
+  DATABASE_URL:
+    'postgresql://gateway_correction_runtime:gateway_correction_runtime@postgres:5432/platform_db',
   JWT_ACCESS_SECRET: 'test-only-secret',
   NODE_ENV: 'test',
   PERSISTENCE_BASE_URL: 'http://persistence-mock:8090',

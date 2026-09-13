@@ -9,6 +9,7 @@ services:
     env_file:
       - ../../apps/platform-service/.env.local
     environment:
+      DATABASE_URL: postgresql://${PLATFORM_RUNTIME_USER:-platform_runtime}:${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
       DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-5}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set the shared local JWT verification secret}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
@@ -55,6 +56,7 @@ services:
     env_file:
       - ../../apps/gateway-api/.env.local
     environment:
+      DATABASE_URL: postgresql://${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}:${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
       DB_POOL_SIZE: ${GATEWAY_DB_POOL_SIZE:-5}
       PLATFORM_BASE_URL: http://platform-service:8083
     ports:
@@ -174,8 +176,12 @@ services:
       POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
       POSTGRES_SUPERUSER_RESERVED_CONNECTIONS: ${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-3}
       PLATFORM_DATABASE_NAME: ${PLATFORM_DATABASE_NAME:-platform_db}
-      PLATFORM_DATABASE_USER: ${PLATFORM_DATABASE_USER:-platform_app}
-      PLATFORM_DATABASE_PASSWORD: ${PLATFORM_DATABASE_PASSWORD:-platform_app}
+      PLATFORM_MIGRATOR_USER: ${PLATFORM_MIGRATOR_USER:-platform_migrator}
+      PLATFORM_MIGRATOR_PASSWORD: ${PLATFORM_MIGRATOR_PASSWORD:-platform_migrator}
+      PLATFORM_RUNTIME_USER: ${PLATFORM_RUNTIME_USER:-platform_runtime}
+      PLATFORM_RUNTIME_PASSWORD: ${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}
+      GATEWAY_CORRECTION_RUNTIME_USER: ${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}
+      GATEWAY_CORRECTION_RUNTIME_PASSWORD: ${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}
       EXTRACTION_DATABASE_NAME: ${EXTRACTION_DATABASE_NAME:-extraction_db}
       EXTRACTION_DATABASE_USER: ${EXTRACTION_DATABASE_USER:-extraction_app}
       EXTRACTION_DATABASE_PASSWORD: ${EXTRACTION_DATABASE_PASSWORD:-extraction_app}

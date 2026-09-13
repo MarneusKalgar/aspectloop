@@ -27,7 +27,9 @@ async function incrementLockedDocument(documentId: string, manager: EntityManage
 /** Verifies the required TypeORM 1 behavior against Platform-owned PostgreSQL entities. */
 async function testTypeOrmCompatibility(): Promise<void> {
   if (!databaseUrl) {
-    throw new Error('TYPEORM_TEST_DATABASE_URL must identify a disposable migrated database');
+    throw new Error(
+      'TYPEORM_TEST_DATABASE_URL must identify a migrated database with Platform runtime grants',
+    );
   }
 
   const dataSource = new DataSource({
@@ -58,15 +60,6 @@ async function testTypeOrmCompatibility(): Promise<void> {
       userRepository.findOne({ where: { id: null as unknown as string } }),
     ).rejects.toThrow();
 
-    const user = await userRepository.save(
-      userRepository.create({
-        displayName: 'M04.1-B verification',
-        email,
-        passwordHash: 'not-a-login-credential',
-        roles: ['CORRECTOR'],
-        scopes: ['corrections:write'],
-      }),
-    );
     const invalidDocument = documentRepository.create({
       documentType: 'supplier_invoice',
       id: invalidDocumentId,
@@ -75,34 +68,55 @@ async function testTypeOrmCompatibility(): Promise<void> {
       version: 1,
     });
 
-    await expect(documentRepository.save(invalidDocument)).rejects.toThrow();
+    await expect(
+      dataSource.transaction(async (manager) =>
+        manager.getRepository(Document).save(invalidDocument),
+      ),
+    ).rejects.toThrow();
 
-    const document = await documentRepository.save(
-      documentRepository.create({
-        documentType: 'supplier_invoice',
-        id: documentId,
-        ownerId: user.id,
-        status: 'source_stored',
-        version: 1,
-      }),
-    );
-    const loadedDocument = await documentRepository.findOneOrFail({
-      relations: { owner: true },
-      where: { id: document.id },
-    });
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    expect(loadedDocument.owner.id).toBe(user.id);
+    try {
+      const transactionalUserRepository = queryRunner.manager.getRepository(User);
+      const transactionalDocumentRepository = queryRunner.manager.getRepository(Document);
+      const user = await transactionalUserRepository.save(
+        transactionalUserRepository.create({
+          displayName: 'M04.1-B verification',
+          email,
+          passwordHash: 'not-a-login-credential',
+          roles: ['CORRECTOR'],
+          scopes: ['corrections:write'],
+        }),
+      );
+      const document = await transactionalDocumentRepository.save(
+        transactionalDocumentRepository.create({
+          documentType: 'supplier_invoice',
+          id: documentId,
+          ownerId: user.id,
+          status: 'source_stored',
+          version: 1,
+        }),
+      );
+      const loadedDocument = await transactionalDocumentRepository.findOneOrFail({
+        relations: { owner: true },
+        where: { id: document.id },
+      });
 
-    await dataSource.transaction(incrementLockedDocument.bind(undefined, document.id));
+      expect(loadedDocument.owner.id).toBe(user.id);
 
-    await expect(documentRepository.findOneByOrFail({ id: document.id })).resolves.toMatchObject({
-      version: 2,
-    });
+      await incrementLockedDocument(document.id, queryRunner.manager);
+
+      await expect(
+        transactionalDocumentRepository.findOneByOrFail({ id: document.id }),
+      ).resolves.toMatchObject({ version: 2 });
+    } finally {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
   } finally {
     if (dataSource.isInitialized) {
-      await dataSource.getRepository(Document).delete({ id: invalidDocumentId });
-      await dataSource.getRepository(Document).delete({ id: documentId });
-      await dataSource.getRepository(User).delete({ email });
       await dataSource.destroy();
     }
   }

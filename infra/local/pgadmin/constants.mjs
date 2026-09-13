@@ -76,24 +76,45 @@ export const POSTGRES_ENDPOINT = Object.freeze({
 });
 
 /**
- * Service-owned database and role environment keys exposed in pgAdmin.
+ * Runtime database and role environment keys exposed in pgAdmin by default.
  *
- * @type {ReadonlyArray<Readonly<{label: string, databaseKey: string, usernameKey: string}>>}
+ * @type {ReadonlyArray<Readonly<{group: string, label: string, databaseKey: string, usernameKey: string}>>}
  */
 export const SERVER_DEFINITIONS = Object.freeze([
   Object.freeze({
     databaseKey: 'PLATFORM_DATABASE_NAME',
-    label: 'Platform database',
-    usernameKey: 'PLATFORM_DATABASE_USER',
+    group: 'AspectLoop runtime roles',
+    label: 'Platform database - service runtime',
+    usernameKey: 'PLATFORM_RUNTIME_USER',
+  }),
+  Object.freeze({
+    databaseKey: 'PLATFORM_DATABASE_NAME',
+    group: 'AspectLoop runtime roles',
+    label: 'Platform database - gateway correction runtime',
+    usernameKey: 'GATEWAY_CORRECTION_RUNTIME_USER',
   }),
   Object.freeze({
     databaseKey: 'EXTRACTION_DATABASE_NAME',
+    group: 'AspectLoop service roles',
     label: 'Extraction database',
     usernameKey: 'EXTRACTION_DATABASE_USER',
   }),
   Object.freeze({
     databaseKey: 'CORRECTION_DATABASE_NAME',
+    group: 'AspectLoop service roles',
     label: 'Correction database',
     usernameKey: 'CORRECTION_DATABASE_USER',
   }),
 ]);
+
+/**
+ * Privileged Platform owner registration hidden unless explicitly requested.
+ *
+ * @type {Readonly<{group: string, label: string, databaseKey: string, usernameKey: string}>}
+ */
+export const PLATFORM_MIGRATOR_SERVER_DEFINITION = Object.freeze({
+  databaseKey: 'PLATFORM_DATABASE_NAME',
+  group: 'AspectLoop privileged roles',
+  label: 'Platform database - owner/migrator (tool use only)',
+  usernameKey: 'PLATFORM_MIGRATOR_USER',
+});
