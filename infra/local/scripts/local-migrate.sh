@@ -17,7 +17,7 @@ echo "Running local migrations with project: $COMPOSE_PROJECT_NAME"
 
 STATUS=0
 # Preserve owner order and stop before later databases when one migration command fails.
-for service in gateway-api extraction-service correction-service; do
+for service in platform-service extraction-service correction-service; do
   echo "Running migration job: $service"
   if "${COMPOSE[@]}" "${RUN_ARGS[@]}" "$service" npm run db:migrate:local; then
     continue

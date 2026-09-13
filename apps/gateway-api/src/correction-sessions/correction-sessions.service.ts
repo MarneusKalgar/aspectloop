@@ -1,12 +1,17 @@
+import type { PlatformDocumentTypeConfig, PlatformUserView } from '@aspectloop/contracts/platform';
+
 import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
+import type { PlatformRequestContext } from '../platform/platform-client';
 
 import { AuthUser } from '../auth/types/auth-user';
 import { STORED_CORRECTION_STATUS_DRAFT } from '../corrections/correction-flow.types';
@@ -18,6 +23,7 @@ import {
 } from '../graphql/generated/graphql.types';
 import { PersistenceClient } from '../persistence/persistence.client';
 import { isRecord } from '../persistence/utils';
+import { PlatformClient } from '../platform/platform-client';
 import { CorrectionSession } from './correction-session.entity';
 import * as correctionSessionUtils from './utils';
 
@@ -28,6 +34,10 @@ export interface CorrectionSessionSnapshots {
   sourcePayload: Record<string, unknown>;
   sourceProvenance: null | Record<string, unknown>;
 }
+
+export type CorrectionSessionView = CorrectionSession & {
+  lockedBy: PlatformUserView;
+};
 
 @Injectable()
 /**
@@ -41,13 +51,18 @@ export class CorrectionSessionsService {
     private readonly correctionSessionsRepository: Repository<CorrectionSession>,
     private readonly documentRegistryService: DocumentRegistryService,
     private readonly persistenceClient: PersistenceClient,
+    private readonly platformClient: PlatformClient,
   ) {}
 
   /**
    * Loads a session and verifies that the current user owns the session lock.
    */
-  async getSession(sessionId: string, authUser: AuthUser): Promise<CorrectionSession> {
-    const session = await this.findSessionOrThrow(sessionId);
+  async getSession(
+    sessionId: string,
+    authUser: AuthUser,
+    context: PlatformRequestContext = {},
+  ): Promise<CorrectionSessionView> {
+    const session = await this.findSessionOrThrow(sessionId, context);
 
     correctionSessionHelpers.ensureSessionAccess(session, authUser.sub);
 
@@ -59,33 +74,30 @@ export class CorrectionSessionsService {
    * used by correction-document flattening.
    */
   getSessionSnapshots(session: CorrectionSession): CorrectionSessionSnapshots {
-    const normalizedSession = this.normalizeSessionPayloads(session);
-
     return {
-      draftPayload: normalizedSession.draftPayload,
-      sourcePayload: normalizedSession.sourcePayload,
-      sourceProvenance: normalizedSession.sourceProvenance,
+      draftPayload: session.draftPayload,
+      sourcePayload: session.sourcePayload,
+      sourceProvenance: session.sourceProvenance,
     };
   }
 
   /**
    * Lists the current user's correction sessions for the inbox route.
    */
-  async listSessions(authUser: AuthUser): Promise<CorrectionSession[]> {
+  async listSessions(
+    authUser: AuthUser,
+    context: PlatformRequestContext = {},
+  ): Promise<CorrectionSessionView[]> {
     const sessions = await this.correctionSessionsRepository.find({
       order: {
         updatedAt: 'DESC',
-      },
-      relations: {
-        createdBy: true,
-        lockedBy: true,
       },
       where: {
         createdById: authUser.sub,
       },
     });
 
-    return sessions.map((session) => this.normalizeSessionPayloads(session));
+    return this.normalizeAndHydrateSessions(sessions, context);
   }
 
   /**
@@ -95,13 +107,14 @@ export class CorrectionSessionsService {
   async openSession(
     input: OpenCorrectionSessionInput,
     authUser: AuthUser,
-  ): Promise<CorrectionSession> {
-    this.documentRegistryService.getDocumentTypeOrThrow(input.documentType);
+    context: PlatformRequestContext = {},
+  ): Promise<CorrectionSessionView> {
+    const config = await this.documentRegistryService.getDocumentTypeOrThrow(
+      input.documentType,
+      context,
+    );
 
     const existingSession = await this.correctionSessionsRepository.findOne({
-      relations: {
-        lockedBy: true,
-      },
       where: { documentId: input.documentId },
     });
 
@@ -114,7 +127,7 @@ export class CorrectionSessionsService {
 
       correctionSessionHelpers.ensureSessionAccess(existingSession, authUser.sub);
       this.logger.log(`Reusing correction session ${existingSession.id} for ${input.documentId}`);
-      return this.findSessionOrThrow(existingSession.id);
+      return this.findSessionOrThrow(existingSession.id, context);
     }
 
     const document = await this.persistenceClient.getDocument(input.documentId);
@@ -126,7 +139,7 @@ export class CorrectionSessionsService {
     }
 
     const normalizedDocumentPayload = this.normalizePayloadForDocumentType(
-      input.documentType,
+      config,
       document.payload,
     );
 
@@ -146,7 +159,7 @@ export class CorrectionSessionsService {
     await this.correctionSessionsRepository.save(session);
     this.logger.log(`Opened correction session ${session.id} for ${input.documentId}`);
 
-    return this.findSessionOrThrow(session.id);
+    return this.findSessionOrThrow(session.id, context);
   }
 
   /**
@@ -155,8 +168,9 @@ export class CorrectionSessionsService {
   async saveDraft(
     input: SaveCorrectionSessionDraftInput,
     authUser: AuthUser,
-  ): Promise<CorrectionSession> {
-    const session = await this.findSessionOrThrow(input.sessionId);
+    context: PlatformRequestContext = {},
+  ): Promise<CorrectionSessionView> {
+    const session = await this.findSessionOrThrow(input.sessionId, context);
 
     correctionSessionHelpers.ensureSessionAccess(session, authUser.sub);
 
@@ -170,10 +184,11 @@ export class CorrectionSessionsService {
       throw new BadRequestException('draftPayload must be a JSON object');
     }
 
-    const normalizedDraftPayload = this.normalizePayloadForDocumentType(
+    const config = await this.documentRegistryService.getDocumentTypeOrThrow(
       session.documentType,
-      input.draftPayload,
+      context,
     );
+    const normalizedDraftPayload = this.normalizePayloadForDocumentType(config, input.draftPayload);
 
     await this.persistenceClient.saveDocument(session.documentId, {
       documentType: session.documentType,
@@ -187,18 +202,17 @@ export class CorrectionSessionsService {
     await this.correctionSessionsRepository.save(session);
     this.logger.log(`Saved draft for correction session ${session.id}`);
 
-    return this.findSessionOrThrow(session.id);
+    return this.findSessionOrThrow(session.id, context);
   }
 
   /**
    * Loads the full session graph needed by the correction APIs or raises not found.
    */
-  private async findSessionOrThrow(sessionId: string): Promise<CorrectionSession> {
+  private async findSessionOrThrow(
+    sessionId: string,
+    context: PlatformRequestContext,
+  ): Promise<CorrectionSessionView> {
     const session = await this.correctionSessionsRepository.findOne({
-      relations: {
-        createdBy: true,
-        lockedBy: true,
-      },
       where: { id: sessionId },
     });
 
@@ -206,7 +220,66 @@ export class CorrectionSessionsService {
       throw new NotFoundException(`Correction session ${sessionId} was not found`);
     }
 
-    return this.normalizeSessionPayloads(session);
+    const [hydratedSession] = await this.normalizeAndHydrateSessions([session], context);
+
+    return hydratedSession;
+  }
+
+  /** Loads each required registry config once and each user set through one batch request. */
+  private async normalizeAndHydrateSessions(
+    sessions: CorrectionSession[],
+    context: PlatformRequestContext,
+  ): Promise<CorrectionSessionView[]> {
+    if (sessions.length === 0) {
+      return [];
+    }
+
+    const documentTypes = [...new Set(sessions.map((session) => session.documentType))];
+    const configs = await Promise.all(
+      documentTypes.map((documentType) =>
+        this.documentRegistryService.getDocumentTypeOrThrow(documentType, context),
+      ),
+    );
+    const configsByType = new Map(configs.map((config) => [config.type, config]));
+    const normalizedSessions = sessions.map((session) => {
+      const config = configsByType.get(session.documentType);
+
+      if (!config) {
+        throw new InternalServerErrorException('Correction session document type is invalid');
+      }
+
+      return this.normalizeSessionPayloads(session, config);
+    });
+    if (normalizedSessions.some((session) => session.lockedById === null)) {
+      throw new InternalServerErrorException('Correction session user reference is invalid');
+    }
+
+    const userIds = [
+      ...new Set(
+        normalizedSessions.flatMap((session) =>
+          session.lockedById === null ? [] : [session.lockedById],
+        ),
+      ),
+    ];
+
+    const { users } = await this.platformClient.getUsers({ userIds }, context);
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
+    return normalizedSessions.map((session) => {
+      const lockedById = session.lockedById;
+
+      if (lockedById === null) {
+        throw new InternalServerErrorException('Correction session user reference is invalid');
+      }
+
+      const user = usersById.get(lockedById);
+
+      if (!user) {
+        throw new InternalServerErrorException('Correction session user reference is invalid');
+      }
+
+      return Object.assign(session, { lockedBy: user });
+    });
   }
 
   /**
@@ -216,10 +289,9 @@ export class CorrectionSessionsService {
    * field paths such as header.invoiceNumber.
    */
   private normalizePayloadForDocumentType(
-    documentType: string,
+    config: PlatformDocumentTypeConfig,
     payload: Record<string, unknown>,
   ): Record<string, unknown> {
-    const config = this.documentRegistryService.getDocumentTypeOrThrow(documentType);
     const normalizedPayload = structuredClone(payload);
 
     for (const section of config.sections) {
@@ -252,15 +324,12 @@ export class CorrectionSessionsService {
   /**
    * Normalizes both source and draft snapshots before they are exposed to callers.
    */
-  private normalizeSessionPayloads(session: CorrectionSession): CorrectionSession {
-    session.draftPayload = this.normalizePayloadForDocumentType(
-      session.documentType,
-      session.draftPayload,
-    );
-    session.sourcePayload = this.normalizePayloadForDocumentType(
-      session.documentType,
-      session.sourcePayload,
-    );
+  private normalizeSessionPayloads(
+    session: CorrectionSession,
+    config: PlatformDocumentTypeConfig,
+  ): CorrectionSession {
+    session.draftPayload = this.normalizePayloadForDocumentType(config, session.draftPayload);
+    session.sourcePayload = this.normalizePayloadForDocumentType(config, session.sourcePayload);
 
     return session;
   }

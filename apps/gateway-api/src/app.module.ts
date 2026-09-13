@@ -11,13 +11,10 @@ import { getTypeOrmModuleOptions } from './config/typeorm';
 import { CorrectionSessionsModule } from './correction-sessions/correction-sessions.module';
 import { CorrectionsModule } from './corrections/corrections.module';
 import { DocumentRegistryModule } from './document-registry/document-registry.module';
-import { DocumentsModule } from './documents/documents.module';
 import { GraphqlApiModule } from './graphql/graphql.module';
 import { HealthController } from './health/health.controller';
 import { PersistenceModule } from './persistence/persistence.module';
-import { PlatformModule } from './platform/platform.module';
 import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
-import { UsersModule } from './users/users.module';
 
 @Module({
   controllers: [HealthController],
@@ -38,12 +35,9 @@ import { UsersModule } from './users/users.module';
       useFactory: getTypeOrmModuleOptions,
     }),
     GraphqlApiModule,
-    UsersModule,
     AuthModule,
     DocumentRegistryModule,
-    DocumentsModule,
     PersistenceModule,
-    PlatformModule,
     CorrectionSessionsModule,
     CorrectionsModule,
     RabbitmqModule,

@@ -43,7 +43,7 @@
     "local:db:verify-roles": "bash infra/local/scripts/local-role-verify.sh",
     "local:down": "bash infra/local/scripts/local-down.sh",
     "local:reset": "bash infra/local/scripts/local-down.sh --volumes",
-    "local:db:generate:gateway": "bash infra/local/scripts/local-generate-migration.sh gateway-api",
+    "local:db:generate:platform": "bash infra/local/scripts/local-generate-migration.sh platform-service",
     "local:db:generate:extraction": "bash infra/local/scripts/local-generate-migration.sh extraction-service",
     "local:db:generate:correction": "bash infra/local/scripts/local-generate-migration.sh correction-service",
     "local:garage:init": "node infra/local/garage/init-credentials.mjs",

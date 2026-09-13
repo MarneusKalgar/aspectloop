@@ -144,7 +144,8 @@ M04.1 removes Platform state from the gateway; M06 removes its temporary
 correction state, after which the edge can scale without colocated durable
 state.
 
-The repository remains temporarily inconsistent with the target boundary until
-M04.1 is complete: `gateway-api` still owns current platform persistence and
-storage code. Documentation must label this as transitional rather than imply
-that the target already exists.
+M04.1-B moves Platform behavior, persistence code, and storage credentials to
+`platform-service`. The repository remains temporarily short of the complete
+target boundary until M04.1-C/D separate database roles and add the durable
+artifact reservation. The gateway retains only its explicitly transitional
+correction persistence until M06.

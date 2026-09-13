@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { DocumentRegistryModule } from '../document-registry/document-registry.module';
 import { PersistenceModule } from '../persistence/persistence.module';
+import { PlatformModule } from '../platform/platform.module';
 import { CorrectionSession } from './correction-session.entity';
 import { CorrectionSessionsResolver } from './correction-sessions.resolver';
 import { CorrectionSessionsService } from './correction-sessions.service';
@@ -15,6 +16,7 @@ import { CorrectionSessionsService } from './correction-sessions.service';
     AuthModule,
     DocumentRegistryModule,
     PersistenceModule,
+    PlatformModule,
   ],
   providers: [CorrectionSessionsResolver, CorrectionSessionsService],
 })

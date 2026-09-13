@@ -10,6 +10,14 @@ services:
       - ../../apps/platform-service/.env.local
     environment:
       DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-5}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set the shared local JWT verification secret}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      PLATFORM_S3_ACCESS_KEY_ID: ${PLATFORM_S3_ACCESS_KEY_ID:?Run npm run local:garage:init first}
+      PLATFORM_S3_BUCKET: ${PLATFORM_S3_BUCKET:-aspectloop-platform-source}
+      PLATFORM_S3_SECRET_ACCESS_KEY: ${PLATFORM_S3_SECRET_ACCESS_KEY:?Run npm run local:garage:init first}
+      S3_ENDPOINT: http://garage:3900
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_REGION: garage
     ports:
       # The private Platform boundary is host-visible only for local verification.
       - '127.0.0.1:${PLATFORM_SERVICE_PORT:-8083}:${PLATFORM_SERVICE_PORT:-8083}'
@@ -32,6 +40,8 @@ services:
       retries: 10
       start_period: 20s
     depends_on:
+      garage:
+        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -47,12 +57,6 @@ services:
     environment:
       DB_POOL_SIZE: ${GATEWAY_DB_POOL_SIZE:-5}
       PLATFORM_BASE_URL: http://platform-service:8083
-      PLATFORM_S3_ACCESS_KEY_ID: ${PLATFORM_S3_ACCESS_KEY_ID:?Run npm run local:garage:init first}
-      PLATFORM_S3_BUCKET: ${PLATFORM_S3_BUCKET:-aspectloop-platform-source}
-      PLATFORM_S3_SECRET_ACCESS_KEY: ${PLATFORM_S3_SECRET_ACCESS_KEY:?Run npm run local:garage:init first}
-      S3_ENDPOINT: http://garage:3900
-      S3_FORCE_PATH_STYLE: 'true'
-      S3_REGION: garage
     ports:
       - '${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:
@@ -79,8 +83,6 @@ services:
       rabbitmq:
         condition: service_healthy
       persistence-mock:
-        condition: service_healthy
-      garage:
         condition: service_healthy
       platform-service:
         condition: service_healthy

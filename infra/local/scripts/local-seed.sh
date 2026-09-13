@@ -22,7 +22,7 @@ node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
 
 STATUS=0
 # Preserve owner order and stop before later databases when one seed command fails.
-for service in gateway-api extraction-service correction-service; do
+for service in platform-service extraction-service correction-service; do
   echo "Running seed job: $service"
   if "${COMPOSE[@]}" "${RUN_ARGS[@]}" "$service" npm run db:seed:local; then
     continue

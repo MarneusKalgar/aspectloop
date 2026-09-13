@@ -106,7 +106,7 @@ extraction, correction, and backend-platform configuration tests and remains
 part of `verify:full`. TypeORM discovery is anchored to each owning application
 instead of the invoking process's working directory, with source and compiled
 paths covered by the database-independent configuration tests. The opt-in
-`test:typeorm:run` command uses explicitly imported gateway entities to verify
+`test:typeorm:run` command uses explicitly imported Platform entities to verify
 TypeORM behavior against disposable PostgreSQL; it does not ask TypeORM's Node
 loader to parse untransformed TypeScript decorator syntax. It remains a
 human-run compatibility check. M04 provides reusable local reset, migration,
@@ -323,9 +323,9 @@ No MSW worker runs in local or stage system modes.
 The current local Compose stack has a separate human verification flow under
 `Local-Stack Human Verification` in the repository README. It starts the local
 infrastructure, runs all three service-owned migration and seed paths, verifies
-database roles and the seeded Garage artifact, checks gateway, extraction,
-correction, and persistence health, and exercises sign-up, sign-in, and
-correction-inbox loading through the live web application.
+database roles and the seeded Garage artifact, checks Platform readiness plus
+gateway, extraction, correction, and persistence health, and exercises sign-up,
+sign-in, and correction-inbox loading through the live web application.
 
 This flow intentionally has no `test:e2e:local` command yet. It uses ignored
 environment configuration and mutable local state, so it is not part of

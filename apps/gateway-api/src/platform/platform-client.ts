@@ -1,148 +1,95 @@
 import type {
+  PlatformDocumentTypeResponse,
+  PlatformDocumentTypesResponse,
   PlatformHealthResponse,
   PlatformReadinessResponse,
+  PlatformSignInRequest,
+  PlatformSignInResponse,
+  PlatformSignOutRequest,
+  PlatformSignOutResponse,
+  PlatformSignUpRequest,
+  PlatformSignUpResponse,
+  PlatformUserResponse,
+  PlatformUsersBatchRequest,
+  PlatformUsersBatchResponse,
 } from '@aspectloop/contracts/platform';
 
-import {
-  PLATFORM_INTERNAL_ROUTES,
-  platformHealthResponseSchema,
-  platformReadinessResponseSchema,
-} from '@aspectloop/contracts/platform';
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
 
-import { MAX_PLATFORM_RESPONSE_BYTES, REQUEST_ID_PATTERN } from './platform.constants';
-import {
-  PlatformInvalidResponseException,
-  PlatformRequestFailedException,
-  PlatformUnavailableException,
-} from './platform.errors';
+import type { PlatformRequestContext } from './platform-http-transport';
 
-export interface PlatformRequestContext {
-  requestId?: string;
-}
+import { getDocumentTypeEndpoint, getUserEndpoint, PLATFORM_ENDPOINTS } from './platform-endpoints';
+import { PlatformHttpTransport } from './platform-http-transport';
 
-interface RuntimeSchema<T> {
-  safeParse(value: unknown): { data: T; success: true } | { success: false };
-}
+export type { PlatformRequestContext } from './platform-http-transport';
 
 @Injectable()
 export class PlatformClient {
-  private readonly baseUrl: string;
-  private readonly logger = new Logger(PlatformClient.name);
-  private readonly timeoutMs: number;
+  /** Creates the Platform facade over its internal HTTP transport. */
+  constructor(private readonly transport: PlatformHttpTransport) {}
 
-  /** Creates a bounded client from validated gateway configuration. */
-  constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.configService.getOrThrow<string>('PLATFORM_BASE_URL').replace(/\/+$/, '');
-    this.timeoutMs = this.configService.get<number>('PLATFORM_REQUEST_TIMEOUT_MS') ?? 5000;
+  /** Reads one Platform-owned document-type configuration. */
+  async getDocumentType(
+    documentType: string,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformDocumentTypeResponse> {
+    return this.transport.get(getDocumentTypeEndpoint(documentType), context);
   }
 
   /** Reads Platform process liveness through the versioned internal boundary. */
   async getHealth(context: PlatformRequestContext = {}): Promise<PlatformHealthResponse> {
-    return this.get(PLATFORM_INTERNAL_ROUTES.health, platformHealthResponseSchema, context);
+    return this.transport.get(PLATFORM_ENDPOINTS.health, context);
   }
 
   /** Reads Platform dependency readiness through the versioned internal boundary. */
   async getReadiness(context: PlatformRequestContext = {}): Promise<PlatformReadinessResponse> {
-    return this.get(PLATFORM_INTERNAL_ROUTES.readiness, platformReadinessResponseSchema, context);
+    return this.transport.get(PLATFORM_ENDPOINTS.readiness, context);
   }
 
-  /** Performs a bounded GET and validates the response against its shared runtime schema. */
-  private async get<T>(
-    path: string,
-    schema: RuntimeSchema<T>,
-    context: PlatformRequestContext,
-  ): Promise<T> {
-    let response: Response;
-
-    try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        headers: this.getHeaders(context),
-        method: 'GET',
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-    } catch (error) {
-      this.logger.error({
-        event: 'platform.request.failed',
-        outcome: 'failure',
-        path,
-        reason: error instanceof Error ? error.name : 'unknown',
-      });
-      throw new PlatformUnavailableException();
-    }
-
-    if (!response.ok) {
-      this.logger.warn({
-        event: 'platform.request.failed',
-        outcome: 'failure',
-        path,
-        reason: 'upstream_status',
-        upstreamStatus: response.status,
-      });
-      throw new PlatformRequestFailedException(response.status);
-    }
-
-    const payload = await this.readBoundedJson(response);
-    const parsed = schema.safeParse(payload);
-
-    if (!parsed.success) {
-      this.logger.error({
-        event: 'platform.response.invalid',
-        outcome: 'failure',
-        path,
-      });
-      throw new PlatformInvalidResponseException();
-    }
-
-    return parsed.data;
+  /** Reads one Platform-owned user view. */
+  async getUser(
+    userId: string,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformUserResponse> {
+    return this.transport.get(getUserEndpoint(userId), context);
   }
 
-  /** Builds caller headers without forwarding unsafe correlation input. */
-  private getHeaders(context: PlatformRequestContext): Headers {
-    const headers = new Headers({ accept: 'application/json' });
-
-    if (context.requestId && REQUEST_ID_PATTERN.test(context.requestId)) {
-      headers.set('x-request-id', context.requestId);
-    }
-
-    return headers;
+  /** Resolves multiple Platform-owned user views through one bounded request. */
+  async getUsers(
+    input: PlatformUsersBatchRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformUsersBatchResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.usersBatch, input, context);
   }
 
-  /** Reads and parses a response body while enforcing the internal payload limit. */
-  private async readBoundedJson(response: Response): Promise<unknown> {
-    const contentLength = Number(response.headers.get('content-length'));
+  /** Reads the complete Platform-owned document-type registry. */
+  async listDocumentTypes(
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformDocumentTypesResponse> {
+    return this.transport.get(PLATFORM_ENDPOINTS.documentTypes, context);
+  }
 
-    if (Number.isFinite(contentLength) && contentLength > MAX_PLATFORM_RESPONSE_BYTES) {
-      throw new PlatformInvalidResponseException();
-    }
+  /** Authenticates through Platform while preserving the public gateway boundary. */
+  async signIn(
+    input: PlatformSignInRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformSignInResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.signIn, input, context);
+  }
 
-    const responseBody = response.body;
+  /** Records the current stateless sign-out through Platform. */
+  async signOut(
+    input: PlatformSignOutRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformSignOutResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.signOut, input, context);
+  }
 
-    if (!responseBody) {
-      throw new PlatformInvalidResponseException();
-    }
-
-    const chunks: Uint8Array[] = [];
-    let receivedBytes = 0;
-
-    try {
-      for await (const chunk of responseBody) {
-        receivedBytes += chunk.byteLength;
-        if (receivedBytes > MAX_PLATFORM_RESPONSE_BYTES) {
-          throw new PlatformInvalidResponseException();
-        }
-
-        chunks.push(chunk);
-      }
-
-      return JSON.parse(Buffer.concat(chunks, receivedBytes).toString('utf8')) as unknown;
-    } catch (error) {
-      if (error instanceof PlatformInvalidResponseException) {
-        throw error;
-      }
-
-      throw new PlatformInvalidResponseException();
-    }
+  /** Creates a Platform-owned user through the internal contract. */
+  async signUp(
+    input: PlatformSignUpRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformSignUpResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.signUp, input, context);
   }
 }

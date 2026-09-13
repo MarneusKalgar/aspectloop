@@ -1,8 +1,8 @@
 # Logging And Privacy Contract
 
 AspectLoop uses structured application events for local diagnostics and future
-portable observability. This baseline applies to the gateway, extraction
-service, and correction service. It deliberately does not introduce
+portable observability. This baseline applies to the gateway, Platform,
+extraction service, and correction service. It deliberately does not introduce
 OpenTelemetry, metrics, traces, log aggregation, or dashboards; those remain
 M10 work.
 

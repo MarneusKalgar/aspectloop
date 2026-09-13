@@ -3,7 +3,7 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "assets": ["document-registry/configs/*.json", "graphql/schema/*.graphql"],
+    "assets": ["graphql/schema/*.graphql"],
     "deleteOutDir": true,
     "watchAssets": true,
     "webpack": false,

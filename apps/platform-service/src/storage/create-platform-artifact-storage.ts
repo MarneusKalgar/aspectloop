@@ -14,9 +14,9 @@ type PlatformArtifactStorageEnvironment = Pick<
 >;
 
 /**
- * Creates the gateway platform-source adapter from validated environment values.
+ * Creates the Platform source-object adapter from validated environment values.
  *
- * @param environment Validated gateway environment.
+ * @param environment Validated Platform environment.
  * @returns Configured S3-compatible artifact adapter.
  */
 export function createPlatformArtifactStorage(

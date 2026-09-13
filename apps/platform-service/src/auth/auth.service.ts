@@ -1,3 +1,16 @@
+import type {
+  PlatformSignInRequest,
+  PlatformSignInResponse,
+  PlatformSignOutResponse,
+  PlatformSignUpRequest,
+  PlatformSignUpResponse,
+} from '@aspectloop/contracts/platform';
+
+import {
+  platformSignInResponseSchema,
+  platformSignOutResponseSchema,
+  platformSignUpResponseSchema,
+} from '@aspectloop/contracts/platform';
 import {
   BadRequestException,
   ConflictException,
@@ -7,45 +20,24 @@ import {
 } from '@nestjs/common';
 
 import { normalizeEmail } from '../core/utils/normalize-email';
-import {
-  AuthPayload,
-  SignInInput,
-  SignOutPayload,
-  SignUpInput,
-  SignUpPayload,
-} from '../graphql/generated/graphql.types';
+import { toPlatformUserView } from '../users/user-view';
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
-import { AuthUser } from './types/auth-user';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /** Creates Platform authentication behavior over user, password, and token services. */
   constructor(
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly usersService: UsersService,
   ) {}
 
-  async getCurrentUser(authUser: AuthUser) {
-    const user = await this.usersService.findById(authUser.sub);
-
-    if (!user) {
-      throw new UnauthorizedException('Authenticated user no longer exists');
-    }
-
-    return user;
-  }
-
-  /**
-   * Authenticates a reviewer and emits a success event only after token creation.
-   *
-   * @param input Sign-in credentials from the GraphQL boundary.
-   * @returns The authenticated user and newly generated access token.
-   */
-  async signIn(input: SignInInput): Promise<AuthPayload> {
+  /** Authenticates a reviewer and issues the current stateless access token. */
+  async signIn(input: PlatformSignInRequest): Promise<PlatformSignInResponse> {
     const email = normalizeEmail(input.email);
     const password = input.password.trim();
 
@@ -61,22 +53,14 @@ export class AuthService {
     const user = await this.usersService.findByEmailWithPassword(email);
 
     if (!user?.passwordHash) {
-      this.logger.warn({
-        event: 'auth.sign_in.failed',
-        outcome: 'failure',
-        reason: 'invalid_credentials',
-      });
+      this.logInvalidCredentials();
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await this.passwordService.verify(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      this.logger.warn({
-        event: 'auth.sign_in.failed',
-        outcome: 'failure',
-        reason: 'invalid_credentials',
-      });
+      this.logInvalidCredentials();
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -100,20 +84,19 @@ export class AuthService {
       userId: user.id,
     });
 
-    return {
+    return platformSignInResponseSchema.parse({
       accessToken,
-      user,
-    };
+      user: toPlatformUserView(user),
+    });
   }
 
-  /**
-   * Records completion of the current stateless sign-out flow.
-   *
-   * @param authUser Authenticated request identity.
-   * @returns A successful sign-out payload.
-   */
-  async signOut(authUser: AuthUser): Promise<SignOutPayload> {
-    const user = await this.getCurrentUser(authUser);
+  /** Confirms the subject still exists before recording stateless sign-out. */
+  async signOut(userId: string): Promise<PlatformSignOutResponse> {
+    const user = await this.usersService.findById(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user no longer exists');
+    }
 
     this.logger.log({
       event: 'auth.sign_out.succeeded',
@@ -121,18 +104,11 @@ export class AuthService {
       userId: user.id,
     });
 
-    return {
-      success: true,
-    };
+    return platformSignOutResponseSchema.parse({ success: true });
   }
 
-  /**
-   * Creates a reviewer account without logging supplied identity or credentials.
-   *
-   * @param input Registration values from the GraphQL boundary.
-   * @returns The created user in the stable sign-up payload.
-   */
-  async signUp(input: SignUpInput): Promise<SignUpPayload> {
+  /** Creates a reviewer account without logging supplied identity or credentials. */
+  async signUp(input: PlatformSignUpRequest): Promise<PlatformSignUpResponse> {
     const email = normalizeEmail(input.email);
     const displayName = input.displayName.trim();
     const password = input.password.trim();
@@ -149,9 +125,7 @@ export class AuthService {
       throw new BadRequestException('Password must be at least 8 characters long');
     }
 
-    const existingUser = await this.usersService.findByEmail(email);
-
-    if (existingUser) {
+    if (await this.usersService.findByEmail(email)) {
       this.logger.warn({
         event: 'auth.sign_up.failed',
         outcome: 'failure',
@@ -173,9 +147,18 @@ export class AuthService {
       userId: user.id,
     });
 
-    return {
+    return platformSignUpResponseSchema.parse({
       success: true,
-      user,
-    };
+      user: toPlatformUserView(user),
+    });
+  }
+
+  /** Emits the shared safe diagnostic for credential mismatch. */
+  private logInvalidCredentials(): void {
+    this.logger.warn({
+      event: 'auth.sign_in.failed',
+      outcome: 'failure',
+      reason: 'invalid_credentials',
+    });
   }
 }

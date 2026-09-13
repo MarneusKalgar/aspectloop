@@ -17,6 +17,15 @@ export const GATEWAY_ENV_FILE = fileURLToPath(
 );
 
 /**
+ * Absolute path to the ignored Platform local environment file.
+ *
+ * @type {string}
+ */
+export const PLATFORM_ENV_FILE = fileURLToPath(
+  new URL('../../../apps/platform-service/.env.local', import.meta.url),
+);
+
+/**
  * Compose project names start with an alphanumeric character and then allow
  * alphanumeric characters, underscores, and hyphens.
  *
@@ -109,11 +118,11 @@ export const DEFAULT_ASSIGNMENTS = Object.freeze({
 });
 
 /**
- * Gateway-local S3 settings whose values are derived from infrastructure config.
+ * Platform-local S3 settings whose values are derived from infrastructure config.
  *
  * @type {Readonly<Record<string, string>>}
  */
-export const GATEWAY_S3_DEFAULTS = Object.freeze({
+export const PLATFORM_S3_DEFAULTS = Object.freeze({
   S3_FORCE_PATH_STYLE: 'true',
   S3_REQUEST_TIMEOUT_MS: '5000',
 });

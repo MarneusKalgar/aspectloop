@@ -9,12 +9,12 @@ SERVICE_NAME="${1:-}"
 MIGRATION_NAME="${2:-}"
 
 if (($# != 2)); then
-  echo "Usage: $0 <gateway-api|extraction-service|correction-service> <migration-name>" >&2
+  echo "Usage: $0 <platform-service|extraction-service|correction-service> <migration-name>" >&2
   exit 1
 fi
 
 case "$SERVICE_NAME" in
-  gateway-api | extraction-service | correction-service) ;;
+  platform-service | extraction-service | correction-service) ;;
   *)
     echo "Unsupported migration owner: $SERVICE_NAME" >&2
     exit 1

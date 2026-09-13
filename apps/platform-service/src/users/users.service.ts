@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { normalizeEmail } from '../core/utils/normalize-email';
 import { User } from './user.entity';
@@ -64,5 +64,23 @@ export class UsersService {
 
   async findById(id: string): Promise<null | User> {
     return this.usersRepository.findOne({ where: { id } });
+  }
+
+  /** Returns unique users in caller order for bounded response composition. */
+  async findByIds(ids: string[]): Promise<User[]> {
+    const uniqueIds = [...new Set(ids)];
+
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const users = await this.usersRepository.findBy({ id: In(uniqueIds) });
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
+    return uniqueIds.flatMap((id) => {
+      const user = usersById.get(id);
+
+      return user ? [user] : [];
+    });
   }
 }

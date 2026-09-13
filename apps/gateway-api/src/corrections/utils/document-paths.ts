@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import type {
+  PlatformDocumentField as DocumentFieldConfig,
+  PlatformDocumentTypeConfig as DocumentTypeConfig,
+} from '@aspectloop/contracts/platform';
 
-import {
-  DocumentFieldConfig,
-  DocumentTypeConfig,
-} from '#app/document-registry/document-registry.types';
+import { BadRequestException } from '@nestjs/common';
 
 import { CorrectionFieldTarget } from '../correction-flow.types';
 

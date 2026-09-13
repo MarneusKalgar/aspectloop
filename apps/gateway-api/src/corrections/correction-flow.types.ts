@@ -1,9 +1,9 @@
-import {
-  DocumentFieldConfig,
-  DocumentFieldValidationConfig,
-  DocumentSectionConfig,
-  DocumentTypeConfig,
-} from '../document-registry/document-registry.types';
+import type {
+  PlatformDocumentField as DocumentFieldConfig,
+  PlatformDocumentFieldValidation as DocumentFieldValidationConfig,
+  PlatformDocumentSection as DocumentSectionConfig,
+  PlatformDocumentTypeConfig as DocumentTypeConfig,
+} from '@aspectloop/contracts/platform';
 
 export interface CorrectionAuditEntryView {
   editedAt: Date;

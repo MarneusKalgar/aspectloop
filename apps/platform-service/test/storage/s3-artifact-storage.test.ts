@@ -1,8 +1,8 @@
 import type { S3Client } from '@aws-sdk/client-s3';
 
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { ArtifactStorageError } from '@gateway/storage/artifact-storage.errors';
-import { S3ArtifactStorage } from '@gateway/storage/s3-artifact-storage';
+import { ArtifactStorageError } from '@platform/storage/artifact-storage.errors';
+import { S3ArtifactStorage } from '@platform/storage/s3-artifact-storage';
 import { expect, test } from 'vitest';
 
 const OBJECT_ID = '2e49b681-0df5-46bc-91ea-c9024689755e';

@@ -9,6 +9,16 @@ import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/
 
 const APPLICATION_ROOT = resolve(__dirname, '../..');
 const DATABASE_URL = 'postgresql://platform_app:platform_app@postgres:5432/platform_db';
+const VALID_ENVIRONMENT = {
+  DATABASE_URL,
+  JWT_ACCESS_SECRET: 'test-only-secret',
+  PLATFORM_S3_ACCESS_KEY_ID: 'test-access-key',
+  PLATFORM_S3_BUCKET: 'aspectloop-platform-source',
+  PLATFORM_S3_SECRET_ACCESS_KEY: 'test-secret-key',
+  S3_ENDPOINT: 'http://garage:3900',
+  S3_FORCE_PATH_STYLE: 'true',
+  S3_REGION: 'garage',
+};
 
 /** Creates Platform datasource options without connecting to PostgreSQL. */
 function createOptions(discoveryMode: 'compiled' | 'source'): DataSourceOptions {
@@ -34,8 +44,10 @@ function testDiscoveryPaths(): void {
 
 /** Verifies Platform configuration rejects missing ownership and excess capacity. */
 function testInvalidEnvironment(): void {
-  expect(() => validateEnv({ DATABASE_URL: '' })).toThrow('Environment validation failed');
-  expect(() => validateEnv({ DATABASE_URL, DB_POOL_SIZE: '6' })).toThrow(
+  expect(() => validateEnv({ ...VALID_ENVIRONMENT, DATABASE_URL: '' })).toThrow(
+    'Environment validation failed',
+  );
+  expect(() => validateEnv({ ...VALID_ENVIRONMENT, DB_POOL_SIZE: '6' })).toThrow(
     'Environment validation failed',
   );
 }
@@ -57,7 +69,7 @@ function testNestDiscoveryPaths(): void {
 /** Verifies Platform CLI values are transformed into bounded numeric settings. */
 function testNumericEnvironmentCoercion(): void {
   const environment = validateEnv({
-    DATABASE_URL,
+    ...VALID_ENVIRONMENT,
     DB_POOL_SIZE: '5',
     DB_SLOW_QUERY_THRESHOLD_MS: '250',
     PLATFORM_SERVICE_PORT: '8083',

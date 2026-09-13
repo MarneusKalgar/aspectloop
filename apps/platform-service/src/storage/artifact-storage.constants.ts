@@ -1,4 +1,4 @@
-/** S3-compatible bucket names accepted by the gateway configuration boundary. */
+/** S3-compatible bucket names accepted by the Platform configuration boundary. */
 export const S3_BUCKET_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 
 /** Lower-case application SHA-256 digest persisted with each object. */

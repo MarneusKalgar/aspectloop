@@ -2,6 +2,8 @@ import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
+import type { PlatformRequestContext } from '../platform/platform-client';
+
 import { AuthUser } from '../auth/types/auth-user';
 import { CorrectionSession } from '../correction-sessions/correction-session.entity';
 import { CorrectionSessionsService } from '../correction-sessions/correction-sessions.service';
@@ -62,9 +64,13 @@ export class CorrectionsService {
   async getCorrectionDocument(
     sessionId: string,
     authUser: AuthUser,
+    context: PlatformRequestContext = {},
   ): Promise<CorrectionDocumentView> {
-    const session = await this.correctionSessionsService.getSession(sessionId, authUser);
-    const config = this.documentRegistryService.getDocumentTypeOrThrow(session.documentType);
+    const session = await this.correctionSessionsService.getSession(sessionId, authUser, context);
+    const config = await this.documentRegistryService.getDocumentTypeOrThrow(
+      session.documentType,
+      context,
+    );
     const snapshots = this.correctionSessionsService.getSessionSnapshots(session);
     const [auditEntries, latestOutboxEntry] = await Promise.all([
       this.correctionEditRepository.find({
@@ -110,8 +116,13 @@ export class CorrectionsService {
   async submitCorrections(
     input: SubmitCorrectionsCommandInput,
     authUser: AuthUser,
+    context: PlatformRequestContext = {},
   ): Promise<SubmitCorrectionsPayloadView> {
-    const session = await this.correctionSessionsService.getSession(input.sessionId, authUser);
+    const session = await this.correctionSessionsService.getSession(
+      input.sessionId,
+      authUser,
+      context,
+    );
 
     if (session.version !== input.expectedVersion) {
       throw new ConflictException(
@@ -119,7 +130,10 @@ export class CorrectionsService {
       );
     }
 
-    const config = this.documentRegistryService.getDocumentTypeOrThrow(session.documentType);
+    const config = await this.documentRegistryService.getDocumentTypeOrThrow(
+      session.documentType,
+      context,
+    );
     const merged = this.mergeService.applyEdits(
       config,
       session.draftPayload,

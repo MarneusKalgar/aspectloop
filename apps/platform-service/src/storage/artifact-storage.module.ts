@@ -19,7 +19,7 @@ import { createPlatformArtifactStorage } from './create-platform-artifact-storag
 })
 export class ArtifactStorageModule {}
 
-/** Builds the gateway-owned S3 adapter from validated environment configuration. */
+/** Builds the Platform-owned S3 adapter from validated environment configuration. */
 function createArtifactStorage(configService: ConfigService): S3ArtifactStorage {
   return createPlatformArtifactStorage({
     PLATFORM_S3_ACCESS_KEY_ID: configService.getOrThrow<string>('PLATFORM_S3_ACCESS_KEY_ID'),

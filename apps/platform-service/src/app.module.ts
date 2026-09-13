@@ -4,9 +4,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 
+import { AuthModule } from './auth/auth.module';
 import { validateEnv } from './config/env.validation';
 import { getPinoLoggerConfig } from './config/logger.config';
 import { getTypeOrmModuleOptions } from './config/typeorm';
+import { DocumentRegistryModule } from './document-registry/document-registry.module';
+import { DocumentsModule } from './documents/documents.module';
 import { HealthController } from './internal/health.controller';
 
 @Module({
@@ -27,6 +30,9 @@ import { HealthController } from './internal/health.controller';
       inject: [ConfigService],
       useFactory: getTypeOrmModuleOptions,
     }),
+    AuthModule,
+    DocumentRegistryModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {}

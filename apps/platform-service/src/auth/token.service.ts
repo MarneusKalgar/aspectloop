@@ -2,7 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { User } from '../users/user.entity';
-import { JwtPayload } from './types/auth-user';
+
+interface JwtPayload {
+  displayName: string;
+  email: string;
+  roles: string[];
+  scopes: string[];
+  sub: string;
+}
 
 @Injectable()
 export class TokenService {
