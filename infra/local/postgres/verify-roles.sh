@@ -329,7 +329,7 @@ if [[ -n "$unexpected_owner" ]]; then
 fi
 
 required_tables=(
-  users document document_object
+  users document document_object document_object_reservation
   correction_session correction_edit correction_event_outbox migrations
 )
 for table_name in "${required_tables[@]}"; do
@@ -343,6 +343,7 @@ done
 assert_table_privileges "$PLATFORM_RUNTIME_USER" users "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object "t,t,f,f,f,f,f,f"
+assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object_reservation "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_session "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_edit "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_event_outbox "t,t,t,f,f,f,f,f"
@@ -350,18 +351,9 @@ assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_event_outb
 for table_name in correction_session correction_edit correction_event_outbox migrations; do
   assert_table_privileges "$PLATFORM_RUNTIME_USER" "$table_name" "f,f,f,f,f,f,f,f"
 done
-for table_name in users document document_object migrations; do
+for table_name in users document document_object document_object_reservation migrations; do
   assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" "$table_name" "f,f,f,f,f,f,f,f"
 done
-
-reservation_exists="$(
-  admin_scalar "$PLATFORM_DATABASE_NAME" \
-    "SELECT to_regclass('public.document_object_reservation') IS NOT NULL"
-)"
-if [[ "$reservation_exists" == "t" ]]; then
-  assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object_reservation "t,t,t,f,f,f,f,f"
-  assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" document_object_reservation "f,f,f,f,f,f,f,f"
-fi
 
 schema_privileges="$(
   PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" psql \

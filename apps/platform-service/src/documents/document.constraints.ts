@@ -34,3 +34,34 @@ export const DOCUMENT_OBJECT_BYTE_LENGTH_CHECK =
 
 /** Checksums are canonical lower-case SHA-256 hexadecimal values. */
 export const DOCUMENT_OBJECT_SHA256_CHECK = `"sha256" ~ '^[0-9a-f]{64}$'`;
+
+/** Reservation attempts are positive and bounded to prevent unbounded retry loops. */
+export const DOCUMENT_OBJECT_RESERVATION_ATTEMPT_CHECK =
+  '"attempt_count" >= 1 AND "attempt_count" <= 10';
+
+/** Reservation failure codes remain within the storage adapter's durable vocabulary. */
+export const DOCUMENT_OBJECT_RESERVATION_FAILURE_CODE_CHECK =
+  `"failure_code" IS NULL OR "failure_code" IN (` +
+  `'integrity_mismatch', 'invalid_location', 'invalid_response', 'not_found', 'unavailable')`;
+
+/** Finalization cannot predate reservation creation. */
+export const DOCUMENT_OBJECT_RESERVATION_FINALIZED_AT_CHECK =
+  '"finalized_at" IS NULL OR "finalized_at" >= "created_at"';
+
+/** Reservation keys are derived only from their document and object UUIDs. */
+export const DOCUMENT_OBJECT_RESERVATION_KEY_IDENTITY_CHECK = `"object_key" = 'documents/' || "document_id"::text || '/source/' || "object_id"::text`;
+
+/** M04 reservations represent exactly one bounded source-object kind. */
+export const DOCUMENT_OBJECT_RESERVATION_KIND_CHECK = `"kind" IN ('source')`;
+
+/** Every reservation lease has a positive initial duration. */
+export const DOCUMENT_OBJECT_RESERVATION_LEASE_CHECK = '"lease_expires_at" > "created_at"';
+
+/** Status, failure, and finalization fields form one valid reservation state. */
+export const DOCUMENT_OBJECT_RESERVATION_STATE_CHECK =
+  `("status" = 'pending' AND "failure_code" IS NULL AND "finalized_at" IS NULL) OR ` +
+  `("status" = 'failed' AND "failure_code" IS NOT NULL AND "finalized_at" IS NULL) OR ` +
+  `("status" = 'finalized' AND "failure_code" IS NULL AND "finalized_at" IS NOT NULL)`;
+
+/** Reservation status remains within the finite state-machine vocabulary. */
+export const DOCUMENT_OBJECT_RESERVATION_STATUS_CHECK = `"status" IN ('pending', 'failed', 'finalized')`;

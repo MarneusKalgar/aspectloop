@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { validateEnv } from '#app/config/env.validation';
 import appDataSource from '#app/data-source';
+import { DocumentObjectReservation } from '#app/documents/document-object-reservation.entity';
 import { DocumentObject } from '#app/documents/document-object.entity';
 import { Document } from '#app/documents/document.entity';
 import { ArtifactStorageError } from '#app/storage/artifact-storage.errors';
@@ -35,6 +36,9 @@ async function main(): Promise<void> {
     const object = await appDataSource.getRepository(DocumentObject).findOneByOrFail({
       id: PLATFORM_ARTIFACT_SEED.objectId,
     });
+    const reservation = await appDataSource
+      .getRepository(DocumentObjectReservation)
+      .findOneByOrFail({ objectId: PLATFORM_ARTIFACT_SEED.objectId });
     const expectedBody = platformArtifactSeedBody();
     const expectedSha256 = platformArtifactSeedSha256();
 
@@ -47,6 +51,18 @@ async function main(): Promise<void> {
     assert.equal(object.storageBucket, environment.PLATFORM_S3_BUCKET);
     assert.equal(Number(object.byteLength), expectedBody.byteLength);
     assert.equal(object.sha256, expectedSha256);
+    assert.equal(reservation.attemptCount >= 1, true);
+    assert.equal(reservation.byteLength, object.byteLength);
+    assert.equal(reservation.contentType, object.contentType);
+    assert.equal(reservation.documentId, object.documentId);
+    assert.equal(reservation.failureCode, null);
+    assert.equal(reservation.finalizedAt instanceof Date, true);
+    assert.equal(reservation.kind, object.kind);
+    assert.equal(reservation.objectKey, object.objectKey);
+    assert.equal(reservation.originalFilename, object.originalFilename);
+    assert.equal(reservation.sha256, object.sha256);
+    assert.equal(reservation.status, 'finalized');
+    assert.equal(reservation.storageBucket, object.storageBucket);
 
     await storage.verifyObject({
       bucket: object.storageBucket,
@@ -75,7 +91,7 @@ async function main(): Promise<void> {
 
     assert.equal(overwriteRejected, true, 'Storage adapter accepted an overwrite');
     console.log(
-      'Platform artifact verification passed: metadata, bytes, size, SHA-256, write-once.',
+      'Platform artifact verification passed: reservation, metadata, bytes, size, SHA-256, write-once.',
     );
   } finally {
     storage.onModuleDestroy();

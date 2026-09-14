@@ -49,6 +49,7 @@
     "local:db:generate:correction": "bash infra/local/scripts/local-generate-migration.sh correction-service",
     "local:garage:init": "node infra/local/garage/init-credentials.mjs",
     "local:garage:bootstrap": "bash infra/local/scripts/local-garage-bootstrap.sh",
+    "local:artifact:concurrency:verify": "bash infra/local/scripts/local-artifact-concurrency-verify.sh",
     "local:artifact:verify": "bash infra/local/scripts/local-artifact-verify.sh",
     "local:garage:spike": "node infra/local/spikes/garage/spike.mjs",
     "format": "prettier --write \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
