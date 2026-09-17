@@ -11,6 +11,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${PLATFORM_RUNTIME_USER:-platform_runtime}:${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
       DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-5}
+      PLATFORM_SERVICE_PORT: ${PLATFORM_SERVICE_PORT:-8083}
       S3_ENDPOINT: http://garage:3900
     ports:
       # The private Platform boundary is host-visible only for local verification.
@@ -51,7 +52,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}:${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
       DB_POOL_SIZE: ${GATEWAY_DB_POOL_SIZE:-5}
-      PLATFORM_BASE_URL: http://platform-service:8083
+      PLATFORM_BASE_URL: http://platform-service:${PLATFORM_SERVICE_PORT:-8083}
     ports:
       - '${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:

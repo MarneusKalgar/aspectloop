@@ -11,8 +11,10 @@ import {
   PlatformUnavailableException,
 } from './platform.errors';
 
-/** Describes a validated GET route in the versioned Platform internal API. */
+/** Describes a validated GET route and its caller-independent diagnostic template. */
 export interface PlatformGetEndpoint<TOutput> {
+  /** Fixed route template; never include caller-supplied path segments. */
+  logRoute: string;
   path: string;
   responseSchema: RuntimeSchema<TOutput>;
 }
@@ -59,7 +61,7 @@ export class PlatformHttpTransport {
     endpoint: PlatformGetEndpoint<TOutput>,
     context: PlatformRequestContext,
   ): Promise<TOutput> {
-    return this.request('GET', endpoint.path, endpoint.responseSchema, context);
+    return this.request('GET', endpoint, context);
   }
 
   /** Validates and sends a bounded POST request described by a typed Platform endpoint. */
@@ -74,7 +76,7 @@ export class PlatformHttpTransport {
       throw new PlatformInvalidRequestException();
     }
 
-    return this.request('POST', endpoint.path, endpoint.responseSchema, context, parsedInput.data);
+    return this.request('POST', endpoint, context, parsedInput.data);
   }
 
   /** Builds caller headers without forwarding unsafe correlation input. */
@@ -148,11 +150,10 @@ export class PlatformHttpTransport {
     }
   }
 
-  /** Performs a bounded request and validates the response against its runtime schema. */
+  /** Performs a bounded request and logs only the endpoint's fixed route template. */
   private async request<TOutput>(
     method: PlatformRequestMethod,
-    path: string,
-    schema: RuntimeSchema<TOutput>,
+    endpoint: PlatformGetEndpoint<TOutput>,
     context: PlatformRequestContext,
     body?: unknown,
   ): Promise<TOutput> {
@@ -164,7 +165,7 @@ export class PlatformHttpTransport {
         headers.set('content-type', 'application/json');
       }
 
-      response = await fetch(`${this.baseUrl}${path}`, {
+      response = await fetch(`${this.baseUrl}${endpoint.path}`, {
         body: body === undefined ? undefined : JSON.stringify(body),
         headers,
         method,
@@ -174,7 +175,7 @@ export class PlatformHttpTransport {
       this.logger.error({
         event: 'platform.request.failed',
         outcome: 'failure',
-        path,
+        path: endpoint.logRoute,
         reason: error instanceof Error ? error.name : 'unknown',
       });
       throw new PlatformUnavailableException();
@@ -184,7 +185,7 @@ export class PlatformHttpTransport {
       this.logger.warn({
         event: 'platform.request.failed',
         outcome: 'failure',
-        path,
+        path: endpoint.logRoute,
         reason: 'upstream_status',
         upstreamStatus: response.status,
       });
@@ -192,13 +193,13 @@ export class PlatformHttpTransport {
     }
 
     const payload = await this.readBoundedJson(response);
-    const parsed = schema.safeParse(payload);
+    const parsed = endpoint.responseSchema.safeParse(payload);
 
     if (!parsed.success) {
       this.logger.error({
         event: 'platform.response.invalid',
         outcome: 'failure',
-        path,
+        path: endpoint.logRoute,
       });
       throw new PlatformInvalidResponseException();
     }

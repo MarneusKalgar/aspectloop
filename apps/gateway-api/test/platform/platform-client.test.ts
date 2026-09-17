@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -20,9 +21,56 @@ function createClient(): PlatformClient {
   return new PlatformClient(new PlatformHttpTransport(configService));
 }
 
-/** Restores process globals changed by Platform client tests. */
+/** Restores process globals and logger spies changed by Platform client tests. */
 function restoreGlobals(): void {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
+}
+
+/** Verifies dependency failure logs cannot contain encoded caller-controlled route segments. */
+async function testDependencyLogsUseFixedRoutes(): Promise<void> {
+  const callerInput = 'private@example.test/notes';
+  const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+  const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockRejectedValueOnce(new Error('connection failed'))
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+      .mockResolvedValueOnce(new Response('', { status: 503 })),
+  );
+
+  const client = createClient();
+  await expect(client.getDocumentType(callerInput)).rejects.toBeInstanceOf(
+    PlatformUnavailableException,
+  );
+  await expect(client.getDocumentType(callerInput)).rejects.toBeInstanceOf(
+    PlatformRequestFailedException,
+  );
+  await expect(client.getDocumentType(callerInput)).rejects.toBeInstanceOf(
+    PlatformInvalidResponseException,
+  );
+  await expect(client.getUser(callerInput)).rejects.toBeInstanceOf(PlatformRequestFailedException);
+
+  expect(errorSpy).toHaveBeenCalledTimes(2);
+  expect(warnSpy).toHaveBeenCalledTimes(2);
+  const logEntries = [
+    errorSpy.mock.calls[0]?.[0],
+    warnSpy.mock.calls[0]?.[0],
+    errorSpy.mock.calls[1]?.[0],
+    warnSpy.mock.calls[1]?.[0],
+  ];
+  for (const entry of logEntries.slice(0, 3)) {
+    expect(entry).toMatchObject({ path: '/internal/v1/document-types/:documentType' });
+  }
+  expect(logEntries[3]).toMatchObject({ path: '/internal/v1/users/:userId' });
+  for (const entry of logEntries) {
+    const serialized = JSON.stringify(entry);
+    expect(serialized).not.toContain(callerInput);
+    expect(serialized).not.toContain(encodeURIComponent(callerInput));
+  }
 }
 
 /** Verifies dynamic document-type identifiers are encoded before transport. */
@@ -216,3 +264,7 @@ test('rejects oversized Platform responses', testOversizedResponse);
 test('rejects oversized streaming Platform responses', testOversizedStreamResponse);
 test('maps unsuccessful Platform responses', testFailedResponse);
 test('maps unavailable Platform responses', testUnavailableResponse);
+test(
+  'logs fixed routes without caller-controlled Platform path segments',
+  testDependencyLogsUseFixedRoutes,
+);
