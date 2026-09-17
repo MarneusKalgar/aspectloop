@@ -14,6 +14,7 @@ import { DocumentRegistryModule } from './document-registry/document-registry.mo
 import { GraphqlApiModule } from './graphql/graphql.module';
 import { HealthController } from './health/health.controller';
 import { PersistenceModule } from './persistence/persistence.module';
+import { PlatformModule } from './platform/platform.module';
 import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
 
 @Module({
@@ -38,6 +39,7 @@ import { RabbitmqModule } from './rabbitmq/rabbitmq.module';
     AuthModule,
     DocumentRegistryModule,
     PersistenceModule,
+    PlatformModule,
     CorrectionSessionsModule,
     CorrectionsModule,
     RabbitmqModule,

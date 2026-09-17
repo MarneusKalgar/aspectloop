@@ -42,6 +42,7 @@
     "local:db:admin": "bash infra/local/scripts/local-db-admin.sh",
     "local:db:provision": "bash infra/local/scripts/local-db-provision.sh",
     "local:db:verify-roles": "bash infra/local/scripts/local-role-verify.sh",
+    "local:verify": "bash infra/local/scripts/local-verify.sh",
     "local:down": "bash infra/local/scripts/local-down.sh",
     "local:reset": "bash infra/local/scripts/local-down.sh --volumes",
     "local:db:generate:platform": "bash infra/local/scripts/local-generate-migration.sh platform-service",

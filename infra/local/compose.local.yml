@@ -66,8 +66,8 @@ services:
         - -e
         - >-
           fetch('http://127.0.0.1:' + (process.env.API_PORT || '8080') +
-          '/health').then((response) => { if (!response.ok) process.exit(1);
-          }).catch(() => process.exit(1));
+          '/health/readiness').then((response) => { if (!response.ok)
+          process.exit(1); }).catch(() => process.exit(1));
       interval: 10s
       timeout: 5s
       retries: 10

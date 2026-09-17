@@ -13,7 +13,7 @@ fi
 
 echo "Running local migrations with project: $COMPOSE_PROJECT_NAME"
 # Start only PostgreSQL, then reconcile owner/runtime roles before any migration.
-"${COMPOSE[@]}" up -d postgres
+"${COMPOSE[@]}" up -d --wait postgres
 "${COMPOSE[@]}" run --rm --no-deps database-provision
 
 STATUS=0

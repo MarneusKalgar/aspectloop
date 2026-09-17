@@ -30,10 +30,6 @@ export class EnvironmentVariables {
   @IsString()
   CORS_ALLOWED_ORIGINS = 'http://localhost:5173';
 
-  @IsOptional()
-  @IsString()
-  DATABASE_PROVIDER?: string;
-
   @IsNotEmpty()
   @IsString()
   DATABASE_URL!: string;
