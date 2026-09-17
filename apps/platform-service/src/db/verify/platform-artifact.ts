@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import { validateEnv } from '#app/config/env.validation';
 import appDataSource from '#app/data-source';
-import { DocumentObjectReservation } from '#app/documents/document-object-reservation.entity';
-import { DocumentObject } from '#app/documents/document-object.entity';
-import { Document } from '#app/documents/document.entity';
+import { DocumentObjectReservation } from '#app/documents/model/document-object-reservation.entity';
+import { DocumentObject } from '#app/documents/model/document-object.entity';
+import { Document } from '#app/documents/model/document.entity';
 import { ArtifactStorageError } from '#app/storage/artifact-storage.errors';
 import { createPlatformArtifactStorage } from '#app/storage/create-platform-artifact-storage';
 

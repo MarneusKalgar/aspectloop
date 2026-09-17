@@ -4,7 +4,7 @@ Status: Accepted
 
 Date: 2026-08-31
 
-Last amended: 2026-09-10
+Last amended: 2026-09-17
 
 ## Context
 
@@ -90,15 +90,16 @@ region is fixed to `garage`; the provider-neutral application configuration
 retains an explicit region for non-local S3 implementations.
 
 M04's application-generated object keys and metadata checks provide sequential
-write-once behavior, but post-review inspection confirmed that Garage 2.3 does
-not enforce `If-None-Match` as an atomic create-only `PutObject` condition. A
-`HeadObject` followed by `PutObject` therefore cannot prevent two concurrent
-writers from succeeding. [ADR 0004](0004-thin-gateway-and-platform-service.md)
-assigns the durable fix to Platform in M04.1: reserve logical object identity
-under a database uniqueness constraint, then let only the winner upload and
-finalize immutable metadata. This must land before M07 exposes public uploads.
-The spike may overwrite only its fixed synthetic fixtures in its disposable
-bucket.
+write-once behavior, but Garage 2.3 does not enforce `If-None-Match` as an
+atomic create-only `PutObject` condition. A `HeadObject` followed by
+`PutObject` therefore cannot prevent two concurrent writers from succeeding.
+M04.1 resolves that limit in Platform: a database-backed reservation claims
+the logical object identity before storage I/O, and only its lease holder can
+finalize immutable metadata after independently verifying the stored bytes.
+An expired lease may adopt and verify an already-written object rather than
+overwrite it. [ADR 0004](0004-thin-gateway-and-platform-service.md) records
+the ownership decision. The spike may overwrite only its fixed synthetic
+fixtures in its disposable bucket.
 
 ### Layered Readiness
 

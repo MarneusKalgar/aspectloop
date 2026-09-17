@@ -12,6 +12,7 @@ interface GatewayReadinessResponse {
   status: 'ready';
 }
 
+/** Separates gateway process liveness from readiness of its Platform dependency. */
 @Controller('health')
 export class HealthController {
   /** Creates gateway health probes over required downstream dependencies. */

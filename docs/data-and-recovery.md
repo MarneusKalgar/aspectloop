@@ -1,6 +1,6 @@
 # Data Authority And Recovery
 
-Status: Accepted authority and recovery boundary (updated 2026-09-12 for M04.1-B)
+Status: Accepted authority and recovery boundary (updated 2026-09-17 for M04.1)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
@@ -8,9 +8,10 @@ proof; M04-C established the PostgreSQL 18 database ownership baseline; and
 M04-D established each backend service's datasource, migration, seed, and local
 runtime boundary. M04-E through M04-G added the normal Garage stack, private
 service buckets, and the initial document/object metadata and S3 adapter.
-M04.1-B moves those Platform capabilities, migrations, seeds, and credentials
-from the gateway into `platform-service`. Optional M04-H recovery tooling is
-deferred.
+M04.1 moves those Platform capabilities, migrations, seeds, and credentials
+from the gateway into `platform-service`, then adds the role split and durable
+source-object reservation required for concurrent writes. Optional M04-H
+recovery tooling is deferred.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints and
 [the Platform ownership decision](decisions/0004-thin-gateway-and-platform-service.md)
@@ -28,13 +29,15 @@ owner-specific buckets and credentials. Extraction and correction still have
 no domain entities, migrations, or seed data. There is no executable
 cross-store backup/restore workflow.
 
-The role boundary is not yet final. Until M04.1-C, Platform and the gateway's
-legacy correction datasource both use the local `platform_app` login, so SQL
-privileges do not yet enforce the source-level ownership split. M04.1-C adds
-separate Platform runtime/migrator and temporary gateway-correction roles;
-M04.1-D adds the concurrent artifact reservation. M06 moves the remaining
-correction tables and behavior to `correction_db`. Identity remains part of
-Platform; M04.2 hardens its browser-session behavior.
+The role boundary is enforced locally. `platform_migrator` owns Platform DDL;
+`platform_runtime` has the narrow runtime grants needed for users, documents,
+immutable `document_object` inserts, and mutable
+`document_object_reservation` transitions; and
+`gateway_correction_runtime` is restricted to the temporary correction tables.
+The runtime role has no `UPDATE`, `DELETE`, or `TRUNCATE` on finalized object
+metadata. M06 moves the remaining correction tables and behavior to
+`correction_db`. Identity remains part of Platform; M04.2 hardens its
+browser-session behavior.
 
 | Current state                                          | Authority and recovery consequence                                                                                                                                          |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,16 +109,17 @@ the digest, but restoration must hash the bytes rather than trust metadata or
 ETag. Application writes are write-once; administrative import/reset is a
 separate boundary. No cross-database foreign keys or cross-owner writes.
 
-The current `HeadObject` then `PutObject` adapter is not a concurrent
-create-only guarantee on Garage 2.3. Before M07 exposes uploads, M04.1 must add
-a mutable Platform reservation protected by a database uniqueness constraint;
-only its winner may upload and finalize immutable object metadata. It must also
-separate the schema owner/migrator from the Platform runtime identity. Runtime
-access to finalized `document_object` metadata is `SELECT`/`INSERT`, without
-`UPDATE`, `DELETE`, or `TRUNCATE`; recovery/import uses an explicit privileged
-path. Any temporary gateway correction role is restricted to legacy correction
-tables. These remain M04.1-C/D migrations/provisioning changes, not properties
-of the currently applied schema or the M04.1-B source move.
+Garage's `HeadObject` then `PutObject` sequence remains non-atomic and is not
+the concurrency authority. M04.1 resolves that limit with a mutable Platform
+reservation protected by unique logical, object, and bucket/key identities.
+Only the lease holder can upload and finalize immutable object metadata; an
+expired or failed lease can be safely retried after the stored bytes are
+verified. The database transaction ends before every S3 operation. The same
+milestone separates `platform_migrator` from `platform_runtime`: the latter has
+`SELECT`/`INSERT`, but no `UPDATE`, `DELETE`, or `TRUNCATE`, on finalized
+`document_object` rows. Recovery/import remains an explicit privileged path,
+and the temporary gateway correction role remains limited to legacy correction
+tables.
 
 ## Consistency Boundary
 
@@ -199,11 +203,13 @@ databases or artifacts were backed up.
   region single-sourced. Human verification completed on 2026-09-10.
 - **M04.1-A, human-verified:** established the Platform runtime and bounded
   internal contract.
-- **M04.1-B, implemented; verification pending:** moved Platform identity,
-  documents, registry, source storage, migrations, seeds, and verification out
-  of the gateway without changing the public GraphQL boundary.
-- **M04.1-C/D, planned:** split migrator/runtime privileges and add the
-  database-backed artifact reservation before public uploads exist.
+- **M04.1, locally human-verified:** moved Platform identity, documents,
+  registry, source storage, migrations, seeds, and verification out of the
+  gateway without changing the public GraphQL boundary; split migrator/runtime/
+  correction roles; and added database-backed reservation, write-once, and
+  recovery behavior for source artifacts. The correction draft/save/submit
+  browser flow remains a documented manual-verification limitation because the
+  current local inbox has no session-creation setup path.
 - **M04.2, planned:** stabilize identity and sessions inside Platform after the
   ownership move.
 - **M04-H P1, deferred:** no backup or restore helper is currently available.

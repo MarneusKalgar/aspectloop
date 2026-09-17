@@ -11,15 +11,18 @@ import {
   PlatformUnavailableException,
 } from './platform.errors';
 
+/** Describes a validated GET route in the versioned Platform internal API. */
 export interface PlatformGetEndpoint<TOutput> {
   path: string;
   responseSchema: RuntimeSchema<TOutput>;
 }
 
+/** Describes a validated POST route and its command/response contracts. */
 export interface PlatformPostEndpoint<TInput, TOutput> extends PlatformGetEndpoint<TOutput> {
   requestSchema: RuntimeSchema<TInput>;
 }
 
+/** Carries only gateway metadata that is safe to forward to Platform. */
 export interface PlatformRequestContext {
   requestId?: string;
 }
@@ -32,6 +35,13 @@ interface RuntimeSchema<T> {
 
 const FORWARDABLE_PLATFORM_STATUSES = new Set([400, 401, 403, 404, 409]);
 
+/**
+ * Enforces the internal Platform HTTP boundary for the gateway.
+ *
+ * It bounds response size and duration, validates both directions against
+ * shared runtime schemas, forwards only validated request IDs, and converts
+ * upstream failures into stable gateway exceptions without exposing bodies.
+ */
 @Injectable()
 export class PlatformHttpTransport {
   private readonly baseUrl: string;

@@ -4,18 +4,18 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 
-import type { DocumentObjectReservationFailureCode } from './document-object-reservation.constants';
 import type {
   FinalizedSourceObject,
   PreparedSourceObject,
   SourceObjectAcquireResult,
   SourceObjectReservationStore,
-} from './source-object-reservation.types';
+} from '../source-object-reservation.types';
+import type { DocumentObjectReservationFailureCode } from './document-object-reservation.constants';
 
+import { DocumentObjectReservation } from '../../model/document-object-reservation.entity';
+import { DocumentObject } from '../../model/document-object.entity';
+import { Document } from '../../model/document.entity';
 import { DOCUMENT_OBJECT_RESERVATION_LEASE_MS } from './document-object-reservation.constants';
-import { DocumentObjectReservation } from './document-object-reservation.entity';
-import { DocumentObject } from './document-object.entity';
-import { Document } from './document.entity';
 import { SourceObjectReservationError } from './source-object-reservation.errors';
 import {
   decideExistingReservation,
@@ -28,6 +28,12 @@ import {
   readDatabaseNow,
 } from './typeorm-source-object-reservation.utils';
 
+/**
+ * TypeORM implementation of the source-object reservation authority.
+ *
+ * Short database transactions lock reservation state; object storage remains
+ * outside those transactions and finalization rechecks the caller's lease.
+ */
 @Injectable()
 export class TypeOrmSourceObjectReservationStore implements SourceObjectReservationStore {
   constructor(private readonly dataSource: DataSource) {}

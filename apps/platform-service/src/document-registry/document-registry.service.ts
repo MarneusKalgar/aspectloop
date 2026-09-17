@@ -6,11 +6,19 @@ import type { DocumentTypeConfig, DocumentTypeSummary } from './document-registr
 
 import { validateDocumentTypeConfig } from './document-registry.validation';
 
+/** Loads and exposes the Platform-owned document-type registry at startup. */
 @Injectable()
 export class DocumentRegistryService implements OnModuleInit {
   private readonly documentTypes = new Map<string, DocumentTypeConfig>();
   private readonly logger = new Logger(DocumentRegistryService.name);
 
+  /**
+   * Resolves one configured Platform document type.
+   *
+   * @param type Stable type key requested through the internal contract.
+   * @returns The validated registry configuration.
+   * @throws {NotFoundException} When no configuration owns the requested type.
+   */
   getDocumentTypeOrThrow(type: string): DocumentTypeConfig {
     const config = this.documentTypes.get(type);
 
@@ -21,12 +29,22 @@ export class DocumentRegistryService implements OnModuleInit {
     return config;
   }
 
+  /**
+   * Lists stable summaries without exposing registry implementation details.
+   *
+   * @returns Label-sorted document type summaries.
+   */
   listDocumentTypes(): DocumentTypeSummary[] {
     return [...this.documentTypes.values()]
       .map((config) => ({ label: config.label, type: config.type, version: config.version }))
       .sort((left, right) => left.label.localeCompare(right.label));
   }
 
+  /**
+   * Loads every repository-owned registry file before the service accepts traffic.
+   *
+   * @returns Nothing; startup fails closed for invalid, duplicate, or empty registry state.
+   */
   onModuleInit(): void {
     const configDirectory = join(__dirname, 'configs');
     const configFiles = readdirSync(configDirectory).filter((fileName) =>

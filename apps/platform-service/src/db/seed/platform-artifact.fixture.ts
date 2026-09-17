@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { buildSourceObjectKey } from '#app/documents/document.constants';
+import { buildSourceObjectKey } from '#app/documents/model/document.constants';
 
 export const PLATFORM_ARTIFACT_SEED = Object.freeze({
   content: 'AspectLoop deterministic platform source fixture.\n',

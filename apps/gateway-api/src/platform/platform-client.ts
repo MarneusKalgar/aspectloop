@@ -23,6 +23,13 @@ import { PlatformHttpTransport } from './platform-http-transport';
 
 export type { PlatformRequestContext } from './platform-http-transport';
 
+/**
+ * Gateway-facing Platform facade.
+ *
+ * Callers use domain operations and an optional request context; this class
+ * deliberately hides route selection, schemas, serialization, and transport
+ * failure mapping in {@link PlatformHttpTransport}.
+ */
 @Injectable()
 export class PlatformClient {
   /** Creates the Platform facade over its internal HTTP transport. */

@@ -18,6 +18,7 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { parsePlatformRequest } from '../internal/parse-platform-request';
 import { AuthService } from './auth.service';
 
+/** Accepts only validated gateway-to-Platform authentication commands. */
 @Controller(`${PLATFORM_INTERNAL_API_PREFIX.slice(1)}/auth`)
 export class AuthController {
   /** Creates the internal authentication transport boundary. */

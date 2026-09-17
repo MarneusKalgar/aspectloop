@@ -10,6 +10,7 @@ INTEGRATION=false
 FRESH=false
 OUTAGE=false
 
+# Prints the supported human-operated verification modes without mutating state.
 usage() {
   echo "Usage: $0 [--integration] [--fresh] [--outage]"
   echo "  default        Check the existing stack, gateway probes, and database roles."
@@ -43,12 +44,14 @@ done
 
 source "$SCRIPT_DIR/_local-compose-common.sh"
 
+# Emits a stable section marker that makes long local verification output scannable.
 step() {
   printf '\n==> %s\n' "$1"
 }
 
-# Child npm commands source the common helper again. Pass the original base so
-# they do not append _api_local to an already-suffixed project name.
+# Runs one root local command with the original Compose project base name.
+# Child npm commands source the common helper again, so preserving the base
+# avoids appending _api_local to an already-suffixed project name.
 run_local_command() {
   (
     cd "$REPOSITORY_ROOT"
@@ -56,7 +59,7 @@ run_local_command() {
   )
 }
 
-# The local Compose file gives every default runtime service a healthcheck.
+# Requires every default runtime service to report Compose health before probes.
 check_stack_health() {
   local service health
 
@@ -73,8 +76,9 @@ check_stack_health() {
   done
 }
 
-# Probe from inside the gateway so custom host port mappings need no parsing.
-# The container's last health result may briefly outlive the Nest child process.
+# Probes gateway liveness and the expected Platform-dependent readiness state.
+# Run inside the container so custom host port mappings need no parsing. Retry
+# because Compose health can briefly outlive a restarting Nest child process.
 check_gateway() {
   local expected_readiness="$1" result deadline
   deadline=$((SECONDS + 60))
@@ -113,8 +117,9 @@ check_gateway() {
   done
 }
 
-# Use the running Platform container's actual runtime URL, changing only the
-# host/port for the host-side TypeORM test. Never print the credentialed URL.
+# Builds the host-side TypeORM URL from the running Platform runtime URL.
+# Only host and port change; the credentialed URL is returned to the child test
+# process and never printed.
 typeorm_database_url() {
   local binding port
 
@@ -142,8 +147,10 @@ typeorm_database_url() {
   ' "$port"
 }
 
-# An EXIT trap restores Platform even if an outage assertion fails.
+# Restores Platform when an outage assertion interrupted normal control flow.
 PLATFORM_STOPPED=false
+
+# Starts Platform and waits for health only when this script previously stopped it.
 restore_platform() {
   if [[ "$PLATFORM_STOPPED" == "true" ]]; then
     step "Restore Platform service"
@@ -156,6 +163,7 @@ restore_platform() {
   fi
 }
 
+# Preserves the verification failure while attempting the required Platform restore.
 on_exit() {
   local status=$?
   trap - EXIT

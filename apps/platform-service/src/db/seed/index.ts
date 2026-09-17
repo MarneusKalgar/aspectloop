@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 
 import { validateEnv } from '#app/config/env.validation';
 import appDataSource from '#app/data-source';
-import { Document } from '#app/documents/document.entity';
-import { SourceObjectCoordinator } from '#app/documents/source-object-coordinator';
-import { TypeOrmSourceObjectReservationStore } from '#app/documents/typeorm-source-object-reservation.store';
+import { Document } from '#app/documents/model/document.entity';
+import { TypeOrmSourceObjectReservationStore } from '#app/documents/source-object/reservation/typeorm-source-object-reservation.store';
+import { SourceObjectCoordinator } from '#app/documents/source-object/source-object-coordinator';
 import { createPlatformArtifactStorage } from '#app/storage/create-platform-artifact-storage';
 import { User } from '#app/users/user.entity';
 

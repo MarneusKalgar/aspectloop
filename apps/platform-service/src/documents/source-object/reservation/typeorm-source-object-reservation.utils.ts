@@ -3,8 +3,8 @@ import type { EntityManager } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { QueryFailedError } from 'typeorm';
 
-import type { DocumentObject } from './document-object.entity';
-import type { PreparedSourceObject, SourceObjectLease } from './source-object-reservation.types';
+import type { DocumentObject } from '../../model/document-object.entity';
+import type { PreparedSourceObject, SourceObjectLease } from '../source-object-reservation.types';
 
 import { DOCUMENT_OBJECT_RESERVATION_LEASE_MS } from './document-object-reservation.constants';
 import { SourceObjectReservationError } from './source-object-reservation.errors';

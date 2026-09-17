@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { ArtifactStorageErrorCode } from '../storage/artifact-storage.errors';
+import type { ArtifactStorageErrorCode } from '../../storage/artifact-storage.errors';
 import type {
   CreateSourceObjectInput,
   PreparedSourceObject,
@@ -10,10 +10,10 @@ import {
   MAX_CONTENT_TYPE_LENGTH,
   S3_BUCKET_NAME_PATTERN,
   UUID_PATTERN,
-} from '../storage/artifact-storage.constants';
-import { ArtifactStorageError } from '../storage/artifact-storage.errors';
-import { buildSourceObjectKey } from './document.constants';
-import { SourceObjectReservationError } from './source-object-reservation.errors';
+} from '../../storage/artifact-storage.constants';
+import { ArtifactStorageError } from '../../storage/artifact-storage.errors';
+import { buildSourceObjectKey } from '../model/document.constants';
+import { SourceObjectReservationError } from './reservation/source-object-reservation.errors';
 
 const MAX_DOCUMENT_TYPE_LENGTH = 64;
 const MAX_ORIGINAL_FILENAME_LENGTH = 255;

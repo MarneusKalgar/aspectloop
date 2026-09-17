@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import type { ArtifactStorage } from '../storage/artifact-storage.port';
+import type { ArtifactStorage } from '../../storage/artifact-storage.port';
 import type {
   CreateSourceObjectInput,
   CreateSourceObjectResult,
@@ -10,12 +10,16 @@ import type {
   SourceObjectReservationStore,
 } from './source-object-reservation.types';
 
-import { ArtifactStorageError } from '../storage/artifact-storage.errors';
-import { ARTIFACT_STORAGE } from '../storage/artifact-storage.port';
-import { SourceObjectReservationError } from './source-object-reservation.errors';
+import { ArtifactStorageError } from '../../storage/artifact-storage.errors';
+import { ARTIFACT_STORAGE } from '../../storage/artifact-storage.port';
+import { SourceObjectReservationError } from './reservation/source-object-reservation.errors';
 import { SOURCE_OBJECT_RESERVATION_STORE } from './source-object-reservation.types';
 import { prepareSourceObject, toReservationFailureCode } from './source-object.utils';
 
+/**
+ * Coordinates a Platform source-object reservation with S3 without holding a
+ * database transaction open for storage I/O.
+ */
 @Injectable()
 export class SourceObjectCoordinator {
   constructor(

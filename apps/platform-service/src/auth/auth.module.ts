@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 
+/** Wires Platform-owned identity commands and stateless access-token issuance. */
 @Module({
   controllers: [AuthController],
   imports: [

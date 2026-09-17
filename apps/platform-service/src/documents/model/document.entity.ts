@@ -12,7 +12,7 @@ import {
 
 import type { DocumentStatus } from './document.constants';
 
-import { User } from '../users/user.entity';
+import { User } from '../../users/user.entity';
 import {
   DOCUMENT_STATUS_CHECK,
   DOCUMENT_TYPE_CHECK,

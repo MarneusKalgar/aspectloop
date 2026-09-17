@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import type { EntityManager } from 'typeorm';
 
 import { getTypeOrmDataSourceOptions } from '@platform/config/typeorm';
-import { Document } from '@platform/documents/document.entity';
+import { Document } from '@platform/documents/model/document.entity';
 import { User } from '@platform/users/user.entity';
 import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';

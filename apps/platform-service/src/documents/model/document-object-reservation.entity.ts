@@ -13,7 +13,7 @@ import {
 import type {
   DocumentObjectReservationFailureCode,
   DocumentObjectReservationStatus,
-} from './document-object-reservation.constants';
+} from '../source-object/reservation/document-object-reservation.constants';
 import type { DocumentObjectKind } from './document.constants';
 
 import {
@@ -33,6 +33,12 @@ import {
 } from './document.constraints';
 import { Document } from './document.entity';
 
+/**
+ * Mutable database authority for one logical source-object write.
+ *
+ * Unique identities serialize concurrent callers; only a current lease may
+ * transition to immutable {@link DocumentObject} metadata.
+ */
 @Check('CHK_document_object_reservation_attempt', DOCUMENT_OBJECT_RESERVATION_ATTEMPT_CHECK)
 @Check('CHK_document_object_reservation_bucket', DOCUMENT_OBJECT_BUCKET_CHECK)
 @Check('CHK_document_object_reservation_byte_length', DOCUMENT_OBJECT_BYTE_LENGTH_CHECK)

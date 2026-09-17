@@ -4,17 +4,17 @@ import { randomUUID } from 'node:crypto';
 import { DataSource } from 'typeorm';
 
 import type { EnvironmentVariables } from '#app/config/env.schema';
-import type { CreateSourceObjectInput } from '#app/documents/source-object-reservation.types';
+import type { CreateSourceObjectInput } from '#app/documents/source-object/source-object-reservation.types';
 
 import { validateEnv } from '#app/config/env.validation';
 import { getTypeOrmDataSourceOptions } from '#app/config/typeorm';
-import { DocumentObjectReservation } from '#app/documents/document-object-reservation.entity';
-import { DocumentObject } from '#app/documents/document-object.entity';
-import { Document } from '#app/documents/document.entity';
-import { SourceObjectCoordinator } from '#app/documents/source-object-coordinator';
-import { SourceObjectReservationError } from '#app/documents/source-object-reservation.errors';
-import { prepareSourceObject } from '#app/documents/source-object.utils';
-import { TypeOrmSourceObjectReservationStore } from '#app/documents/typeorm-source-object-reservation.store';
+import { DocumentObjectReservation } from '#app/documents/model/document-object-reservation.entity';
+import { DocumentObject } from '#app/documents/model/document-object.entity';
+import { Document } from '#app/documents/model/document.entity';
+import { SourceObjectReservationError } from '#app/documents/source-object/reservation/source-object-reservation.errors';
+import { TypeOrmSourceObjectReservationStore } from '#app/documents/source-object/reservation/typeorm-source-object-reservation.store';
+import { SourceObjectCoordinator } from '#app/documents/source-object/source-object-coordinator';
+import { prepareSourceObject } from '#app/documents/source-object/source-object.utils';
 import { ArtifactStorageError } from '#app/storage/artifact-storage.errors';
 import { createPlatformArtifactStorage } from '#app/storage/create-platform-artifact-storage';
 

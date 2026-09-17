@@ -1,8 +1,8 @@
-import type { DocumentObjectReservation } from './document-object-reservation.entity';
+import type { DocumentObjectReservation } from '../../model/document-object-reservation.entity';
 import type {
   FinalizedSourceObject,
   PreparedSourceObject,
-} from './source-object-reservation.types';
+} from '../source-object-reservation.types';
 
 import { DOCUMENT_OBJECT_RESERVATION_MAX_ATTEMPTS } from './document-object-reservation.constants';
 import { SourceObjectReservationError } from './source-object-reservation.errors';

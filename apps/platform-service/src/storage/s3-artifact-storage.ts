@@ -21,7 +21,7 @@ import type {
   WriteArtifactObjectInput,
 } from './artifact-storage.types';
 
-import { PLATFORM_SOURCE_BUCKET_ROLE } from '../documents/document.constants';
+import { PLATFORM_SOURCE_BUCKET_ROLE } from '../documents/model/document.constants';
 import {
   CORRELATION_ID_PATTERN,
   MAX_CONTENT_TYPE_LENGTH,

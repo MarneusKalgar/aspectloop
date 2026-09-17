@@ -1,11 +1,11 @@
-import type { DocumentObjectReservation } from '@platform/documents/document-object-reservation.entity';
+import type { DocumentObjectReservation } from '@platform/documents/model/document-object-reservation.entity';
 import type {
   CreateSourceObjectInput,
   FinalizedSourceObject,
   PreparedSourceObject,
   SourceObjectAcquireResult,
   SourceObjectReservationStore,
-} from '@platform/documents/source-object-reservation.types';
+} from '@platform/documents/source-object/source-object-reservation.types';
 import type { ArtifactStorage } from '@platform/storage/artifact-storage.port';
 import type {
   ArtifactObject,
@@ -14,9 +14,9 @@ import type {
   WriteArtifactObjectInput,
 } from '@platform/storage/artifact-storage.types';
 
-import { SourceObjectCoordinator } from '@platform/documents/source-object-coordinator';
-import { SourceObjectReservationError } from '@platform/documents/source-object-reservation.errors';
-import { decideExistingReservation } from '@platform/documents/source-object-reservation.state';
+import { SourceObjectReservationError } from '@platform/documents/source-object/reservation/source-object-reservation.errors';
+import { decideExistingReservation } from '@platform/documents/source-object/reservation/source-object-reservation.state';
+import { SourceObjectCoordinator } from '@platform/documents/source-object/source-object-coordinator';
 import { ArtifactStorageError } from '@platform/storage/artifact-storage.errors';
 import { expect, test, vi } from 'vitest';
 

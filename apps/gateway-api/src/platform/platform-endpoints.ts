@@ -35,6 +35,7 @@ import {
 
 import type { PlatformGetEndpoint, PlatformPostEndpoint } from './platform-http-transport';
 
+/** Static Platform route bindings; dynamic identity routes use the helpers below. */
 export const PLATFORM_ENDPOINTS = {
   documentTypes: {
     path: PLATFORM_INTERNAL_ROUTES.documentTypes,
@@ -70,7 +71,12 @@ export const PLATFORM_ENDPOINTS = {
   } satisfies PlatformPostEndpoint<PlatformUsersBatchRequest, PlatformUsersBatchResponse>,
 };
 
-/** Binds one dynamic document-type route to its response contract. */
+/**
+ * Binds a caller-supplied document-type key to its validated internal route.
+ *
+ * @param documentType Platform registry key selected by the gateway resolver.
+ * @returns Route and response schema consumed by the internal transport.
+ */
 export function getDocumentTypeEndpoint(
   documentType: string,
 ): PlatformGetEndpoint<PlatformDocumentTypeResponse> {
@@ -80,7 +86,12 @@ export function getDocumentTypeEndpoint(
   };
 }
 
-/** Binds one dynamic user route to its response contract. */
+/**
+ * Binds a caller-supplied user ID to its validated internal route.
+ *
+ * @param userId Platform user identifier selected by gateway composition.
+ * @returns Route and response schema consumed by the internal transport.
+ */
 export function getUserEndpoint(userId: string): PlatformGetEndpoint<PlatformUserResponse> {
   return {
     path: getPlatformUserRoute(userId),

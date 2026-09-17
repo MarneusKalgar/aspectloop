@@ -8,6 +8,7 @@ import {
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
+/** Exposes Platform process and datasource readiness to internal callers only. */
 @Controller(PLATFORM_INTERNAL_API_PREFIX.slice(1))
 export class HealthController {
   /** Creates health checks over the service-owned datasource. */

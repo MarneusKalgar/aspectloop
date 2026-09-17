@@ -144,8 +144,9 @@ M04.1 removes Platform state from the gateway; M06 removes its temporary
 correction state, after which the edge can scale without colocated durable
 state.
 
-M04.1-B moves Platform behavior, persistence code, and storage credentials to
-`platform-service`. The repository remains temporarily short of the complete
-target boundary until M04.1-C/D separate database roles and add the durable
-artifact reservation. The gateway retains only its explicitly transitional
-correction persistence until M06.
+M04.1 implemented the full ownership boundary: Platform behavior, persistence
+code, storage credentials, migrations, and seeds live in `platform-service`;
+`platform_migrator`, `platform_runtime`, and
+`gateway_correction_runtime` enforce the database split; and the durable
+reservation table serializes concurrent source-object finalization. The gateway
+retains only its explicitly transitional correction persistence until M06.

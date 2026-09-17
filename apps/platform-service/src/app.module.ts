@@ -12,6 +12,7 @@ import { DocumentRegistryModule } from './document-registry/document-registry.mo
 import { DocumentsModule } from './documents/documents.module';
 import { HealthController } from './internal/health.controller';
 
+/** Composes the Platform-owned runtime, persistence, and internal HTTP boundary. */
 @Module({
   controllers: [HealthController],
   imports: [
