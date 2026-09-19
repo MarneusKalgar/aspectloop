@@ -1,17 +1,17 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-/** Absolute gateway source root for its unambiguous TypeORM-test alias. */
-const gatewaySourceRoot = fileURLToPath(new URL('./apps/gateway-api/src', import.meta.url));
+/** Absolute Platform source root for its unambiguous TypeORM-test alias. */
+const platformSourceRoot = fileURLToPath(new URL('./apps/platform-service/src', import.meta.url));
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@gateway': gatewaySourceRoot,
+      '@platform': platformSourceRoot,
     },
   },
   test: {
-    include: ['apps/gateway-api/test/database/**/*.test.ts'],
+    include: ['apps/platform-service/test/database/**/*.test.ts'],
     testTimeout: 30_000,
   },
 });

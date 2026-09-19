@@ -6,8 +6,9 @@ in more than one NestJS application.
 Current public boundaries:
 
 - `@aspectloop/backend-platform/config`: common environment transformation,
-  validation, and ordered local environment-file loading mechanics; each
-  application retains its own schema and adapter;
+  validation, the shared backend `NODE_ENV` vocabulary, and ordered local
+  environment-file loading mechanics; each application retains its own schema
+  and adapter;
 - `@aspectloop/backend-platform/database`: bounded PostgreSQL datasource
   defaults and source/build discovery conventions; each application retains
   its own connection, entities, migrations, and NestJS adapter;

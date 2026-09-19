@@ -26,7 +26,7 @@ export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOp
   return createPostgresDataSourceOptions({
     databaseUrl: config.databaseUrl,
     entities: paths.entities,
-    migrations: paths.migrations,
+    migrations: [],
     nodeEnv: config.nodeEnv,
     poolSize: config.poolSize,
     slowQueryThresholdMs: config.slowQueryThresholdMs,

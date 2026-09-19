@@ -1,4 +1,45 @@
 services:
+  platform-service:
+    image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_platform_service
+    container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-platform-service
+    build:
+      context: ../..
+      dockerfile: ./apps/platform-service/Dockerfile.dev
+    init: true
+    env_file:
+      - ../../apps/platform-service/.env.local
+    environment:
+      DATABASE_URL: postgresql://${PLATFORM_RUNTIME_USER:-platform_runtime}:${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
+      DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-5}
+      PLATFORM_SERVICE_PORT: ${PLATFORM_SERVICE_PORT:-8083}
+      S3_ENDPOINT: http://garage:3900
+    ports:
+      # The private Platform boundary is host-visible only for local verification.
+      - '127.0.0.1:${PLATFORM_SERVICE_PORT:-8083}:${PLATFORM_SERVICE_PORT:-8083}'
+    volumes:
+      - ../../apps/platform-service/src:/app/apps/platform-service/src
+      - ../../apps/platform-service/tsconfig.app.json:/app/apps/platform-service/tsconfig.app.json:ro
+      - ../../apps/platform-service/tsconfig.json:/app/apps/platform-service/tsconfig.json:ro
+      - ../../tsconfig.base.json:/app/tsconfig.base.json:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:' + (process.env.PLATFORM_SERVICE_PORT ||
+          '8083') + '/internal/v1/readiness').then((response) => { if
+          (!response.ok) process.exit(1); }).catch(() => process.exit(1));
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      garage:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
   gateway-api:
     image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_gateway_api
     container_name: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}-gateway-api
@@ -9,13 +50,9 @@ services:
     env_file:
       - ../../apps/gateway-api/.env.local
     environment:
-      DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-10}
-      PLATFORM_S3_ACCESS_KEY_ID: ${PLATFORM_S3_ACCESS_KEY_ID:?Run npm run local:garage:init first}
-      PLATFORM_S3_BUCKET: ${PLATFORM_S3_BUCKET:-aspectloop-platform-source}
-      PLATFORM_S3_SECRET_ACCESS_KEY: ${PLATFORM_S3_SECRET_ACCESS_KEY:?Run npm run local:garage:init first}
-      S3_ENDPOINT: http://garage:3900
-      S3_FORCE_PATH_STYLE: 'true'
-      S3_REGION: garage
+      DATABASE_URL: postgresql://${GATEWAY_CORRECTION_RUNTIME_USER:-gateway_correction_runtime}:${GATEWAY_CORRECTION_RUNTIME_PASSWORD:-gateway_correction_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
+      DB_POOL_SIZE: ${GATEWAY_DB_POOL_SIZE:-5}
+      PLATFORM_BASE_URL: http://platform-service:${PLATFORM_SERVICE_PORT:-8083}
     ports:
       - '${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:
@@ -30,8 +67,8 @@ services:
         - -e
         - >-
           fetch('http://127.0.0.1:' + (process.env.API_PORT || '8080') +
-          '/health').then((response) => { if (!response.ok) process.exit(1);
-          }).catch(() => process.exit(1));
+          '/health/readiness').then((response) => { if (!response.ok)
+          process.exit(1); }).catch(() => process.exit(1));
       interval: 10s
       timeout: 5s
       retries: 10
@@ -43,7 +80,7 @@ services:
         condition: service_healthy
       persistence-mock:
         condition: service_healthy
-      garage:
+      platform-service:
         condition: service_healthy
 
   extraction-service:
@@ -125,22 +162,10 @@ services:
       - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
       - -c
       - superuser_reserved_connections=${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-3}
+    env_file:
+      - ./postgres/control-plane.env
     environment:
-      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-aspectloop_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-aspectloop_admin}
-      POSTGRES_DB: ${POSTGRES_ADMIN_DATABASE:-postgres}
       POSTGRES_INITDB_ARGS: --data-checksums
-      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
-      POSTGRES_SUPERUSER_RESERVED_CONNECTIONS: ${POSTGRES_SUPERUSER_RESERVED_CONNECTIONS:-3}
-      PLATFORM_DATABASE_NAME: ${PLATFORM_DATABASE_NAME:-platform_db}
-      PLATFORM_DATABASE_USER: ${PLATFORM_DATABASE_USER:-platform_app}
-      PLATFORM_DATABASE_PASSWORD: ${PLATFORM_DATABASE_PASSWORD:-platform_app}
-      EXTRACTION_DATABASE_NAME: ${EXTRACTION_DATABASE_NAME:-extraction_db}
-      EXTRACTION_DATABASE_USER: ${EXTRACTION_DATABASE_USER:-extraction_app}
-      EXTRACTION_DATABASE_PASSWORD: ${EXTRACTION_DATABASE_PASSWORD:-extraction_app}
-      CORRECTION_DATABASE_NAME: ${CORRECTION_DATABASE_NAME:-correction_db}
-      CORRECTION_DATABASE_USER: ${CORRECTION_DATABASE_USER:-correction_app}
-      CORRECTION_DATABASE_PASSWORD: ${CORRECTION_DATABASE_PASSWORD:-correction_app}
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     healthcheck:

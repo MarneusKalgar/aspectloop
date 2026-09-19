@@ -73,6 +73,7 @@ export default [
       'apps/correction-service/test/**/*.ts',
       'apps/extraction-service/test/**/*.ts',
       'apps/gateway-api/test/**/*.ts',
+      'apps/platform-service/test/**/*.ts',
       'packages/backend-platform/test/**/*.ts',
     ],
     ...tseslint.configs.disableTypeChecked,

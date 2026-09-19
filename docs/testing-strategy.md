@@ -2,7 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
-Last updated: M04 P0 closeout, 2026-09-06
+Last updated: M04.1 local-verification closeout, 2026-09-17
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -106,17 +106,17 @@ extraction, correction, and backend-platform configuration tests and remains
 part of `verify:full`. TypeORM discovery is anchored to each owning application
 instead of the invoking process's working directory, with source and compiled
 paths covered by the database-independent configuration tests. The opt-in
-`test:typeorm:run` command uses explicitly imported gateway entities to verify
+`test:typeorm:run` command uses explicitly imported Platform entities to verify
 TypeORM behavior against disposable PostgreSQL; it does not ask TypeORM's Node
 loader to parse untransformed TypeScript decorator syntax. It remains a
-human-run compatibility check. M04 provides reusable local reset, migration,
-seed, role, and artifact verification commands, but it does not yet provide the
-isolated disposable fixture lifecycle required for CI.
-After `local:reset`, `local:up`, and `local:migrate`, the template-default local
-fixture can be checked from the host with:
+human-run compatibility check. M04.1 composes the existing local reset,
+migration, seed, role, artifact, TypeORM, and concurrency checks through
+`local:verify`; it does not yet provide the isolated fixture lifecycle required
+for CI. Against template defaults, the explicit host-side TypeORM command uses
+the Platform runtime role:
 
 ```bash
-TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
+TYPEORM_TEST_DATABASE_URL=postgresql://platform_runtime:platform_runtime@127.0.0.1:5432/platform_db \
   npm run test:typeorm:run
 ```
 
@@ -321,11 +321,16 @@ No MSW worker runs in local or stage system modes.
 ### 6.4 Current local-stack smoke
 
 The current local Compose stack has a separate human verification flow under
-`Local-Stack Human Verification` in the repository README. It starts the local
-infrastructure, runs all three service-owned migration and seed paths, verifies
-database roles and the seeded Garage artifact, checks gateway, extraction,
-correction, and persistence health, and exercises sign-up, sign-in, and
-correction-inbox loading through the live web application.
+`Local-Stack Human Verification` in the repository README. `local:verify`
+checks the running graph, gateway liveness and Platform-dependent readiness,
+and database roles. `--integration` adds seeded artifact integrity, TypeORM,
+and two-client reservation recovery; `--outage` proves gateway fail-closed
+behavior and recovery; and destructive `--fresh` resets local state then
+performs owner-ordered repeated migration/seed work before starting apps.
+Human live-backend verification covers sign-up, sign-in, and the correction
+inbox. The current local fixture has no route to create a correction session,
+so draft-save and submit remain an explicit manual-flow limitation rather than
+claimed system coverage.
 
 This flow intentionally has no `test:e2e:local` command yet. It uses ignored
 environment configuration and mutable local state, so it is not part of
@@ -390,17 +395,21 @@ whether a dedicated local E2E stack has been introduced.
 
 ## 8. Infrastructure Strategy
 
-M04 establishes the reusable human-operated real-infrastructure fixture
-contract through `local:reset`, `local:up`, `local:migrate`, `local:seed`,
-`local:db:verify-roles`, and `local:artifact:verify`. `local:up` first waits for
-PostgreSQL, RabbitMQ, the persistence mock, and Garage, then bootstraps Garage,
-then starts and waits for the complete application graph. Bootstrap revokes all
-managed key/bucket permissions before reapplying the intended matrix and checks
-that each key receives `403` for both peer-bucket metadata and object writes.
-Together these commands provide bounded readiness plus deterministic seed and
-verification entry points without exposing Compose internals to tests.
-`local:reset` is destructive and explicit. This contract is a foundation for
-later suites, not an automated `test:e2e:local` command or a parallel CI fixture.
+M04.1 establishes the reusable human-operated real-infrastructure fixture
+contract through `local:verify`. The command keeps the lower-level
+`local:reset`, `local:migrate`, `local:seed`, `local:up`, role, artifact, and
+concurrency commands available for focused diagnosis. `local:up` first waits
+for PostgreSQL, RabbitMQ, the persistence mock, and Garage, then bootstraps
+Garage, then starts and waits for the complete application graph. Fresh
+verification intentionally migrates and seeds before that application startup,
+because Gateway's correction outbox relay requires the migrated schema.
+Bootstrap revokes all managed key/bucket permissions before reapplying the
+intended matrix and checks that each key receives `403` for peer-bucket metadata
+and object writes. Together these commands provide bounded readiness plus
+deterministic seed and verification entry points without exposing Compose
+internals to tests. `local:reset` is destructive and explicit. This contract is
+a foundation for later suites, not an automated `test:e2e:local` command or a
+parallel CI fixture.
 
 ### 8.1 Dedicated local E2E stack
 
@@ -476,18 +485,18 @@ This avoids maintaining separate local and stage copies of the same workflow.
 
 ## 10. Milestone Ownership
 
-| Milestone     | Testing responsibility                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign         |
-| M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow                    |
-| M04           | Provides reusable local database, migration, seed, Garage, role, and artifact fixture commands; CI isolation remains later work |
-| M05-M06       | Add focused extraction and correction service integration and contract coverage                                                 |
-| M07           | Add the first portable upload-to-submit local system Playwright workflow                                                        |
-| M08           | Add deterministic retry, DLQ, idempotency, outbox, and reprocess failure coverage                                               |
-| M09           | Add realtime integration coverage without coupling Socket.IO tests to GraphQL subscriptions                                     |
-| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, recovery runbooks, and failure diagnostics             |
-| M11           | Execute portable system and backup-restore specifications against stage; gate deployment on smoke checks                        |
-| AI milestones | Add eval harnesses and provider comparisons separately from deterministic software gates                                        |
+| Milestone     | Testing responsibility                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M01.1         | Preserve current MSW behavior while correcting GraphQL transport and frontend schema/codegen ownership; no MSW redesign                                            |
+| M03-B         | Establish terminology, root verification commands, suite naming, local/CI quality gates, and review workflow                                                       |
+| M04/M04.1     | Provides human-operated local verification, role/privilege proof, real-Garage artifact integrity, and concurrency/recovery checks; CI isolation remains later work |
+| M05-M06       | Add focused extraction and correction service integration and contract coverage                                                                                    |
+| M07           | Add the first portable upload-to-submit local system Playwright workflow                                                                                           |
+| M08           | Add deterministic retry, DLQ, idempotency, outbox, and reprocess failure coverage                                                                                  |
+| M09           | Add realtime integration coverage without coupling Socket.IO tests to GraphQL subscriptions                                                                        |
+| M10           | Harden contract, system E2E, security, observability, fixtures, cleanup, recovery runbooks, and failure diagnostics                                                |
+| M11           | Execute portable system and backup-restore specifications against stage; gate deployment on smoke checks                                                           |
+| AI milestones | Add eval harnesses and provider comparisons separately from deterministic software gates                                                                           |
 
 ## 11. Priority Summary
 

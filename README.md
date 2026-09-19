@@ -11,18 +11,22 @@ rebrand, M03-A toolchain and dependency-security foundation, M03-B verification
 and pull-request gates, M03-C local container hardening, and M03-D
 logging/privacy baseline are complete. M03-E is evaluating advisory GitHub
 review and dependency-update automation without blocking feature work.
-M04-A through M04-G have completed the required local data and artifact
-foundation: TypeORM 1.1, PostgreSQL 18 with three owned databases, Garage with
-private service buckets, and the gateway's first checksum-verified source
-artifact path. Optional M04-H recovery tooling is explicitly deferred, and
-pgAdmin is available through an isolated optional profile. Existing correction
+M04-A through M04-G completed the required local data and artifact foundation:
+TypeORM 1.1, PostgreSQL 18 with three owned databases, Garage with private
+service buckets, and the first checksum-verified source artifact path. Optional
+M04-H recovery tooling is explicitly deferred, and pgAdmin is available through
+an isolated optional profile. M04.1 established the Platform runtime and
+internal contract, moved identity, documents, source artifacts, migrations,
+seeds, and artifact verification into Platform, split migrator/runtime/
+correction database roles, and added the database-backed source-object
+reservation used for concurrent, write-once artifacts. Existing correction
 behavior and its mutable document dependency remain in the gateway and
 persistence mock until M06; extraction and correction are independent NestJS
-shells with owned persistence foundations but no domain behavior yet.
-The current gateway ownership is transitional: M04.1 extracts identity,
-documents, `platform_db`, source artifacts, and platform workflow into a new
-Platform service before public upload work; M04.2 then stabilizes identity and
-browser sessions. The durable boundary is recorded in
+shells with owned persistence foundations but no domain behavior yet. M04.1's
+local verification matrix is human-confirmed; the currently unreachable
+correction draft/save/submit browser path is recorded as a manual verification
+limitation. M04.2 then stabilizes identity and browser sessions. The durable
+boundary is recorded in
 [`ADR 0004`](docs/decisions/0004-thin-gateway-and-platform-service.md).
 
 ## Application Boundaries
@@ -30,11 +34,11 @@ browser sessions. The durable boundary is recorded in
 - `@aspectloop/web`: React and Vite browser application.
 - `@aspectloop/gateway-api`: public schema-first GraphQL edge, cookie/token
   transport, coarse authorization, composition, and realtime delivery; its
-  current database/domain ownership is temporary.
-- `@aspectloop/platform-service` (planned M04.1): identity/session behavior,
-  document/source-artifact ownership, platform workflow/outbox, and
-  `platform_db`; identity remains part of Platform rather than a separate
-  service.
+  legacy correction database/domain ownership is temporary until M06.
+- `@aspectloop/platform-service`: identity behavior, users, document registry,
+  document/source-artifact ownership, migrations, seeds, and `platform_db`;
+  identity remains part of Platform rather than a separate service. Browser
+  session hardening follows in M04.2.
 - `@aspectloop/extraction-service`: extraction runtime shell with an owned
   `extraction_db` datasource, migration, seed, and container boundary; domain
   behavior arrives in M05.
@@ -218,32 +222,21 @@ local infrastructure. Prepare the `.env.local` files and confirm that
 `apps/web/.env.local` sets `VITE_MOCK_GQL_RUNTIME=false`. Then run:
 
 ```bash
-npm run local:up
-npm run local:migrate -- --build
-npm run local:seed -- --build
-TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
-  npm run test:typeorm:run
-npm run local:db:verify-roles
-npm run local:artifact:verify
-curl --fail --silent --show-error http://localhost:8080/health
-curl --fail --silent --show-error http://localhost:8081/health
-curl --fail --silent --show-error http://localhost:8082/health
-curl --fail --silent --show-error http://localhost:8090/health
+# Existing migrated stack: health, gateway readiness, and database-role proof.
+npm run local:verify
+
+# Add seeded artifact integrity, real-PostgreSQL TypeORM, and concurrency/recovery checks.
+npm run local:verify -- --integration
+
+# Also prove the gateway fails closed and recovers when Platform is stopped.
+npm run local:verify -- --outage
 ```
 
-Run the opt-in TypeORM compatibility check only against a disposable, migrated
-database. For a freshly reset local stack using the template defaults, run it
-from the host while PostgreSQL is still up:
-
-```bash
-TYPEORM_TEST_DATABASE_URL=postgresql://platform_app:platform_app@127.0.0.1:5432/platform_db \
-  npm run test:typeorm:run
-```
-
-If the ignored local environment files override the platform credentials,
-database name, or published PostgreSQL port, adapt that URL. Invoking
-`test:typeorm:run` without the variable fails intentionally instead of silently
-skipping the real-PostgreSQL check.
+`npm run local:verify -- --fresh` is the destructive end-to-end local matrix.
+It requires explicit typed confirmation, resets named local volumes, runs the
+owner-ordered migrations and seeds twice before application startup, then runs
+the integration checks. It derives the host-side TypeORM URL from the running
+Platform container and never prints credentials.
 
 In a second terminal, start the web app in live-backend mode:
 
@@ -270,21 +263,27 @@ and adapt the corresponding templates for a new checkout:
 
 - `infra/local/.env.example`
 - `apps/gateway-api/.env.example`
+- `apps/platform-service/.env.example`
 - `apps/web/.env.example`
 - `apps/extraction-service/.env.example`
 - `apps/correction-service/.env.example`
 
 The infrastructure template supplies the local PostgreSQL administrator, three
-service-owned database/role pairs, aggregate connection budget, and Garage
-topology, bucket, service-key, and optional pgAdmin configuration. Local Garage
+logical databases, five scoped database identities, aggregate connection
+budget, and Garage topology, bucket, service-key, and optional pgAdmin
+configuration. Local Garage
 uses the fixed server/client region `garage`; it is not an environment choice.
-The gateway
-template supplies its `platform_db` connection plus RabbitMQ, persistence-mock,
-platform S3, JWT, CORS, and GraphQL introspection configuration. The extraction
-and correction templates each supply only the owning service's database URL,
-bounded pool, slow-query threshold, port, and optional log level. Their reserved
-Garage buckets and credentials remain infrastructure configuration until those
-services gain an S3 consumer.
+The Platform template supplies its `platform_db` connection, JWT issuance,
+password hashing, and platform S3 configuration. The gateway template supplies
+its temporary correction-table connection plus RabbitMQ, persistence-mock,
+Platform-client, JWT-verification, CORS, and GraphQL introspection configuration.
+The local role split is active: `platform_migrator` owns Platform DDL,
+`platform_runtime` can create/read immutable object metadata and update mutable
+reservations, and `gateway_correction_runtime` is restricted to temporary
+correction tables. The extraction and correction templates each supply only the
+owning service's database URL, bounded pool, slow-query threshold, port, and
+optional log level. Their reserved Garage buckets and credentials remain
+infrastructure configuration until those services gain an S3 consumer.
 
 ## Local Development
 
@@ -293,20 +292,21 @@ Run an application directly from the repository root:
 ```bash
 npm run dev:web
 npm run dev:gateway
+npm run dev:platform
 npm run dev:extraction
 npm run dev:correction
 ```
 
-The three backend runtimes require PostgreSQL. The gateway also requires
-RabbitMQ, Garage bootstrap, and the persistence mock. Start all backend services
-and dependencies through the local Compose stack:
+The four backend runtimes require PostgreSQL. Platform also requires Garage
+bootstrap, while the gateway requires RabbitMQ, Platform, and the persistence
+mock. Start all backend services and dependencies through the local Compose
+stack:
 
 ```bash
-npm run local:up
+# For a new or reset local database, prepare schema and seed data before apps start.
 npm run local:migrate -- --build
 npm run local:seed -- --build
-npm run local:db:verify-roles
-npm run local:artifact:verify
+npm run local:up
 ```
 
 `local:up` waits for infrastructure, bootstraps and verifies Garage, and then
@@ -326,9 +326,10 @@ startup:
 npm run local:db:admin
 ```
 
-The command starts PostgreSQL when needed, generates password-free registrations
-for the three service roles from `infra/local/.env.local`, and waits for pgAdmin
-health. Each registration limits Object Explorer to its service-owned database;
+The command starts PostgreSQL when needed, generates password-free
+registrations for the four runtime/service roles from
+`infra/local/.env.local`, and waits for pgAdmin health. Each registration limits
+Object Explorer to its service-owned database;
 this is a display filter, while PostgreSQL privileges enforce database isolation.
 Sign in with the pgAdmin email/password from that ignored file, then enter the
 selected service-role password when connecting. The UI cannot be reached outside
@@ -339,7 +340,7 @@ explicit `npm run local:reset` before the next start.
 Generate a future migration only through its human-owned service wrapper:
 
 ```bash
-npm run local:db:generate:gateway -- <migration-name>
+npm run local:db:generate:platform -- <migration-name>
 npm run local:db:generate:extraction -- <migration-name>
 npm run local:db:generate:correction -- <migration-name>
 ```
@@ -361,6 +362,7 @@ migration.
 npm run build
 npm run build --workspace @aspectloop/web
 npm run build:gateway
+npm run build:platform
 npm run build:extraction
 npm run build:correction
 npm run build --workspace @aspectloop/contracts
@@ -403,16 +405,17 @@ MSW worker, browser runtime, handlers, fixtures, and mock credential hint.
 
 ## Local Endpoints
 
-| Service          | Endpoint                        | Description                                            |
-| ---------------- | ------------------------------- | ------------------------------------------------------ |
-| Gateway          | `http://localhost:8080/health`  | Gateway health endpoint                                |
-| GraphiQL         | `http://localhost:8080/graphql` | Local GraphQL IDE; unavailable in stage and production |
-| Persistence mock | `http://localhost:8090/health`  | File-backed persistence mock health endpoint           |
-| Garage S3        | `http://localhost:3900`         | Local private S3-compatible endpoint                   |
-| pgAdmin          | `http://127.0.0.1:5050`         | Optional loopback-only database administration UI      |
-| Web              | `http://localhost:5173/`        | Browser application                                    |
-| Extraction shell | `http://localhost:8081/health`  | Independent extraction runtime identity                |
-| Correction shell | `http://localhost:8082/health`  | Independent correction runtime identity                |
+| Service          | Endpoint                                      | Description                                            |
+| ---------------- | --------------------------------------------- | ------------------------------------------------------ |
+| Gateway          | `http://localhost:8080/health`                | Gateway health endpoint                                |
+| Platform         | `http://localhost:8083/internal/v1/readiness` | Private Platform dependency readiness                  |
+| GraphiQL         | `http://localhost:8080/graphql`               | Local GraphQL IDE; unavailable in stage and production |
+| Persistence mock | `http://localhost:8090/health`                | File-backed persistence mock health endpoint           |
+| Garage S3        | `http://localhost:3900`                       | Local private S3-compatible endpoint                   |
+| pgAdmin          | `http://127.0.0.1:5050`                       | Optional loopback-only database administration UI      |
+| Web              | `http://localhost:5173/`                      | Browser application                                    |
+| Extraction shell | `http://localhost:8081/health`                | Independent extraction runtime identity                |
+| Correction shell | `http://localhost:8082/health`                | Independent correction runtime identity                |
 
 GraphiQL is served at the same `/graphql` path as the gateway in local
 development and test environments. Add an
@@ -424,6 +427,7 @@ not save real tokens in committed queries or browser history.
 `infra/local/compose.local.yml` owns the current shared backend stack:
 
 - `gateway-api`
+- `platform-service`
 - `extraction-service`
 - `correction-service`
 - `postgres`
@@ -431,12 +435,15 @@ not save real tokens in committed queries or browser history.
 - `garage`
 - `persistence-mock`
 
-Aggregate migration and seed commands reuse each runtime service definition as
-a bounded one-shot container in deterministic gateway, extraction, correction
+Aggregate migration and seed commands reuse each owning service definition as
+a bounded one-shot container in deterministic Platform, extraction, correction
 order. `infra/local/compose.tools.yml` contains distinct profiled infrastructure
 tools and is combined with the normal runtime graph by the repository wrappers.
 Its `devtools` profile contains pgAdmin with a dedicated named configuration
-volume; normal application startup does not select it.
+volume; normal application startup does not select it. PostgreSQL, its
+provisioner, and its role verifier share the scoped, tracked
+`infra/local/postgres/control-plane.env` mapping; application and unrelated
+infrastructure secrets are not injected through that control-plane contract.
 
 ## Repository Layout
 
@@ -444,7 +451,7 @@ volume; normal application startup does not select it.
 apps/
   web/
   gateway-api/
-  platform-service/  # planned in M04.1
+  platform-service/
   extraction-service/
   correction-service/
 infra/
@@ -482,8 +489,9 @@ Garage-backed source artifacts. M04-H recovery tooling is deferred without a
 recovery claim. The obsolete PG16-specific rehearsal is intentionally dropped;
 future recovery remains version-aware. Optional pgAdmin tooling is available,
 and M03-E remains a non-blocking Renovate and Greptile evaluation. Post-review
-M04 corrections were human-verified on 2026-09-10. M04.1 is next and includes
-Platform extraction plus the database-backed concurrent artifact reservation
-and database role hardening; M04.2 retains the identity/session deliverable. See
+M04 corrections and M04.1-A through M04.1-E are human-verified through the
+local verification matrix. The only recorded limitation is that the current
+empty correction inbox has no setup path for manually exercising session draft
+save and submit. M04.2 retains the identity/session deliverable. See
 `docs/general-plan.md`, `docs/branch-governance.md`, and
 `docs/dependency-security.md` for the active boundaries.

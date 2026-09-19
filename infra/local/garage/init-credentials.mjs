@@ -7,8 +7,9 @@ import {
   DEFAULT_ASSIGNMENTS,
   ENV_FILE,
   GATEWAY_ENV_FILE,
-  GATEWAY_S3_DEFAULTS,
   LOCAL_GARAGE_REGION,
+  PLATFORM_ENV_FILE,
+  PLATFORM_S3_DEFAULTS,
 } from './constants.mjs';
 import {
   errorName,
@@ -19,7 +20,7 @@ import {
 } from './utils.mjs';
 
 /**
- * Initializes infrastructure credentials and synchronizes the gateway-local S3 view.
+ * Initializes infrastructure credentials and synchronizes the Platform-local owner view.
  *
  * @returns {void}
  */
@@ -30,6 +31,12 @@ function main() {
 
   if (!existsSync(GATEWAY_ENV_FILE)) {
     throw new Error('Copy apps/gateway-api/.env.example to apps/gateway-api/.env.local first');
+  }
+
+  if (!existsSync(PLATFORM_ENV_FILE)) {
+    throw new Error(
+      'Copy apps/platform-service/.env.example to apps/platform-service/.env.local first',
+    );
   }
 
   const original = readFileSync(ENV_FILE, 'utf8');
@@ -69,41 +76,50 @@ function main() {
   }
 
   const initializedEnvironment = parseEnv(content);
-  const originalGateway = readFileSync(GATEWAY_ENV_FILE, 'utf8');
-  const gatewayEnvironment = parseEnv(originalGateway);
-  let gatewayContent = originalGateway;
+  const gatewayEnvironment = parseEnv(readFileSync(GATEWAY_ENV_FILE, 'utf8'));
+  const originalPlatform = readFileSync(PLATFORM_ENV_FILE, 'utf8');
+  const platformEnvironment = parseEnv(originalPlatform);
+  let platformContent = originalPlatform;
 
-  for (const [name, value] of Object.entries(GATEWAY_S3_DEFAULTS)) {
-    if (gatewayEnvironment[name]) {
+  for (const [name, value] of Object.entries(PLATFORM_S3_DEFAULTS)) {
+    if (platformEnvironment[name]) {
       continue;
     }
 
-    gatewayContent = setAssignment(gatewayContent, name, value);
+    platformContent = setAssignment(platformContent, name, value);
   }
 
-  gatewayContent = setAssignment(
-    gatewayContent,
+  platformContent = setAssignment(
+    platformContent,
     'S3_ENDPOINT',
     `http://${initializedEnvironment.GARAGE_HOST}:${initializedEnvironment.GARAGE_S3_PORT}`,
   );
-  gatewayContent = setAssignment(gatewayContent, 'S3_REGION', LOCAL_GARAGE_REGION);
+  platformContent = setAssignment(platformContent, 'S3_REGION', LOCAL_GARAGE_REGION);
 
   for (const name of [
     'PLATFORM_S3_BUCKET',
     'PLATFORM_S3_ACCESS_KEY_ID',
     'PLATFORM_S3_SECRET_ACCESS_KEY',
   ]) {
-    gatewayContent = setAssignment(gatewayContent, name, initializedEnvironment[name]);
+    platformContent = setAssignment(platformContent, name, initializedEnvironment[name]);
   }
 
-  if (gatewayContent !== originalGateway) {
-    writePrivateEnvFile(GATEWAY_ENV_FILE, gatewayContent);
+  for (const name of ['JWT_ACCESS_SECRET']) {
+    if (!gatewayEnvironment[name]) {
+      throw new Error(`${name} is missing from the gateway verifier environment`);
+    }
+
+    platformContent = setAssignment(platformContent, name, gatewayEnvironment[name]);
+  }
+
+  if (platformContent !== originalPlatform) {
+    writePrivateEnvFile(PLATFORM_ENV_FILE, platformContent);
   } else {
-    chmodSync(GATEWAY_ENV_FILE, 0o600);
+    chmodSync(PLATFORM_ENV_FILE, 0o600);
   }
 
   console.log(
-    changed || gatewayContent !== originalGateway
+    changed || platformContent !== originalPlatform
       ? 'Initialized ignored local Garage credentials.'
       : 'Keeping local Garage credentials.',
   );

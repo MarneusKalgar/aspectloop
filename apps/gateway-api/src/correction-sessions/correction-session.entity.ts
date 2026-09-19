@@ -3,13 +3,9 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
-import { User } from '../users/user.entity';
 
 @Entity('correction_session')
 @Index('IDX_correction_session_document_id_unique', ['documentId'], { unique: true })
@@ -18,10 +14,6 @@ import { User } from '../users/user.entity';
 export class CorrectionSession {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
-
-  @JoinColumn({ name: 'created_by' })
-  @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
-  createdBy!: User;
 
   @Column({ name: 'created_by', type: 'uuid' })
   createdById!: string;
@@ -37,10 +29,6 @@ export class CorrectionSession {
 
   @PrimaryGeneratedColumn('uuid')
   id!: string;
-
-  @JoinColumn({ name: 'locked_by' })
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  lockedBy!: null | User;
 
   @Column({ name: 'locked_by', nullable: true, type: 'uuid' })
   lockedById!: null | string;

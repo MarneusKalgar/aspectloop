@@ -1,7 +1,7 @@
 import { UseGuards } from '@nestjs/common';
 import { Query, Resolver } from '@nestjs/graphql';
 
-import { Roles, Scopes } from '../auth/decorators';
+import { RequestId, Roles, Scopes } from '../auth/decorators';
 import { GqlJwtAuthGuard } from '../auth/guards/gql-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ScopesGuard } from '../auth/guards/scopes.guard';
@@ -15,7 +15,7 @@ export class DocumentTypesResolver {
   @Roles('CORRECTOR')
   @Scopes('corrections:write')
   @UseGuards(GqlJwtAuthGuard, RolesGuard, ScopesGuard)
-  correctionDocumentTypes() {
-    return this.documentRegistryService.listDocumentTypes();
+  correctionDocumentTypes(@RequestId() requestId?: string) {
+    return this.documentRegistryService.listDocumentTypes({ requestId });
   }
 }

@@ -1,14 +1,17 @@
 # Data Authority And Recovery
 
-Status: Accepted M04 P0 authority and recovery boundary (updated 2026-09-10)
+Status: Accepted authority and recovery boundary (updated 2026-09-17 for M04.1)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
 proof; M04-C established the PostgreSQL 18 database ownership baseline; and
 M04-D established each backend service's datasource, migration, seed, and local
 runtime boundary. M04-E through M04-G added the normal Garage stack, private
-service buckets, the gateway's document/object metadata and S3 adapter, and the
-integrated local fixture contract. Optional M04-H recovery tooling is deferred.
+service buckets, and the initial document/object metadata and S3 adapter.
+M04.1 moves those Platform capabilities, migrations, seeds, and credentials
+from the gateway into `platform-service`, then adds the role split and durable
+source-object reservation required for concurrent writes. Optional M04-H
+recovery tooling is deferred.
 See [the local S3 decision](decisions/0003-local-s3-and-recovery-boundary.md)
 for provider and readiness constraints and
 [the Platform ownership decision](decisions/0004-thin-gateway-and-platform-service.md)
@@ -17,34 +20,34 @@ for the next runtime boundary.
 ## Current State
 
 The normal local stack has one PostgreSQL 18 container with `platform_db`,
-`extraction_db`, and `correction_db`, separate least-privilege owner roles,
-RabbitMQ, Garage, and a file-backed HTTP persistence mock. Gateway, extraction,
-and correction each connect only to their owned database with a bounded pool
-and have explicit service-owned migration and seed commands. Garage exposes
-three private owner-specific buckets and credentials. The gateway owns the
-first platform document/source-object metadata and verifies stored bytes by
-size and application SHA-256. Extraction and correction still have no domain
-entities, migrations, or seed data. There is no executable cross-store
-backup/restore workflow.
+`extraction_db`, and `correction_db`, RabbitMQ, Garage, and a file-backed HTTP
+persistence mock. Platform now owns users/identity behavior, documents,
+source-object metadata, the document registry, Platform migrations/seeds, and
+the source-bucket credentials. The gateway reaches those capabilities through
+the versioned internal Platform contract. Garage exposes three private
+owner-specific buckets and credentials. Extraction and correction still have
+no domain entities, migrations, or seed data. There is no executable
+cross-store backup/restore workflow.
 
-This is current-state ownership, not the target service boundary. M04.1 moves
-`platform_db`, users/identity behavior, documents, source-object metadata,
-platform storage credentials, migrations, seeds, and the platform outbox into
-`platform-service`. The gateway then reaches Platform through an internal
-contract and no longer holds Platform runtime, migration, or object-store
-credentials. A distinct temporary gateway role may access only the legacy
-correction tables until M06 moves them to `correction_db`. Identity remains part
-of Platform; M04.2 hardens its browser-session behavior.
+The role boundary is enforced locally. `platform_migrator` owns Platform DDL;
+`platform_runtime` has the narrow runtime grants needed for users, documents,
+immutable `document_object` inserts, and mutable
+`document_object_reservation` transitions; and
+`gateway_correction_runtime` is restricted to the temporary correction tables.
+The runtime role has no `UPDATE`, `DELETE`, or `TRUNCATE` on finalized object
+metadata. M06 moves the remaining correction tables and behavior to
+`correction_db`. Identity remains part of Platform; M04.2 hardens its
+browser-session behavior.
 
-| Current state                                       | Authority and recovery consequence                                                                                                                                          |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gateway `platform_db` on PostgreSQL 18              | Users, correction sessions, document/source-object metadata, immutable snapshots, edit audit, outbox, and migration history. Preserve together.                             |
-| Extraction/correction databases on PostgreSQL 18    | Each has an owner-only datasource plus explicit migration/seed boundaries. No domain schema or rows exist yet; an empty migration history is expected.                      |
-| Garage private buckets                              | Immutable artifact bytes for platform, extraction, and correction owners. Export through S3 APIs; internal Garage volumes are not a portable backup.                        |
-| Persistence mock JSON files                         | Mutable documents, including documents without an opened session and updates not necessarily committed in PostgreSQL. Non-seed contents are not guaranteed reconstructible. |
-| Mock seeds and document registry                    | Repository-owned fixtures/configuration; restarting the mock adds missing seeds but does not reconstruct user edits.                                                        |
-| RabbitMQ                                            | Delivery transport. The Compose file declares no repository-owned broker data volume; queue contents are not the recovery authority.                                        |
-| Browser state, generated output, dependencies, logs | Not an authoritative export of committed application state. Unsaved browser edits are outside recovery guarantees.                                                          |
+| Current state                                          | Authority and recovery consequence                                                                                                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Platform plus legacy correction state in `platform_db` | Platform owns users, documents, source-object metadata, and migration history in code; the gateway temporarily owns correction rows. Preserve together until M06.           |
+| Extraction/correction databases on PostgreSQL 18       | Each has an owner-only datasource plus explicit migration/seed boundaries. No domain schema or rows exist yet; an empty migration history is expected.                      |
+| Garage private buckets                                 | Immutable artifact bytes for platform, extraction, and correction owners. Export through S3 APIs; internal Garage volumes are not a portable backup.                        |
+| Persistence mock JSON files                            | Mutable documents, including documents without an opened session and updates not necessarily committed in PostgreSQL. Non-seed contents are not guaranteed reconstructible. |
+| Mock seeds and Platform document registry              | Repository-owned fixtures/configuration; restarting the mock adds missing seeds but does not reconstruct user edits.                                                        |
+| RabbitMQ                                               | Delivery transport. The Compose file declares no repository-owned broker data volume; queue contents are not the recovery authority.                                        |
+| Browser state, generated output, dependencies, logs    | Not an authoritative export of committed application state. Unsaved browser edits are outside recovery guarantees.                                                          |
 
 The current Compose volume keys are `aspectloop_api_postgres18_data`,
 `aspectloop_api_garage_metadata`, `aspectloop_api_garage_objects`, and
@@ -85,19 +88,19 @@ correction-service transition; M04 does not silently migrate these callers.
 
 ## M04 Target Authority
 
-| State                                                           | Owner                                     | Backup and recovery treatment                                                                                             |
-| --------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `platform_db`                                                   | Gateway currently; Platform after M04.1   | Users, platform documents, object metadata, migration history; temporary correction tables remain transitional until M06. |
-| `extraction_db`                                                 | Extraction service                        | Include schema, migration history, and owned rows, even if domain tables are not present before M05.                      |
-| `correction_db`                                                 | Correction service                        | Include schema, migration history, and owned rows; do not duplicate the temporary gateway tables.                         |
-| Referenced source/artifact bytes                                | Owning private S3 bucket                  | Export bytes and metadata through S3; validate every DB reference using bucket/key, size, and application SHA-256.        |
-| Buckets, layout, keys, grants                                   | Repository bootstrap and secret injection | Recreate with reviewed configuration; do not archive Garage internal metadata as the portable recovery format.            |
-| Outbox rows                                                     | Owning PostgreSQL database                | Include with relational state. Preserve delivery status; do not mark published events pending automatically.              |
-| RabbitMQ messages                                               | Transport                                 | Exclude from the local backup set; draining or reconstruction requires explicit application semantics.                    |
-| Logs, traces, metrics                                           | Diagnostic                                | Exclude from the data backup set; operational diagnostic retention is separate.                                           |
-| Build output, caches, generated files, `node_modules`           | Reconstructible                           | Recreate from reviewed source, lockfile, and generation commands.                                                         |
-| `.env.local`, passwords, API keys, signing keys, presigned URLs | Secret injection                          | Exclude from the export payload and evidence; recreate or rotate separately.                                              |
-| Compose named volumes                                           | Working storage                           | Persist restarts, but are not backups and do not survive volume deletion.                                                 |
+| State                                                           | Owner                                            | Backup and recovery treatment                                                                                             |
+| --------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `platform_db`                                                   | Platform; temporary gateway correction exception | Users, platform documents, object metadata, migration history; temporary correction tables remain transitional until M06. |
+| `extraction_db`                                                 | Extraction service                               | Include schema, migration history, and owned rows, even if domain tables are not present before M05.                      |
+| `correction_db`                                                 | Correction service                               | Include schema, migration history, and owned rows; do not duplicate the temporary gateway tables.                         |
+| Referenced source/artifact bytes                                | Owning private S3 bucket                         | Export bytes and metadata through S3; validate every DB reference using bucket/key, size, and application SHA-256.        |
+| Buckets, layout, keys, grants                                   | Repository bootstrap and secret injection        | Recreate with reviewed configuration; do not archive Garage internal metadata as the portable recovery format.            |
+| Outbox rows                                                     | Owning PostgreSQL database                       | Include with relational state. Preserve delivery status; do not mark published events pending automatically.              |
+| RabbitMQ messages                                               | Transport                                        | Exclude from the local backup set; draining or reconstruction requires explicit application semantics.                    |
+| Logs, traces, metrics                                           | Diagnostic                                       | Exclude from the data backup set; operational diagnostic retention is separate.                                           |
+| Build output, caches, generated files, `node_modules`           | Reconstructible                                  | Recreate from reviewed source, lockfile, and generation commands.                                                         |
+| `.env.local`, passwords, API keys, signing keys, presigned URLs | Secret injection                                 | Exclude from the export payload and evidence; recreate or rotate separately.                                              |
+| Compose named volumes                                           | Working storage                                  | Persist restarts, but are not backups and do not survive volume deletion.                                                 |
 
 Objects use generated opaque keys; original filenames are validated display
 metadata, never keys. Treat the bucket/key pair as identity. Database metadata
@@ -106,16 +109,17 @@ the digest, but restoration must hash the bytes rather than trust metadata or
 ETag. Application writes are write-once; administrative import/reset is a
 separate boundary. No cross-database foreign keys or cross-owner writes.
 
-The current `HeadObject` then `PutObject` adapter is not a concurrent
-create-only guarantee on Garage 2.3. Before M07 exposes uploads, M04.1 must add
-a mutable Platform reservation protected by a database uniqueness constraint;
-only its winner may upload and finalize immutable object metadata. It must also
-separate the schema owner/migrator from the Platform runtime identity. Runtime
-access to finalized `document_object` metadata is `SELECT`/`INSERT`, without
-`UPDATE`, `DELETE`, or `TRUNCATE`; recovery/import uses an explicit privileged
-path. Any temporary gateway correction role is restricted to legacy correction
-tables. These are future migrations/provisioning changes, not properties of
-the currently applied M04 schema.
+Garage's `HeadObject` then `PutObject` sequence remains non-atomic and is not
+the concurrency authority. M04.1 resolves that limit with a mutable Platform
+reservation protected by unique logical, object, and bucket/key identities.
+Only the lease holder can upload and finalize immutable object metadata; an
+expired or failed lease can be safely retried after the stored bytes are
+verified. The database transaction ends before every S3 operation. The same
+milestone separates `platform_migrator` from `platform_runtime`: the latter has
+`SELECT`/`INSERT`, but no `UPDATE`, `DELETE`, or `TRUNCATE`, on finalized
+`document_object` rows. Recovery/import remains an explicit privileged path,
+and the temporary gateway correction role remains limited to legacy correction
+tables.
 
 ## Consistency Boundary
 
@@ -197,9 +201,15 @@ databases or artifacts were backed up.
   aggregate startup wait for infrastructure/bootstrap/full-graph readiness,
   anchor TypeORM discovery to each owning application, and keep local Garage's
   region single-sourced. Human verification completed on 2026-09-10.
-- **M04.1, planned:** move Platform ownership out of the gateway, add the
-  database-backed artifact reservation, and split migrator/owner privileges
-  from normal runtime privileges before public uploads exist.
+- **M04.1-A, human-verified:** established the Platform runtime and bounded
+  internal contract.
+- **M04.1, locally human-verified:** moved Platform identity, documents,
+  registry, source storage, migrations, seeds, and verification out of the
+  gateway without changing the public GraphQL boundary; split migrator/runtime/
+  correction roles; and added database-backed reservation, write-once, and
+  recovery behavior for source artifacts. The correction draft/save/submit
+  browser flow remains a documented manual-verification limitation because the
+  current local inbox has no session-creation setup path.
 - **M04.2, planned:** stabilize identity and sessions inside Platform after the
   ownership move.
 - **M04-H P1, deferred:** no backup or restore helper is currently available.

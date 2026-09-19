@@ -9,9 +9,15 @@ GATEWAY_DIR="$REPOSITORY_ROOT/apps/gateway-api"
 GATEWAY_ENV_FILE="$GATEWAY_DIR/.env.local"
 EXTRACTION_ENV_FILE="$REPOSITORY_ROOT/apps/extraction-service/.env.local"
 CORRECTION_ENV_FILE="$REPOSITORY_ROOT/apps/correction-service/.env.local"
+PLATFORM_ENV_FILE="$REPOSITORY_ROOT/apps/platform-service/.env.local"
 INFRA_ENV_FILE="$REPOSITORY_ROOT/infra/local/.env.local"
 
-APP_ENV_FILES=("$GATEWAY_ENV_FILE" "$EXTRACTION_ENV_FILE" "$CORRECTION_ENV_FILE")
+APP_ENV_FILES=(
+  "$GATEWAY_ENV_FILE"
+  "$PLATFORM_ENV_FILE"
+  "$EXTRACTION_ENV_FILE"
+  "$CORRECTION_ENV_FILE"
+)
 # Fail before invoking Compose when a required ignored local environment file is absent.
 for env_file in "${APP_ENV_FILES[@]}" "$INFRA_ENV_FILE"; do
   if [[ ! -f "$env_file" ]]; then
@@ -33,6 +39,13 @@ TOOL_DB_POOL_SIZE="${TOOL_DB_POOL_SIZE:-6}"
 if [[ ! "$TOOL_DB_POOL_SIZE" =~ ^[1-9][0-9]*$ ]]; then
   echo "POSTGRES_TOOL_CONNECTION_BUDGET must be a positive integer" >&2
   exit 1
+fi
+
+# Platform validates a five-connection ceiling; tool jobs may use less than the
+# shared allowance but must never exceed either bound.
+PLATFORM_TOOL_DB_POOL_SIZE="$TOOL_DB_POOL_SIZE"
+if ((PLATFORM_TOOL_DB_POOL_SIZE > 5)); then
+  PLATFORM_TOOL_DB_POOL_SIZE=5
 fi
 
 COMPOSE_PROJECT_BASE_NAME="${COMPOSE_PROJECT_NAME:-aspectloop}"

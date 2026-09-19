@@ -3,6 +3,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const SUPPRESSED_PROBE_PATHS: readonly string[] = [
+  '/health',
+  '/health/',
+  '/internal/v1/health',
+  '/internal/v1/health/',
+  '/internal/v1/readiness',
+  '/internal/v1/readiness/',
+];
 
 interface OriginalUrlRequest extends IncomingMessage {
   originalUrl?: string;
@@ -26,16 +34,16 @@ export function createRequestId(request: IncomingMessage, response: ServerRespon
 }
 
 /**
- * Detects the routine health endpoint so automatic request logging can suppress it.
+ * Detects routine liveness and readiness probes so automatic logging can suppress them.
  *
  * @param request Incoming HTTP request.
- * @returns Whether the URL pathname is exactly the health endpoint.
+ * @returns Whether the URL pathname is an exact supported probe route.
  */
 export function isHealthRequest(request: IncomingMessage): boolean {
   const originalUrl = (request as OriginalUrlRequest).originalUrl;
   const pathname = getPathname(originalUrl ?? request.url);
 
-  return pathname === '/health' || pathname === '/health/';
+  return SUPPRESSED_PROBE_PATHS.includes(pathname);
 }
 
 /**

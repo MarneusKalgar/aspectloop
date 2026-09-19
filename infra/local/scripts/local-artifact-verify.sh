@@ -15,7 +15,7 @@ if (($# == 1)) && [[ "$1" != "--build" ]]; then
   exit 1
 fi
 
-# Keep the gateway-local S3 credentials synchronized with infrastructure ownership.
+# Keep the Platform-local S3 credentials synchronized with infrastructure ownership.
 node "$REPOSITORY_ROOT/infra/local/garage/init-credentials.mjs"
 source "$SCRIPT_DIR/_local-compose-common.sh"
 
@@ -23,9 +23,9 @@ source "$SCRIPT_DIR/_local-compose-common.sh"
 "${COMPOSE[@]}" up -d --wait postgres garage
 node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
 
-RUN_ARGS=(run --rm --no-deps -e "DB_POOL_SIZE=$TOOL_DB_POOL_SIZE")
+RUN_ARGS=(run --rm --no-deps -e "DB_POOL_SIZE=$PLATFORM_TOOL_DB_POOL_SIZE")
 if [[ "${1:-}" == "--build" ]]; then
-  RUN_ARGS=(run --rm --no-deps --build -e "DB_POOL_SIZE=$TOOL_DB_POOL_SIZE")
+  RUN_ARGS=(run --rm --no-deps --build -e "DB_POOL_SIZE=$PLATFORM_TOOL_DB_POOL_SIZE")
 fi
 
-"${COMPOSE[@]}" "${RUN_ARGS[@]}" gateway-api npm run db:artifact:verify:local
+"${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-service npm run db:artifact:verify:local

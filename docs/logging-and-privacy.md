@@ -1,8 +1,8 @@
 # Logging And Privacy Contract
 
 AspectLoop uses structured application events for local diagnostics and future
-portable observability. This baseline applies to the gateway, extraction
-service, and correction service. It deliberately does not introduce
+portable observability. This baseline applies to the gateway, Platform,
+extraction service, and correction service. It deliberately does not introduce
 OpenTelemetry, metrics, traces, log aggregation, or dashboards; those remain
 M10 work.
 
@@ -36,6 +36,14 @@ Authentication events use internal user IDs only. Invalid-account and
 invalid-password attempts both use `auth.sign_in.failed` with the same
 `invalid_credentials` reason. `auth.sign_in.succeeded` is emitted only after
 access-token generation succeeds.
+
+Gateway-to-Platform transport emits only bounded dependency diagnostics:
+`platform.request.failed` includes the fixed internal route, a bounded failure
+reason, and (when applicable) the numeric upstream status; invalid successful
+payloads emit `platform.response.invalid`. The gateway forwards a request ID to
+Platform only after validating it against the request-ID contract. Neither
+event includes an upstream response body, request body, token, credential, or
+full URL.
 
 ## Request IDs
 
@@ -96,4 +104,6 @@ require pre-existing `dist` directories.
 Then exercise health, sign-up, successful/failed sign-in, current-user, and
 correction-inbox operations through the local UI or GraphiQL. Inspect Compose
 logs and verify that related events share a request ID and that none of the
-excluded values appear. The complete human checklist remains in the M03 plan.
+excluded values appear. The current local fixture has no session-creation path,
+so correction draft-save and submit are not claimed as manual checks. The
+complete human checklist remains in the M03 plan.

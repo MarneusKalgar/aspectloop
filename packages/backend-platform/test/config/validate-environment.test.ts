@@ -1,7 +1,12 @@
 import { IsNumber, IsString } from 'class-validator';
 import { expect, test } from 'vitest';
 
-import { getEnvFilePaths, validateEnvironment } from '../../src/config';
+import {
+  getEnvFilePaths,
+  IsNodeEnvironment,
+  type NodeEnvironment,
+  validateEnvironment,
+} from '../../src/config';
 
 class TestEnvironment {
   PORT!: number;
@@ -10,6 +15,12 @@ class TestEnvironment {
 
 IsNumber()(TestEnvironment.prototype, 'PORT');
 IsString()(TestEnvironment.prototype, 'SERVICE_NAME');
+
+class TestNodeEnvironment {
+  NODE_ENV: NodeEnvironment = 'development';
+}
+
+IsNodeEnvironment()(TestNodeEnvironment.prototype, 'NODE_ENV');
 
 /** Verifies every backend resolves local environment files in override order. */
 function testEnvironmentFilePaths(): void {
@@ -41,6 +52,21 @@ function testEnvironmentValidationFailure(): void {
   ).toThrow('Environment validation failed:');
 }
 
+/** Verifies every backend consumes one shared deployment-environment vocabulary. */
+function testNodeEnvironmentValidation(): void {
+  expect(
+    validateEnvironment(TestNodeEnvironment, {
+      NODE_ENV: 'stage',
+    }).NODE_ENV,
+  ).toBe('stage');
+  expect(() =>
+    validateEnvironment(TestNodeEnvironment, {
+      NODE_ENV: 'staging',
+    }),
+  ).toThrow('Environment validation failed:');
+}
+
 test('environment values are transformed and validated', testEnvironmentTransformation);
 test('invalid environment values fail startup validation', testEnvironmentValidationFailure);
 test('environment files use the shared override order', testEnvironmentFilePaths);
+test('Node environments use the shared backend vocabulary', testNodeEnvironmentValidation);

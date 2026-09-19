@@ -8,6 +8,7 @@ import {
   MAXIMUM_PORT,
   MINIMUM_PASSWORD_LENGTH,
   PASSWORD_PLACEHOLDER,
+  PLATFORM_MIGRATOR_SERVER_DEFINITION,
   POSITIVE_INTEGER_PATTERN,
   POSTGRES_ENDPOINT,
   SERVER_DEFINITIONS,
@@ -33,6 +34,20 @@ function main() {
     `Prepared password-free pgAdmin registrations for ${login.email} at ` +
       `http://127.0.0.1:${login.hostPort}.`,
   );
+}
+
+/**
+ * Reads an optional strict boolean setting while preserving a shell override.
+ *
+ * @param {Record<string, string>} environment - Parsed infrastructure environment.
+ * @param {string} name - Optional boolean environment variable name.
+ * @returns {boolean} Parsed boolean value, defaulting to false.
+ */
+function optionalBoolean(environment, name) {
+  const value = process.env[name] ?? environment[name] ?? 'false';
+  assert.ok(value === 'true' || value === 'false', `${name} must be true or false`);
+
+  return value === 'true';
 }
 
 /**
@@ -75,14 +90,19 @@ function required(environment, name) {
 function serverRegistry(environment) {
   /** @type {Record<string, object>} */
   const servers = {};
+  const definitions = [...SERVER_DEFINITIONS];
 
-  for (const [index, definition] of SERVER_DEFINITIONS.entries()) {
+  if (optionalBoolean(environment, 'PGADMIN_INCLUDE_PLATFORM_MIGRATOR')) {
+    definitions.push(PLATFORM_MIGRATOR_SERVER_DEFINITION);
+  }
+
+  for (const [index, definition] of definitions.entries()) {
     const database = required(environment, definition.databaseKey);
     const username = required(environment, definition.usernameKey);
 
     servers[String(index + 1)] = {
       DBRestriction: database,
-      Group: 'AspectLoop service roles',
+      Group: definition.group,
       Host: POSTGRES_ENDPOINT.host,
       MaintenanceDB: database,
       Name: `${definition.label} (${username})`,
