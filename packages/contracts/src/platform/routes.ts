@@ -2,6 +2,10 @@ export const PLATFORM_INTERNAL_API_PREFIX = '/internal/v1';
 
 export const PLATFORM_INTERNAL_ROUTES = Object.freeze({
   auth: Object.freeze({
+    confirmEmail: `${PLATFORM_INTERNAL_API_PREFIX}/auth/confirm-email`,
+    me: `${PLATFORM_INTERNAL_API_PREFIX}/auth/me`,
+    refreshSession: `${PLATFORM_INTERNAL_API_PREFIX}/auth/refresh`,
+    resendEmailConfirmation: `${PLATFORM_INTERNAL_API_PREFIX}/auth/resend-email-confirmation`,
     signIn: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-in`,
     signOut: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-out`,
     signUp: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-up`,

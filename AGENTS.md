@@ -155,3 +155,35 @@
   models between turns instead of creating a sequential handoff subagent.
 - Start a fresh task when the approved milestone plan is a cleaner handoff than
   a long or repeatedly compacted planning context.
+
+### Mandatory Implementation Escalation
+
+- Stop implementation and request guidance when the approved plan conflicts
+  with the code or leaves a material security, concurrency, or ownership
+  decision unresolved. Escalate before changing the design, not after trying
+  speculative fixes.
+- Stop if progress would require an unplanned abstraction, dependency,
+  architectural change, or weakened safeguard. Do not invent a parallel
+  framework, bypass validation, loosen permissions, or suppress a failing
+  check to keep moving.
+- For an otherwise in-scope technical blocker, make at most two distinct,
+  evidence-based approaches. If neither resolves it, stop rather than making
+  repeated speculative edits. Routine code lookup and naming decisions do not
+  require escalation; do not manufacture a second attempt when already blocked.
+- Preserve working-tree changes and record the blocker in the active plan, if
+  one exists. Hand off the relevant paths, observed evidence, approaches tried,
+  remaining uncertainty, and the exact decision needed. Distinguish human-
+  reported failures from checks the agent has not run.
+- Terra/Luna must ask the user to switch this task to Sol High for focused
+  guidance. If Sol cannot resolve the blocker, request Astra High. An agent
+  already using the requested tier should provide the focused assessment, not
+  request a redundant switch. If Astra remains blocked, ask the user for the
+  missing decision or evidence; do not restart speculative attempts.
+- Wait for guidance before resuming implementation. Do not automatically
+  spawn another model, create a task, or purchase/consume extra credits for
+  escalation. Missing permissions, dependencies, or human-generated artifacts
+  require the corresponding human action, not a model upgrade. After resolution,
+  record the agreed decision and recommend returning routine work to Terra.
+- This rule does not authorize agent-run verification or migrations; the
+  repository's human-verification restrictions still apply. See
+  `docs/agent-model-conventions.md` for the escalation handoff format.

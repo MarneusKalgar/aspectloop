@@ -1,44 +1,115 @@
+"""A public user projection sourced authoritatively from Platform."""
 type User {
+  """Stable user identifier."""
   id: ID!
+  """Normalized sign-in email address."""
   email: String!
+  """User-facing display name."""
   displayName: String!
+  """Coarse roles enforced by Gateway guards."""
   roles: [String!]!
+  """Coarse scopes enforced by Gateway guards."""
   scopes: [String!]!
+  """Time at which the user was created."""
   createdAt: DateTime!
+  """Time at which the public user projection last changed."""
   updatedAt: DateTime!
 }
 
+"""
+The secret-free public session result. Refresh credentials are written only to
+the scoped HttpOnly cookie and are never exposed through GraphQL.
+"""
 type AuthPayload {
+  """Short-lived bearer token held in browser memory only."""
   accessToken: String!
+  """Authoritative user projection for the issued session."""
   user: User!
 }
 
+"""Result of an accepted sign-out operation."""
 type SignOutPayload {
+  """True when Gateway accepted the operation and confirmed revocation."""
   success: Boolean!
 }
 
+"""Generic sign-up acknowledgement that does not disclose account existence."""
 type SignUpPayload {
+  """True when the request was accepted for processing."""
   success: Boolean!
-  user: User!
+  """Always null for the email-confirmation flow."""
+  user: User
+    @deprecated(
+      reason: "Sign-up no longer returns account details before email confirmation."
+    )
 }
 
+"""Result of explicitly confirming an email address."""
+type EmailConfirmationPayload {
+  """True when a valid confirmation token was consumed."""
+  success: Boolean!
+}
+
+"""Generic resend acknowledgement that does not disclose account existence."""
+type EmailConfirmationRequestPayload {
+  """True when the request was accepted for processing."""
+  success: Boolean!
+}
+
+"""Credentials and profile data used to request account creation."""
 input SignUpInput {
+  """Email address to verify before sign-in is permitted."""
   email: String!
+  """Password accepted only by the private Platform boundary."""
   password: String!
+  """Name shown in the application UI."""
   displayName: String!
 }
 
+"""Credentials used to create a browser session."""
 input SignInInput {
+  """Account email address."""
   email: String!
+  """Account password."""
   password: String!
 }
 
+"""Opaque single-use token obtained from the confirmation link fragment."""
+input ConfirmEmailInput {
+  """Raw confirmation token; never logged or persisted by the browser."""
+  token: String!
+}
+
+"""Email address for a generic confirmation resend request."""
+input ResendEmailConfirmationInput {
+  """Account email address; responses never reveal whether it exists."""
+  email: String!
+}
+
 extend type Query {
+  """Returns the Platform-validated user for the current bearer session."""
   me: User
 }
 
 extend type Mutation {
+  """Confirms an email address without signing the user in."""
+  confirmEmail(input: ConfirmEmailInput!): EmailConfirmationPayload!
+  """Rotates the scoped refresh cookie and returns a new public session."""
+  refreshSession: AuthPayload!
+  """Requests another confirmation email without revealing account existence."""
+  resendEmailConfirmation(
+    input: ResendEmailConfirmationInput!
+  ): EmailConfirmationRequestPayload!
+  """Clears the scoped refresh cookie and requests family revocation."""
   signOut: SignOutPayload!
+  """
+  Creates a browser session and writes its refresh credential to an HttpOnly
+  cookie.
+  """
   signIn(input: SignInInput!): AuthPayload!
+  """
+  Accepts account creation and confirmation delivery without returning
+  identity details.
+  """
   signUp(input: SignUpInput!): SignUpPayload!
 }
