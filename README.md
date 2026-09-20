@@ -230,6 +230,9 @@ npm run local:verify -- --integration
 
 # Also prove the gateway fails closed and recovers when Platform is stopped.
 npm run local:verify -- --outage
+
+# Prove Platform session issuance, rotation, rollback, replay, logout, and expiry semantics.
+npm run local:auth:verify -- --sessions
 ```
 
 `npm run local:verify -- --fresh` is the destructive end-to-end local matrix.

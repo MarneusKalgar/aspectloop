@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { PLATFORM_IDENTITY_POLICY } from '../identity.constants';
 import { platformUserViewSchema } from '../users.contracts';
+import { platformIdentityEmailSchema, platformSignUpPasswordSchema } from './identity.contracts';
 
 export const PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH = 128;
 
@@ -11,9 +13,9 @@ export const platformEmailConfirmationTokenSchema = z
 
 export const platformSignUpRequestSchema = z
   .object({
-    displayName: z.string().min(1).max(120),
-    email: z.string().min(1).max(320),
-    password: z.string().min(1),
+    displayName: z.string().trim().min(1).max(PLATFORM_IDENTITY_POLICY.DISPLAY_NAME_MAX_LENGTH),
+    email: platformIdentityEmailSchema,
+    password: platformSignUpPasswordSchema,
   })
   .strict();
 
@@ -44,7 +46,7 @@ export const platformConfirmEmailResponseSchema = z
 
 export const platformResendEmailConfirmationRequestSchema = z
   .object({
-    email: z.email().max(320),
+    email: platformIdentityEmailSchema,
   })
   .strict();
 

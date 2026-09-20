@@ -1,6 +1,7 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { expect, test, vi } from 'vitest';
 
+import type { AuthSessionStore } from '../../src/auth/auth-session.store';
 import type { PasswordService } from '../../src/auth/password.service';
 import type { TokenService } from '../../src/auth/token.service';
 import type { User } from '../../src/users/user.entity';
@@ -8,64 +9,149 @@ import type { UsersService } from '../../src/users/users.service';
 
 import { AuthService } from '../../src/auth/auth.service';
 
+const ISSUED_AT = new Date('2026-09-12T00:00:00.000Z');
+const EXPIRES_AT = new Date('2026-09-13T00:00:00.000Z');
+const SESSION_ID = '3a1df370-e0cf-4f70-a6b9-4243bd42e825';
 const USER: User = {
-  createdAt: new Date('2026-09-12T00:00:00.000Z'),
+  createdAt: ISSUED_AT,
   displayName: 'Reviewer',
   email: 'reviewer@example.test',
+  emailVerifiedAt: ISSUED_AT,
   id: '9d30c36d-5ae4-4f1b-b127-15f32de2f7cb',
   passwordHash: 'private-hash',
   roles: ['CORRECTOR'],
   scopes: ['corrections:write'],
-  updatedAt: new Date('2026-09-12T00:00:00.000Z'),
+  updatedAt: ISSUED_AT,
 };
 
-/** Creates auth behavior with isolated user, password, and token boundaries. */
-function createService(
-  options: {
-    passwordValid?: boolean;
-    user?: null | User;
-  } = {},
-): AuthService {
-  const user = options.user === undefined ? USER : options.user;
+interface ServiceFixture {
+  authSessionStore: {
+    create: ReturnType<typeof vi.fn>;
+    getActiveUser: ReturnType<typeof vi.fn>;
+    refresh: ReturnType<typeof vi.fn>;
+    signOut: ReturnType<typeof vi.fn>;
+  };
+  passwordService: {
+    hash: ReturnType<typeof vi.fn>;
+    verifyOrDummy: ReturnType<typeof vi.fn>;
+  };
+  service: AuthService;
+  tokenService: { generateAccessToken: ReturnType<typeof vi.fn> };
+}
 
-  return new AuthService(
-    {
-      hash: vi.fn().mockResolvedValue('new-hash'),
-      verify: vi.fn().mockResolvedValue(options.passwordValid ?? true),
-    } as unknown as PasswordService,
-    { generateAccessToken: vi.fn().mockResolvedValue('access-token') } as unknown as TokenService,
-    {
-      createUser: vi.fn().mockResolvedValue(USER),
-      findByEmail: vi.fn().mockResolvedValue(user),
-      findByEmailWithPassword: vi.fn().mockResolvedValue(user),
-      findById: vi.fn().mockResolvedValue(user),
-    } as unknown as UsersService,
-  );
+/** Creates auth behavior with isolated persistence, password, and token boundaries. */
+function createFixture(
+  options: { passwordValid?: boolean; user?: null | User } = {},
+): ServiceFixture {
+  const user = options.user === undefined ? USER : options.user;
+  const session = {
+    effectiveExpiresAt: EXPIRES_AT,
+    issuedAt: ISSUED_AT,
+    refreshToken: 'refresh-token',
+    sessionId: SESSION_ID,
+    user: USER,
+  };
+  const authSessionStore = {
+    create: vi.fn().mockResolvedValue(session),
+    getActiveUser: vi.fn().mockResolvedValue(USER),
+    refresh: vi.fn().mockResolvedValue(session),
+    signOut: vi.fn().mockResolvedValue(undefined),
+  };
+  const passwordService = {
+    hash: vi.fn().mockResolvedValue('new-hash'),
+    verifyOrDummy: vi.fn().mockResolvedValue(options.passwordValid ?? true),
+  };
+  const tokenService = { generateAccessToken: vi.fn().mockResolvedValue('access-token') };
+  const usersService = {
+    createUser: vi.fn().mockResolvedValue(USER),
+    findByEmail: vi.fn().mockResolvedValue(user),
+    findByEmailWithPassword: vi.fn().mockResolvedValue(user),
+    findById: vi.fn().mockResolvedValue(user),
+  };
+
+  return {
+    authSessionStore,
+    passwordService,
+    service: new AuthService(
+      authSessionStore as unknown as AuthSessionStore,
+      passwordService as unknown as PasswordService,
+      tokenService as unknown as TokenService,
+      usersService as unknown as UsersService,
+    ),
+    tokenService,
+  };
 }
 
 /** Verifies sign-in keeps the same indistinguishable credential rejection. */
 async function testInvalidCredentials(): Promise<void> {
+  const fixture = createFixture({ passwordValid: false });
+
   await expect(
-    createService({ passwordValid: false }).signIn({
-      email: USER.email,
-      password: 'wrong-password',
-    }),
-  ).rejects.toBeInstanceOf(UnauthorizedException);
+    fixture.service.signIn({ email: USER.email, password: 'wrong-password' }),
+  ).rejects.toMatchObject({
+    response: { code: AUTH_ERROR_CODE.INVALID_CREDENTIALS },
+  });
 }
 
-/** Verifies successful sign-in returns the stable password-free contract. */
+/** Verifies refresh, me, and logout delegate only opaque or persisted identifiers. */
+async function testSessionDelegation(): Promise<void> {
+  const fixture = createFixture();
+
+  await expect(fixture.service.refresh({ refreshToken: 'refresh-token' })).resolves.toMatchObject({
+    refreshToken: 'refresh-token',
+  });
+  await expect(
+    fixture.service.me({ sessionId: SESSION_ID, userId: USER.id }),
+  ).resolves.toMatchObject({ user: { id: USER.id } });
+  await expect(fixture.service.signOut({ refreshToken: 'refresh-token' })).resolves.toEqual({
+    success: true,
+  });
+  expect(fixture.authSessionStore.signOut).toHaveBeenCalledWith('refresh-token');
+}
+
+/** Verifies successful sign-in preserves password bytes and returns the session contract. */
 async function testSignIn(): Promise<void> {
-  const response = await createService().signIn({
-    email: ' Reviewer@Example.Test ',
+  const fixture = createFixture();
+  const response = await fixture.service.signIn({
+    email: USER.email,
     password: ' password ',
   });
 
+  expect(fixture.passwordService.verifyOrDummy).toHaveBeenCalledWith(
+    ' password ',
+    USER.passwordHash,
+  );
   expect(response).toMatchObject({
     accessToken: 'access-token',
+    refreshExpiresAt: EXPIRES_AT.toISOString(),
+    refreshToken: 'refresh-token',
     user: { email: USER.email, id: USER.id },
   });
   expect(response.user).not.toHaveProperty('passwordHash');
 }
 
-test('returns the stable Platform sign-in contract', testSignIn);
+/** Verifies unknown identities use the same dummy comparison and credential envelope. */
+async function testUnknownIdentity(): Promise<void> {
+  const fixture = createFixture({ user: null });
+
+  await expect(
+    fixture.service.signIn({ email: 'missing@example.test', password: 'wrong-password' }),
+  ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.INVALID_CREDENTIALS } });
+  expect(fixture.passwordService.verifyOrDummy).toHaveBeenCalledWith('wrong-password', null);
+}
+
+/** Verifies a correctly authenticated unverified identity cannot create a session. */
+async function testUnverifiedIdentity(): Promise<void> {
+  const fixture = createFixture({ user: { ...USER, emailVerifiedAt: null } });
+
+  await expect(
+    fixture.service.signIn({ email: USER.email, password: 'correct-password' }),
+  ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.EMAIL_UNVERIFIED } });
+  expect(fixture.authSessionStore.create).not.toHaveBeenCalled();
+}
+
+test('returns the persisted Platform sign-in session contract', testSignIn);
 test('rejects invalid credentials without identity disclosure', testInvalidCredentials);
+test('performs a dummy password comparison for unknown identities', testUnknownIdentity);
+test('rejects unverified identities after correct credentials', testUnverifiedIdentity);
+test('delegates refresh, me, and logout session operations', testSessionDelegation);

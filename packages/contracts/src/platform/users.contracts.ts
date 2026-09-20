@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
+import { PLATFORM_IDENTITY_POLICY } from './identity.constants';
+
 export const platformUserViewSchema = z
   .object({
     createdAt: z.iso.datetime({ offset: true }),
-    displayName: z.string().min(1).max(120),
-    email: z.string().min(1).max(320),
+    displayName: z.string().min(1).max(PLATFORM_IDENTITY_POLICY.DISPLAY_NAME_MAX_LENGTH),
+    email: z.string().min(1).max(PLATFORM_IDENTITY_POLICY.EMAIL_MAX_LENGTH),
     id: z.uuid(),
     roles: z.array(z.string().min(1)),
     scopes: z.array(z.string().min(1)),

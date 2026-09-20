@@ -1,5 +1,6 @@
 import {
   PLATFORM_INTERNAL_API_PREFIX,
+  PLATFORM_SERVICE_NAME,
   type PlatformHealthResponse,
   platformHealthResponseSchema,
   type PlatformReadinessResponse,
@@ -18,7 +19,7 @@ export class HealthController {
   @Get('health')
   getHealth(): PlatformHealthResponse {
     return platformHealthResponseSchema.parse({
-      service: 'platform-service',
+      service: PLATFORM_SERVICE_NAME,
       status: 'ok',
     });
   }
@@ -37,7 +38,7 @@ export class HealthController {
     }
 
     return platformReadinessResponseSchema.parse({
-      service: 'platform-service',
+      service: PLATFORM_SERVICE_NAME,
       status: 'ready',
     });
   }

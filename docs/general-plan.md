@@ -549,8 +549,8 @@ complete decision.
 Responsibilities:
 
 - schema-first GraphQL and resolver composition;
-- cookie transport and token validation, with local JWT first and external OIDC
-  later;
+- cookie transport and Platform-validated session context; external OIDC is a
+  separate deferred integration;
 - authenticated request context and coarse role/scope authorization;
 - upload initiation transport mapped to Platform commands;
 - extraction/correction status composition;
@@ -583,15 +583,46 @@ Authentication and authorization baseline:
   service;
 - validate browser session state against the server during application startup;
   do not treat a locally decoded token as authoritative authentication;
-- keep access tokens short lived and browser-readable only in memory; use an
-  opaque refresh token in a scoped `HttpOnly`, `SameSite`, and production
-  `Secure` cookie;
-- persist only a hash of each refresh-token secret, rotate the token atomically
-  on refresh, reject reuse of a revoked predecessor, and revoke it on sign-out;
-- coordinate concurrent browser refresh attempts as one request, retry a failed
-  GraphQL operation at most once, then clear the session and return to sign-in;
-- establish and document the initial single-session or multi-session policy
-  rather than allowing token behavior to emerge from implementation details.
+- use an opaque session credential in a host-only `HttpOnly`, `SameSite=Lax`,
+  production `Secure` cookie scoped to `/graphql`; browser JavaScript stores
+  neither access JWTs nor refresh credentials;
+- keep HMAC credential digests and authoritative session state in Platform's
+  PostgreSQL database, with idle/absolute expiry and independent concurrent
+  sessions; sign-out revokes the matching session;
+- validate each protected HTTP request through Platform, deduplicating only
+  within that request; do not introduce a Gateway session database or cache;
+- bootstrap browser identity through `me`; distinguish invalid sessions from
+  dependency unavailability and do not automatically replay operations;
+- enforce CSRF protection on every GraphQL mutation, including sign-in and
+  product mutations, alongside safe rendering and URL handling for XSS defense;
+- defer Redis until measured validation latency or database pressure justifies
+  a separate caching and revocation-consistency decision.
+
+[ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
+records this accepted 2026-09-20 target. Existing A/B JWT/refresh implementation
+and passing rotation tests are historical foundations, not evidence that the
+replacement browser session flow is complete. The SPA and separately deployed
+GraphQL Gateway form a BFF arrangement; SSR or a Next/Nuxt migration is not
+required.
+
+M04.2 is an umbrella outcome, not a single implementation-sized change. Its
+remaining work is accepted in bounded tasks:
+
+| Tasks      | Deliverable                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| B1, B2     | Revised contracts, then Platform session authority and new migration                           |
+| C1, C2, C3 | Gateway request protection, session transport/context, then retirement of the JWT/refresh path |
+| D1, D2, D3 | Local mail delivery, confirmation state, then confirmation HTTP integration                    |
+| E1, E2     | Browser session lifecycle, then confirmation UI                                                |
+| F          | Integrated acceptance and closeout, not a deferred implementation bucket                       |
+
+Each numbered task includes focused tests, documentation, and its own human
+verification gate. Historical A/B remains complete only under the old design;
+all replacement tasks are pending. Implement B1 next. Intermediate task
+acceptance is not authorization to deploy a partially cut-over authentication
+flow. Detailed dependencies and the replacement SESSION acceptance matrix live
+in the working M04.2 plan under `.plan/`; this section and ADR 0005 retain the
+canonical scope and decision.
 
 Registration confirmation baseline:
 
@@ -606,7 +637,7 @@ Registration confirmation baseline:
 - defer managed email delivery and external OIDC to stage/cloud work.
 
 The `rd_shop` implementation is a reference for opaque token structure,
-hashed token storage, atomic rotation/consumption, cookie handling, and guard
+hashed token storage, atomic confirmation consumption, cookie handling, and guard
 composition. AspectLoop retains its schema-first GraphQL boundary and defines
 its own user, session, and authorization contracts.
 
@@ -1202,7 +1233,8 @@ and milestone responsibilities are maintained in
 
 #### Security
 
-- local JWT initially; external OIDC as P1;
+- opaque browser session cookies with Platform/PostgreSQL validation in M04.2;
+  external OIDC as a separate P1 integration;
 - roles/scopes at public operations;
 - service authentication when processes are remotely deployed;
 - GraphQL operation budgets and request rate limits before stage exposure;
@@ -1482,8 +1514,8 @@ stage second.
 - deterministic extraction service/provider mock;
 - correction editor and complete local upload-to-submit flow;
 - optimistic locking, immutable submitted artifact, audit, outbox, retry/DLQ;
-- authoritative FE/BE session state, protected-operation guards, refresh-token
-  rotation, and locally testable email confirmation;
+- authoritative server-validated browser sessions, protected-operation guards,
+  mutation CSRF protection, and locally testable email confirmation;
 - focused tests, baseline security, health, and structured logs;
 - early rebranding immediately after the repository boundary refactor;
 - local verification, local AI review, and GitHub PR quality gates;
@@ -1532,7 +1564,7 @@ only at milestone granularity.
 | M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress            | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory                                                       |
 | M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed              | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred                                                          |
 | M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | In Progress (closeout) | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles; manual correction draft/submit setup remains unavailable |
-| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | Planned                | M04.1           | Auth/authz guards, authoritative browser session, refresh rotation, local email confirmation                                                                       |
+| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Opaque session cookies, Platform/PostgreSQL validation, auth/authz and CSRF guards, local email confirmation; revised cutover pending                              |
 | M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned                | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                                                                           |
 | M06   | Correction domain and service hardening        | BE             | P0       | Planned                | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                                                                      |
 | M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned                | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                                                                                |
@@ -1616,31 +1648,31 @@ a generic external code-review skill must not create a competing review path.
 
 ### Key Risks And Responses
 
-| Risk                                          | Response                                                                                                 |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Refactor destroys useful PoC behavior         | Move paths first, extract domains incrementally, verify each existing flow                               |
-| Gateway becomes a new monolith                | Extract Platform in M04.1, finish correction extraction in M06, and prohibit new gateway state ownership |
-| Generated GraphQL types become domain APIs    | Confine them to resolver/adapter boundaries; map to service-owned commands and views                     |
-| Service bypasses database ownership           | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys                |
-| Contract drift breaks FE/services             | Schema generation, versioned events, and contract tests in CI                                            |
-| Browser shows stale authenticated state       | Validate server-side at startup; refresh once, then clear and redirect                                   |
-| Refresh-token replay extends a session        | Store hashed opaque tokens; rotate and revoke atomically; reject predecessor reuse                       |
-| AI review creates false confidence            | Keep deterministic verification as the merge gate and treat AI findings as advisory                      |
-| Too many skills dilute review focus           | Route by changed area and risk; select only a small relevant specialist set                              |
-| External skills impose conflicting workflows  | Adapt capabilities selectively; keep repository conventions and human execution authoritative            |
-| Dockerfile lint is mistaken for image safety  | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates                        |
-| Artifact model duplicates too much data       | Store immutable blobs cheaply; DB keeps references and workflow metadata                                 |
-| Concurrent source writes overwrite bytes      | Reserve identity under a Platform DB uniqueness constraint before upload; test two instances             |
-| Runtime SQL mutates finalized object metadata | Separate migrator/owner and runtime roles; deny runtime update/delete/truncate on the table              |
-| RabbitMQ/Compose complexity slows local work  | One-command scripts, health checks, narrow service profiles, deterministic fixtures                      |
-| Observability stack slows normal local work   | Keep it in an optional Compose profile with short retention and single-node components                   |
-| Logs expose request or identity data          | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity               |
-| Telemetry cardinality or volume grows         | Bound labels, sample traces, redact payloads, and set explicit retention limits                          |
-| WebSocket introduces false consistency        | Notification-only events followed by authoritative refetch                                               |
-| AI output is trusted without evidence         | Strict schemas, eval thresholds, provenance, human approval, failure artifacts                           |
-| Provider lock-in                              | Provider-neutral interfaces and shared eval datasets, with provider details isolated                     |
-| Python course diverges from TS product        | Implement product harness in TS; use Python only where ecosystem value is concrete                       |
-| Former name implies Elemica affiliation       | Use AspectLoop and a non-affiliation statement; audit public content before release                      |
+| Risk                                          | Response                                                                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Refactor destroys useful PoC behavior         | Move paths first, extract domains incrementally, verify each existing flow                                                     |
+| Gateway becomes a new monolith                | Extract Platform in M04.1, finish correction extraction in M06, and prohibit new gateway state ownership                       |
+| Generated GraphQL types become domain APIs    | Confine them to resolver/adapter boundaries; map to service-owned commands and views                                           |
+| Service bypasses database ownership           | Separate DB roles and migrations; prohibit cross-database access, joins, and foreign keys                                      |
+| Contract drift breaks FE/services             | Schema generation, versioned events, and contract tests in CI                                                                  |
+| Browser shows stale authenticated state       | Bootstrap through `me`, validate protected requests, distinguish invalid sessions from dependency outages; no automatic replay |
+| Stolen session credential permits reuse       | HttpOnly/Secure cookies, CSRF/XSS defenses, digest-only storage, bounded expiry, and revocation; no claim of replay detection  |
+| AI review creates false confidence            | Keep deterministic verification as the merge gate and treat AI findings as advisory                                            |
+| Too many skills dilute review focus           | Route by changed area and risk; select only a small relevant specialist set                                                    |
+| External skills impose conflicting workflows  | Adapt capabilities selectively; keep repository conventions and human execution authoritative                                  |
+| Dockerfile lint is mistaken for image safety  | Keep builds, image/SBOM scanning, and runtime checks as independent quality gates                                              |
+| Artifact model duplicates too much data       | Store immutable blobs cheaply; DB keeps references and workflow metadata                                                       |
+| Concurrent source writes overwrite bytes      | Reserve identity under a Platform DB uniqueness constraint before upload; test two instances                                   |
+| Runtime SQL mutates finalized object metadata | Separate migrator/owner and runtime roles; deny runtime update/delete/truncate on the table                                    |
+| RabbitMQ/Compose complexity slows local work  | One-command scripts, health checks, narrow service profiles, deterministic fixtures                                            |
+| Observability stack slows normal local work   | Keep it in an optional Compose profile with short retention and single-node components                                         |
+| Logs expose request or identity data          | Emit IDs and bounded metadata; exclude headers, bodies, GraphQL payloads, and raw identity                                     |
+| Telemetry cardinality or volume grows         | Bound labels, sample traces, redact payloads, and set explicit retention limits                                                |
+| WebSocket introduces false consistency        | Notification-only events followed by authoritative refetch                                                                     |
+| AI output is trusted without evidence         | Strict schemas, eval thresholds, provenance, human approval, failure artifacts                                                 |
+| Provider lock-in                              | Provider-neutral interfaces and shared eval datasets, with provider details isolated                                           |
+| Python course diverges from TS product        | Implement product harness in TS; use Python only where ecosystem value is concrete                                             |
+| Former name implies Elemica affiliation       | Use AspectLoop and a non-affiliation statement; audit public content before release                                            |
 
 ### Explicit Non-Goals
 

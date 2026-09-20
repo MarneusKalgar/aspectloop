@@ -330,6 +330,7 @@ fi
 
 required_tables=(
   users document document_object document_object_reservation
+  auth_session auth_refresh_token email_verification_token
   correction_session correction_edit correction_event_outbox migrations
 )
 for table_name in "${required_tables[@]}"; do
@@ -344,6 +345,9 @@ assert_table_privileges "$PLATFORM_RUNTIME_USER" users "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object "t,t,f,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object_reservation "t,t,t,f,f,f,f,f"
+assert_table_privileges "$PLATFORM_RUNTIME_USER" auth_session "t,t,t,f,f,f,f,f"
+assert_table_privileges "$PLATFORM_RUNTIME_USER" auth_refresh_token "t,t,t,f,f,f,f,f"
+assert_table_privileges "$PLATFORM_RUNTIME_USER" email_verification_token "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_session "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_edit "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_event_outbox "t,t,t,f,f,f,f,f"
@@ -351,7 +355,9 @@ assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_event_outb
 for table_name in correction_session correction_edit correction_event_outbox migrations; do
   assert_table_privileges "$PLATFORM_RUNTIME_USER" "$table_name" "f,f,f,f,f,f,f,f"
 done
-for table_name in users document document_object document_object_reservation migrations; do
+for table_name in \
+  users document document_object document_object_reservation \
+  auth_session auth_refresh_token email_verification_token migrations; do
   assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" "$table_name" "f,f,f,f,f,f,f,f"
 done
 

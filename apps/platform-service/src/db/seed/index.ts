@@ -58,6 +58,7 @@ async function ensureOwner(manager: EntityManager): Promise<void> {
   await repository.insert({
     displayName: 'M04 platform artifact seed',
     email: PLATFORM_ARTIFACT_SEED.ownerEmail,
+    emailVerifiedAt: null,
     id: PLATFORM_ARTIFACT_SEED.ownerId,
     passwordHash: 'not-a-login-credential',
     roles: [],

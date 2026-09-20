@@ -36,15 +36,18 @@ migrations, seeds, and platform outbox/process-manager responsibilities out of
 `gateway-api` without redesigning the public GraphQL contract.
 
 Identity remains part of Platform. A separate identity service is not planned.
-M04.2 follows the ownership move and implements the previously planned session
-and identity stabilization: authoritative browser sessions, refresh rotation,
-email confirmation, and related auth hardening.
+M04.2 follows the ownership move with authoritative browser sessions, email
+confirmation, and related auth hardening. The original JWT/refresh mechanism
+was superseded on 2026-09-20 by
+[ADR 0005](0005-browser-session-cookie-and-platform-validation.md): opaque
+session cookies and Platform/PostgreSQL validation. That cutover is pending;
+it does not change the service-ownership decision here.
 
 After M04.1, the gateway owns only edge concerns for Platform/document flows:
 
 - public GraphQL SDL, resolvers, and transport mapping;
-- cookie transport, token validation, authenticated request context, and
-  coarse role/scope enforcement;
+- cookie transport, authenticated request context, and coarse role/scope
+  enforcement (Platform-validated sessions under the revised M04.2 target);
 - input limits, public error mapping, rate limiting, correlation, and edge
   telemetry;
 - lightweight request composition and realtime delivery.

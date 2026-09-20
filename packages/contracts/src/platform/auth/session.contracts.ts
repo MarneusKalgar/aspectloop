@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { platformUserViewSchema } from '../users.contracts';
+import { platformIdentityEmailSchema, platformSignInPasswordSchema } from './identity.contracts';
 
 export const PLATFORM_ACCESS_TOKEN_MAX_LENGTH = 8192;
 export const PLATFORM_REFRESH_TOKEN_MAX_LENGTH = 128;
@@ -9,8 +10,8 @@ export const platformRefreshTokenSchema = z.string().min(1).max(PLATFORM_REFRESH
 
 export const platformSignInRequestSchema = z
   .object({
-    email: z.string().min(1),
-    password: z.string().min(1),
+    email: platformIdentityEmailSchema,
+    password: platformSignInPasswordSchema,
   })
   .strict();
 

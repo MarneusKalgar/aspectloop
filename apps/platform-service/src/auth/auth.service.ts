@@ -1,129 +1,119 @@
 import type {
+  PlatformMeRequest,
+  PlatformMeResponse,
+  PlatformRefreshSessionRequest,
+  PlatformRefreshSessionResponse,
+  PlatformSessionSignInResponse,
+  PlatformSessionSignOutRequest,
   PlatformSignInRequest,
-  PlatformSignInResponse,
   PlatformSignOutResponse,
   PlatformSignUpRequest,
   PlatformSignUpResponse,
 } from '@aspectloop/contracts/platform';
 
 import {
-  platformSignInResponseSchema,
+  AUTH_ERROR_CODE,
+  platformMeResponseSchema,
+  platformRefreshSessionResponseSchema,
+  platformSessionSignInResponseSchema,
   platformSignOutResponseSchema,
   platformSignUpResponseSchema,
 } from '@aspectloop/contracts/platform';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
-import { normalizeEmail } from '../core/utils/normalize-email';
+import type { ActiveAuthSession } from './auth-session.types';
+
 import { toPlatformUserView } from '../users/user-view';
 import { UsersService } from '../users/users.service';
+import { AuthSessionStore } from './auth-session.store';
 import { PasswordService } from './password.service';
+import { PlatformAuthException } from './platform-auth.exception';
 import { TokenService } from './token.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  /** Creates Platform authentication behavior over user, password, and token services. */
+  /** Creates Platform authentication behavior over persisted identity and session state. */
   constructor(
+    private readonly authSessionStore: AuthSessionStore,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly usersService: UsersService,
   ) {}
 
-  /** Authenticates a reviewer and issues the current stateless access token. */
-  async signIn(input: PlatformSignInRequest): Promise<PlatformSignInResponse> {
-    const email = normalizeEmail(input.email);
-    const password = input.password.trim();
+  /** Resolves authoritative user data only while the persisted bearer session is active. */
+  async me(input: PlatformMeRequest): Promise<PlatformMeResponse> {
+    const user = await this.authSessionStore.getActiveUser(input.userId, input.sessionId);
 
-    if (!email || !password) {
+    return platformMeResponseSchema.parse({ user: toPlatformUserView(user) });
+  }
+
+  /** Rotates a valid refresh token and returns a replacement session credential pair. */
+  async refresh(input: PlatformRefreshSessionRequest): Promise<PlatformRefreshSessionResponse> {
+    const session = await this.authSessionStore.refresh(input.refreshToken);
+
+    this.logger.log({
+      event: 'auth.refresh.succeeded',
+      outcome: 'success',
+      sessionId: session.sessionId,
+      userId: session.user.id,
+    });
+
+    return platformRefreshSessionResponseSchema.parse(await this.createSessionResponse(session));
+  }
+
+  /** Authenticates one verified reviewer and creates an independent refresh-token family. */
+  async signIn(input: PlatformSignInRequest): Promise<PlatformSessionSignInResponse> {
+    const { email, password } = input;
+
+    const user = await this.usersService.findByEmailWithPassword(email);
+    const isPasswordValid = await this.passwordService.verifyOrDummy(
+      password,
+      user?.passwordHash ?? null,
+    );
+
+    if (!user?.passwordHash || !isPasswordValid) {
+      this.rejectInvalidCredentials();
+    }
+
+    if (!user.emailVerifiedAt) {
       this.logger.warn({
         event: 'auth.sign_in.failed',
         outcome: 'failure',
-        reason: 'invalid_input',
-      });
-      throw new BadRequestException('Email and password are required');
-    }
-
-    const user = await this.usersService.findByEmailWithPassword(email);
-
-    if (!user?.passwordHash) {
-      this.logInvalidCredentials();
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    const isPasswordValid = await this.passwordService.verify(password, user.passwordHash);
-
-    if (!isPasswordValid) {
-      this.logInvalidCredentials();
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    let accessToken: string;
-
-    try {
-      accessToken = await this.tokenService.generateAccessToken(user);
-    } catch (error) {
-      this.logger.error({
-        event: 'auth.sign_in.failed',
-        outcome: 'failure',
-        reason: 'token_generation_failed',
+        reason: 'email_unverified',
         userId: user.id,
       });
-      throw error;
+      throw new PlatformAuthException(
+        AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
+        'Email confirmation is required',
+      );
     }
+
+    const session = await this.authSessionStore.create(user.id);
 
     this.logger.log({
       event: 'auth.sign_in.succeeded',
       outcome: 'success',
+      sessionId: session.sessionId,
       userId: user.id,
     });
 
-    return platformSignInResponseSchema.parse({
-      accessToken,
-      user: toPlatformUserView(user),
-    });
+    return platformSessionSignInResponseSchema.parse(await this.createSessionResponse(session));
   }
 
-  /** Confirms the subject still exists before recording stateless sign-out. */
-  async signOut(userId: string): Promise<PlatformSignOutResponse> {
-    const user = await this.usersService.findById(userId);
+  /** Revokes the family proven by a valid current or historical refresh token. */
+  async signOut(input: PlatformSessionSignOutRequest): Promise<PlatformSignOutResponse> {
+    await this.authSessionStore.signOut(input.refreshToken);
 
-    if (!user) {
-      throw new UnauthorizedException('Authenticated user no longer exists');
-    }
-
-    this.logger.log({
-      event: 'auth.sign_out.succeeded',
-      outcome: 'success',
-      userId: user.id,
-    });
+    this.logger.log({ event: 'auth.sign_out.completed', outcome: 'success' });
 
     return platformSignOutResponseSchema.parse({ success: true });
   }
 
-  /** Creates a reviewer account without logging supplied identity or credentials. */
+  /** Creates an unverified reviewer account without altering exact password bytes. */
   async signUp(input: PlatformSignUpRequest): Promise<PlatformSignUpResponse> {
-    const email = normalizeEmail(input.email);
-    const displayName = input.displayName.trim();
-    const password = input.password.trim();
-
-    if (!displayName) {
-      throw new BadRequestException('Display name is required');
-    }
-
-    if (!email || !password) {
-      throw new BadRequestException('Email and password are required');
-    }
-
-    if (password.length < 8) {
-      throw new BadRequestException('Password must be at least 8 characters long');
-    }
+    const { displayName, email, password } = input;
 
     if (await this.usersService.findByEmail(email)) {
       this.logger.warn({
@@ -135,17 +125,9 @@ export class AuthService {
     }
 
     const passwordHash = await this.passwordService.hash(password);
-    const user = await this.usersService.createUser({
-      displayName,
-      email,
-      passwordHash,
-    });
+    const user = await this.usersService.createUser({ displayName, email, passwordHash });
 
-    this.logger.log({
-      event: 'auth.sign_up.succeeded',
-      outcome: 'success',
-      userId: user.id,
-    });
+    this.logger.log({ event: 'auth.sign_up.succeeded', outcome: 'success', userId: user.id });
 
     return platformSignUpResponseSchema.parse({
       success: true,
@@ -153,12 +135,33 @@ export class AuthService {
     });
   }
 
-  /** Emits the shared safe diagnostic for credential mismatch. */
-  private logInvalidCredentials(): void {
+  /** Projects one persisted family state into the private session transport contract. */
+  private async createSessionResponse(session: ActiveAuthSession): Promise<unknown> {
+    const accessToken = await this.tokenService.generateAccessToken(
+      session.user,
+      session.sessionId,
+      session.issuedAt,
+      session.effectiveExpiresAt,
+    );
+
+    return {
+      accessToken,
+      refreshExpiresAt: session.effectiveExpiresAt.toISOString(),
+      refreshToken: session.refreshToken,
+      user: toPlatformUserView(session.user),
+    };
+  }
+
+  /** Emits the shared safe diagnostic and rejects credential mismatch uniformly. */
+  private rejectInvalidCredentials(): never {
     this.logger.warn({
       event: 'auth.sign_in.failed',
       outcome: 'failure',
       reason: 'invalid_credentials',
     });
+    throw new PlatformAuthException(
+      AUTH_ERROR_CODE.INVALID_CREDENTIALS,
+      'Invalid email or password',
+    );
   }
 }
