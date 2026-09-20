@@ -24,7 +24,10 @@ export class PasswordService {
 
   /** Performs the configured-cost comparison even when no account hash exists. */
   async verifyOrDummy(password: string, storedHash: null | string): Promise<boolean> {
-    const comparedHash = storedHash ?? (await this.dummyHash);
+    let comparedHash = storedHash;
+
+    comparedHash ??= await this.dummyHash;
+
     const matches = await bcrypt.compare(password, comparedHash);
 
     return storedHash !== null && matches;

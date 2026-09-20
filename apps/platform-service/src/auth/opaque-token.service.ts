@@ -51,7 +51,7 @@ export class OpaqueTokenService {
     const encodedSecret = secret.toString('base64url');
 
     return {
-      digest: this.digest(purpose, id, secret),
+      digest: this.computeDigest(purpose, id, secret),
       id,
       rawToken: `${id}.${encodedSecret}`,
     };
@@ -106,11 +106,11 @@ export class OpaqueTokenService {
       return null;
     }
 
-    return { digest: this.digest(purpose, id, secret), id };
+    return { digest: this.computeDigest(purpose, id, secret), id };
   }
 
   /** Builds a purpose- and identifier-bound HMAC for safe persistence. */
-  private digest(purpose: OpaqueTokenPurpose, id: string, secret: Buffer): string {
+  private computeDigest(purpose: OpaqueTokenPurpose, id: string, secret: Buffer): string {
     return createHmac('sha256', this.hmacKey)
       .update(purpose, 'utf8')
       .update('\0', 'utf8')

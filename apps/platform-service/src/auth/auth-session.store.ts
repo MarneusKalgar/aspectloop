@@ -405,7 +405,7 @@ export class AuthSessionStore {
         `${AUTH_LOCK_TIMEOUT_MS}ms`,
       ]);
 
-      return await work(manager);
+      return work(manager);
     });
   }
 }
