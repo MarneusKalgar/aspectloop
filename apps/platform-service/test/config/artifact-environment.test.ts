@@ -2,8 +2,9 @@ import { validateEnv } from '@platform/config/env.validation';
 import { expect, test } from 'vitest';
 
 const VALID_ENVIRONMENT = {
+  AUTH_TOKEN_HMAC_SECRET: 'test-only-hmac-secret-at-least-32-bytes',
   DATABASE_URL: 'postgresql://platform_runtime:platform_runtime@postgres:5432/platform_db',
-  JWT_ACCESS_SECRET: 'test-only-secret',
+  JWT_ACCESS_SECRET: 'test-only-access-secret-at-least-32-bytes',
   NODE_ENV: 'test',
   PLATFORM_S3_ACCESS_KEY_ID: 'test-access-key',
   PLATFORM_S3_BUCKET: 'aspectloop-platform-source',

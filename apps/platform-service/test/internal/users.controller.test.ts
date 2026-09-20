@@ -13,6 +13,7 @@ function createUser(): User {
     createdAt: new Date('2026-09-12T00:00:00.000Z'),
     displayName: 'Reviewer',
     email: 'reviewer@example.test',
+    emailVerifiedAt: new Date('2026-09-12T00:00:00.000Z'),
     id: USER_ID,
     passwordHash: 'private-hash',
     roles: ['CORRECTOR'],

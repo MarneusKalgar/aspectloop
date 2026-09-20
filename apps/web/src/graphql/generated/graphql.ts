@@ -4,14 +4,21 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+/** Credentials used to create a browser session. */
 export type SignInInput = {
+  /** Account email address. */
   email: string;
+  /** Account password. */
   password: string;
 };
 
+/** Credentials and profile data used to request account creation. */
 export type SignUpInput = {
+  /** Name shown in the application UI. */
   displayName: string;
+  /** Email address to verify before sign-in is permitted. */
   email: string;
+  /** Password accepted only by the private Platform boundary. */
   password: string;
 };
 
@@ -32,7 +39,7 @@ export type SignUpMutationVariables = Exact<{
 }>;
 
 
-export type SignUpMutation = { signUp: { success: boolean, user: { id: string, email: string, displayName: string, roles: Array<string>, scopes: Array<string>, createdAt: string, updatedAt: string } } };
+export type SignUpMutation = { signUp: { success: boolean, user: { id: string, email: string, displayName: string, roles: Array<string>, scopes: Array<string>, createdAt: string, updatedAt: string } | null } };
 
 export type CorrectionSessionsQueryVariables = Exact<{ [key: string]: never; }>;
 

@@ -23,14 +23,18 @@ interface TypeOrmConfig {
 export function getTypeOrmDataSourceOptions(config: TypeOrmConfig): DataSourceOptions {
   const paths = getTypeOrmDiscoveryPaths(config.discoveryMode, APPLICATION_ROOT);
 
-  return createPostgresDataSourceOptions({
-    databaseUrl: config.databaseUrl,
-    entities: paths.entities,
-    migrations: paths.migrations,
-    nodeEnv: config.nodeEnv,
-    poolSize: config.poolSize,
-    slowQueryThresholdMs: config.slowQueryThresholdMs,
-  });
+  return {
+    ...createPostgresDataSourceOptions({
+      databaseUrl: config.databaseUrl,
+      entities: paths.entities,
+      migrations: paths.migrations,
+      nodeEnv: config.nodeEnv,
+      poolSize: config.poolSize,
+      slowQueryThresholdMs: config.slowQueryThresholdMs,
+    }),
+    // Platform owns credential-adjacent rows; TypeORM error logging can include SQL parameters.
+    logging: false,
+  };
 }
 
 /** Builds Nest's Platform datasource options from validated configuration. */

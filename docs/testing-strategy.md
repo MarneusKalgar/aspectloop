@@ -411,6 +411,25 @@ internals to tests. `local:reset` is destructive and explicit. This contract is
 a foundation for later suites, not an automated `test:e2e:local` command or a
 parallel CI fixture.
 
+M04.2-B adds `npm run local:auth:verify -- --sessions` as a focused
+real-PostgreSQL verifier. It uses production session stores through runtime
+credentials and isolated fixture state to prove digest-only issuance, rotation
+and replay revocation, independent families, logout races, expiry boundaries,
+bounded lock waits, transaction rollback after a failed successor insert, and
+user-deletion cascades. The cleanup datasource owns fixture setup and cleanup;
+it does not replace runtime-role operations under test.
+
+Those AUTH-B results are historical evidence for the JWT/refresh design.
+[ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
+changes the target to opaque session cookies and per-request Platform validation.
+The revised M04.2 plan defines pending SESSION-01 through SESSION-17 acceptance
+for digest-only session issuance, legacy-credential rejection, expiry/activity,
+validation/logout races, real HTTP cookie and mutation-CSRF behavior, request
+deduplication, dependency failures, browser lifecycle, confirmation, and measured
+database/validation performance. Adapt the verifier with its owning task;
+do not relabel old rotation passes as replacement-session acceptance. A working
+store alone does not prove browser or GraphQL transport behavior.
+
 ### 8.1 Dedicated local E2E stack
 
 When justified, adapt the established `rd_shop` pattern rather than copying it

@@ -19,6 +19,9 @@ export class User {
   @Column({ length: 320, type: 'varchar' })
   email!: string;
 
+  @Column({ name: 'email_verified_at', nullable: true, type: 'timestamptz' })
+  emailVerifiedAt!: Date | null;
+
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 

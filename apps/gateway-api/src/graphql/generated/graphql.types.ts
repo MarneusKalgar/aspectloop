@@ -41,6 +41,10 @@ export enum ProvenanceSource {
     USER = "USER"
 }
 
+export class ConfirmEmailInput {
+    token: string;
+}
+
 export class CorrectionEditInput {
     fieldId: string;
     path: string;
@@ -50,6 +54,10 @@ export class CorrectionEditInput {
 export class OpenCorrectionSessionInput {
     documentId: string;
     documentType: string;
+}
+
+export class ResendEmailConfirmationInput {
+    email: string;
 }
 
 export class SaveCorrectionSessionDraftInput {
@@ -173,6 +181,14 @@ export class DocumentTypeSummary {
     version: number;
 }
 
+export class EmailConfirmationPayload {
+    success: boolean;
+}
+
+export class EmailConfirmationRequestPayload {
+    success: boolean;
+}
+
 export class FieldProvenance {
     boundingBox?: Nullable<BoundingBox>;
     confidence?: Nullable<number>;
@@ -193,7 +209,13 @@ export class FieldValidation {
 export abstract class IMutation {
     abstract _empty(): Nullable<string> | Promise<Nullable<string>>;
 
+    abstract confirmEmail(input: ConfirmEmailInput): EmailConfirmationPayload | Promise<EmailConfirmationPayload>;
+
     abstract openCorrectionSession(input: OpenCorrectionSessionInput): CorrectionSession | Promise<CorrectionSession>;
+
+    abstract refreshSession(): AuthPayload | Promise<AuthPayload>;
+
+    abstract resendEmailConfirmation(input: ResendEmailConfirmationInput): EmailConfirmationRequestPayload | Promise<EmailConfirmationRequestPayload>;
 
     abstract saveCorrectionSessionDraft(input: SaveCorrectionSessionDraftInput): CorrectionSession | Promise<CorrectionSession>;
 
@@ -226,7 +248,7 @@ export class SignOutPayload {
 
 export class SignUpPayload {
     success: boolean;
-    user: User;
+    user?: Nullable<User>;
 }
 
 export class SubmitCorrectionsPayload {

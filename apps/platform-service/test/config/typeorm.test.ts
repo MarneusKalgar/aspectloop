@@ -10,8 +10,9 @@ import { getTypeOrmDataSourceOptions, getTypeOrmModuleOptions } from '../../src/
 const APPLICATION_ROOT = resolve(__dirname, '../..');
 const DATABASE_URL = 'postgresql://platform_runtime:platform_runtime@postgres:5432/platform_db';
 const VALID_ENVIRONMENT = {
+  AUTH_TOKEN_HMAC_SECRET: 'test-only-hmac-secret-at-least-32-bytes',
   DATABASE_URL,
-  JWT_ACCESS_SECRET: 'test-only-secret',
+  JWT_ACCESS_SECRET: 'test-only-access-secret-at-least-32-bytes',
   PLATFORM_S3_ACCESS_KEY_ID: 'test-access-key',
   PLATFORM_S3_BUCKET: 'aspectloop-platform-source',
   PLATFORM_S3_SECRET_ACCESS_KEY: 'test-secret-key',
@@ -40,6 +41,8 @@ function testDiscoveryPaths(): void {
   ]);
   expect(compiledOptions.entities).toEqual([join(APPLICATION_ROOT, 'dist/**/*.entity.js')]);
   expect(compiledOptions.migrations).toEqual([join(APPLICATION_ROOT, 'dist/db/migrations/*.js')]);
+  expect(sourceOptions.logging).toBe(false);
+  expect(compiledOptions.logging).toBe(false);
 }
 
 /** Verifies Platform configuration rejects missing ownership and excess capacity. */

@@ -52,6 +52,7 @@
     "local:garage:bootstrap": "bash infra/local/scripts/local-garage-bootstrap.sh",
     "local:artifact:concurrency:verify": "bash infra/local/scripts/local-artifact-concurrency-verify.sh",
     "local:artifact:verify": "bash infra/local/scripts/local-artifact-verify.sh",
+    "local:auth:verify": "bash infra/local/scripts/local-auth-verify.sh",
     "local:garage:spike": "node infra/local/spikes/garage/spike.mjs",
     "format": "prettier --write \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"{.github,apps,mocks,packages,infra,docs,scripts}/**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\" \"*.{ts,js,mjs,json,md,yml,yaml}\"",

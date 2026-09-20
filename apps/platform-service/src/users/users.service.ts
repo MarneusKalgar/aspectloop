@@ -32,6 +32,7 @@ export class UsersService {
     const user = this.usersRepository.create({
       displayName: input.displayName,
       email: normalizeEmail(input.email),
+      emailVerifiedAt: null,
       passwordHash: input.passwordHash,
       roles: input.roles ?? ['CORRECTOR'],
       scopes: input.scopes ?? ['corrections:write'],

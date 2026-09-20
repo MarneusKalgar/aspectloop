@@ -1,0 +1,54 @@
+/** Stable machine-readable auth error codes shared across service boundaries. */
+export const AUTH_ERROR_CODE = Object.freeze({
+  ACCESS_EXPIRED: 'AUTH_ACCESS_EXPIRED',
+  ACCESS_INVALID: 'AUTH_ACCESS_INVALID',
+  CONFIRMATION_INVALID: 'AUTH_CONFIRMATION_INVALID',
+  DEPENDENCY_UNAVAILABLE: 'AUTH_DEPENDENCY_UNAVAILABLE',
+  EMAIL_UNVERIFIED: 'AUTH_EMAIL_UNVERIFIED',
+  INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS',
+  RATE_LIMITED: 'AUTH_RATE_LIMITED',
+  REFRESH_CONFLICT: 'AUTH_REFRESH_CONFLICT',
+  SESSION_INVALID: 'AUTH_SESSION_INVALID',
+} as const);
+
+/** Auth codes that may be produced by the private Platform boundary. */
+export const PLATFORM_AUTH_ERROR_CODES = Object.freeze([
+  AUTH_ERROR_CODE.INVALID_CREDENTIALS,
+  AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
+  AUTH_ERROR_CODE.SESSION_INVALID,
+  AUTH_ERROR_CODE.REFRESH_CONFLICT,
+  AUTH_ERROR_CODE.CONFIRMATION_INVALID,
+  AUTH_ERROR_CODE.RATE_LIMITED,
+  AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
+] as const);
+
+/** Auth codes produced only by the Gateway access-token boundary. */
+export const GATEWAY_AUTH_ERROR_CODES = Object.freeze([
+  AUTH_ERROR_CODE.ACCESS_EXPIRED,
+  AUTH_ERROR_CODE.ACCESS_INVALID,
+] as const);
+
+export const AUTH_ERROR_CODES = Object.freeze([
+  ...PLATFORM_AUTH_ERROR_CODES,
+  ...GATEWAY_AUTH_ERROR_CODES,
+] as const);
+
+/** Fixed HTTP statuses for safe Platform auth errors. */
+export const AUTH_ERROR_HTTP_STATUS = Object.freeze({
+  CONFIRMATION_INVALID: 400,
+  DEPENDENCY_UNAVAILABLE: 503,
+  EMAIL_UNVERIFIED: 403,
+  INVALID_CREDENTIALS: 401,
+  RATE_LIMITED: 429,
+  REFRESH_CONFLICT: 409,
+  SESSION_INVALID: 401,
+} as const);
+
+/** Bounds and retry behavior that form part of the public auth error contract. */
+export const AUTH_ERROR_POLICY = Object.freeze({
+  MESSAGE_MAX_LENGTH: 256,
+  MESSAGE_MIN_LENGTH: 1,
+  REFRESH_CONFLICT_RETRY_AFTER_MS: 1000,
+  RETRY_AFTER_MS_MAX: 60 * 60 * 1000,
+  RETRY_AFTER_MS_MIN: 1,
+} as const);

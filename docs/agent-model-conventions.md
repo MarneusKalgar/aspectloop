@@ -1,7 +1,7 @@
 # Agent, Planning, And Model Conventions
 
 Status: Active  
-Last updated: 2026-08-24
+Last updated: 2026-09-19
 
 ## 1. Purpose
 
@@ -212,6 +212,52 @@ Changing models in the same task preserves the conversation and decisions. A
 single Terra subagent is not a cheaper replacement because it starts a separate
 agent thread, consumes its own model/tool work, and needs a handoff plus parent
 review.
+
+### Mandatory stop-and-escalate rule
+
+The implementation escalation rule in `AGENTS.md` applies repository-wide,
+including milestones without a model-specific handoff plan. It is an agent
+behavior requirement, not an automatic model-switching or budget-enforcement
+mechanism.
+
+Stop immediately when evidence reveals a material plan/code conflict, an
+unresolved security/concurrency/ownership decision, or a need to change scope,
+add an unplanned abstraction/dependency, or weaken a safeguard. Do not spend two
+attempts on a decision that already requires escalation. For ordinary in-scope
+technical blockers, stop after at most two distinct evidence-based approaches
+fail. An approach means a specific hypothesis checked against relevant source,
+documentation, or human-provided results, not arbitrary edits or repeated
+searches. This does not authorize running the human-owned verification commands.
+Routine lookup, naming, and straightforward implementation within the plan can
+continue without a model consultation.
+
+Preserve all working-tree changes; do not hide the blocker with broad rewrites,
+disabled tests, relaxed validation, looser privileges, or a parallel framework.
+Record the blocked status in the active plan when present and end the turn with
+this compact handoff:
+
+- **Blocker:** intended behavior and the concrete conflict or failure.
+- **Evidence:** relevant file paths and observed or human-reported results;
+  distinguish facts from hypotheses and unexecuted checks.
+- **Approaches:** at most two distinct approaches and why each was insufficient.
+- **Decision needed:** the precise question, viable options, and tradeoff.
+- **Workspace:** changes already made, incomplete behavior, and pending human
+  actions. Never include credentials or raw sensitive logs.
+
+Request a user-controlled switch from Terra/Luna to Sol High in the same task.
+Sol provides a bounded diagnosis/design decision first; if the blocker remains
+unresolved, request Astra High. An agent already at the requested tier performs
+that assessment rather than asking for a redundant switch. If Astra cannot
+resolve it, ask the user for missing evidence or a decision instead of cycling
+through attempts. Do not automatically delegate, start another task, or consume
+reset credits. Missing permissions, dependencies, or human-generated migrations
+are human-action gates, not reasons to spend a larger model's allowance.
+
+Wait for the guidance before resuming implementation. Record its decision and
+any approved plan change, then recommend returning routine execution to Terra.
+An escalation does not itself authorize a new dependency, expanded scope, or a
+security-policy change. Resume only work covered by the user's authorization;
+otherwise obtain the missing approval. For a new blocker, apply the same rule.
 
 ## 9. When To Start A Fresh Task
 

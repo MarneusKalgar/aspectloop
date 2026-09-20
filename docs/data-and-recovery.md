@@ -39,6 +39,28 @@ metadata. M06 moves the remaining correction tables and behavior to
 `correction_db`. Identity remains part of Platform; M04.2 hardens its
 browser-session behavior.
 
+M04.2-B source now defines Platform-owned `auth_session`,
+`auth_refresh_token`, and `email_verification_token` state plus runtime
+`SELECT`/`INSERT`/`UPDATE` allowlists. Refresh and confirmation secrets are
+represented only by HMAC digests in these tables; predecessor rows are retained
+for replay detection, and deleting a user cascades its auth state. This schema
+is materialized by the generated and reviewed `AddPlatformAuthSessions`
+migration. Local migration, privilege, and session verification on 2026-09-20
+confirmed the tables, runtime allowlists, rotation/replay behavior, bounded
+locking, transaction rollback after a failed successor insert, and cascades.
+Platform disables TypeORM query/error logging because SQL parameters may
+contain credential-adjacent identity or token-digest data.
+
+This describes the existing B implementation, not the revised final session
+design. [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
+accepts opaque session cookies with per-request Platform/PostgreSQL validation.
+The planned cutover adds a session credential digest, adapts activity tracking,
+and later removes obsolete refresh-token state through new human-generated
+migrations. Applied migrations remain immutable; legacy refresh credentials
+must not become valid browser session credentials. Redis is not part of this
+initial session authority. Migration and acceptance evidence for the revised
+design remain pending.
+
 | Current state                                          | Authority and recovery consequence                                                                                                                                          |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Platform plus legacy correction state in `platform_db` | Platform owns users, documents, source-object metadata, and migration history in code; the gateway temporarily owns correction rows. Preserve together until M06.           |
@@ -210,8 +232,12 @@ databases or artifacts were backed up.
   recovery behavior for source artifacts. The correction draft/save/submit
   browser flow remains a documented manual-verification limitation because the
   current local inbox has no session-creation setup path.
-- **M04.2, planned:** stabilize identity and sessions inside Platform after the
-  ownership move.
+- **M04.2-B, locally verified:** Platform session persistence and rotation,
+  generated migration, privilege checks, focused tests, and real-PostgreSQL
+  AUTH-B01 through AUTH-B09 scenarios passed locally on 2026-09-20. Later
+  M04.2 tasks now adapt this historical implementation to ADR 0005 before
+  accepting the public cookie, confirmation, and browser flow. Passing the old
+  rotation scenarios does not establish acceptance of the revised mechanism.
 - **M04-H P1, deferred:** no backup or restore helper is currently available.
   The obsolete PG16-specific rehearsal is dropped. Reconsider the durable PG18
   plus Garage recovery format immediately after M06 removes or replaces the

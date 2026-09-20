@@ -353,7 +353,14 @@ WHERE n.nspname = 'public'
 \gexec
 
 SELECT format('GRANT SELECT, INSERT, UPDATE ON TABLE public.%I TO %I', table_name, :'platform_runtime')
-FROM (VALUES ('users'), ('document')) AS allowed(table_name)
+FROM (
+  VALUES
+    ('users'),
+    ('document'),
+    ('auth_session'),
+    ('auth_refresh_token'),
+    ('email_verification_token')
+) AS allowed(table_name)
 WHERE to_regclass(format('public.%I', table_name)) IS NOT NULL
 \gexec
 
