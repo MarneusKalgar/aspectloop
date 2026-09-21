@@ -1,7 +1,7 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
-import { User } from '../../users/user.entity';
-import { AUTH_DIGEST_HEX_LENGTH } from '../auth.constants';
+import { User } from '../../../users/user.entity';
+import { AUTH_DIGEST_HEX_LENGTH } from '../../credentials/credential.constants';
 
 @Check('CHK_email_verification_token_expiry', '"expires_at" > "created_at"')
 @Check('CHK_email_verification_token_digest', '"token_digest" ~ \'^[0-9a-f]{64}$\'')

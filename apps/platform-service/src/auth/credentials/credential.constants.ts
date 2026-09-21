@@ -1,0 +1,2 @@
+export const AUTH_DIGEST_HEX_LENGTH = 64;
+export const AUTH_OPAQUE_SECRET_BYTES = 32;

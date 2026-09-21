@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-09-10
+Last updated: 2026-09-21
 
 ## Table Of Contents
 
@@ -604,6 +604,24 @@ and passing rotation tests are historical foundations, not evidence that the
 replacement browser session flow is complete. The SPA and separately deployed
 GraphQL Gateway form a BFF arrangement; SSR or a Next/Nuxt migration is not
 required.
+
+Session validation deliberately places Platform and PostgreSQL on the protected
+request path. This supports next-validation revocation and current permissions;
+dependency failures make protected access unavailable. Extracting a separate
+Auth service would move this dependency, not remove it. Keep identity as a
+Platform module unless independent ownership, scaling, or multiple applications
+justify a separate runtime.
+
+Revisit this tradeoff after measuring end-to-end validation p95/p99 latency,
+database pool pressure, and availability requirements. Cross-request caching or
+locally verified short-lived credentials require an explicit acceptable window
+for stale permissions and revoked sessions, plus expiry/activity and outage
+policies. Redis changes storage performance and failure semantics without
+eliminating a runtime dependency. Co-locating Gateway and session authority
+could remove the HTTP hop while retaining a database dependency, but would
+require a separate revision of the current deployment and ownership boundaries.
+These are future decision options, not additional M04.2 implementation scope;
+retain request-scoped validation deduplication and throttled activity writes.
 
 M04.2 is an umbrella outcome, not a single implementation-sized change. Its
 remaining work is accepted in bounded tasks:

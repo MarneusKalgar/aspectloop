@@ -1,3 +1,4 @@
+import { PLATFORM_AUTH_ROLE, PLATFORM_AUTH_SCOPE } from '@aspectloop/contracts/platform';
 import { UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
@@ -14,8 +15,8 @@ import {
 import { CorrectionSessionsService } from './correction-sessions.service';
 
 @Resolver()
-@Roles('CORRECTOR')
-@Scopes('corrections:write')
+@Roles(PLATFORM_AUTH_ROLE.CORRECTOR)
+@Scopes(PLATFORM_AUTH_SCOPE.CORRECTIONS_WRITE)
 @UseGuards(GqlJwtAuthGuard, RolesGuard, ScopesGuard)
 export class CorrectionSessionsResolver {
   constructor(private readonly correctionSessionsService: CorrectionSessionsService) {}

@@ -1,4 +1,9 @@
 import type {
+  PlatformBrowserSessionSignInResponse,
+  PlatformBrowserSessionSignOutRequest,
+  PlatformBrowserSessionSignOutResponse,
+  PlatformBrowserSessionValidationRequest,
+  PlatformBrowserSessionValidationResponse,
   PlatformMeRequest,
   PlatformMeResponse,
   PlatformRefreshSessionRequest,
@@ -13,6 +18,9 @@ import type {
 
 import {
   AUTH_ERROR_CODE,
+  platformBrowserSessionSignInResponseSchema,
+  platformBrowserSessionSignOutResponseSchema,
+  platformBrowserSessionValidationResponseSchema,
   platformMeResponseSchema,
   platformRefreshSessionResponseSchema,
   platformSessionSignInResponseSchema,
@@ -21,14 +29,15 @@ import {
 } from '@aspectloop/contracts/platform';
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
 
-import type { ActiveAuthSession } from './auth-session.types';
+import type { User } from '../users/user.entity';
+import type { ActiveAuthSession } from './sessions/session.types';
 
 import { toPlatformUserView } from '../users/user-view';
 import { UsersService } from '../users/users.service';
-import { AuthSessionStore } from './auth-session.store';
-import { PasswordService } from './password.service';
+import { PasswordService } from './credentials/password.service';
+import { TokenService } from './legacy/token.service';
 import { PlatformAuthException } from './platform-auth.exception';
-import { TokenService } from './token.service';
+import { AuthSessionStore } from './sessions/auth-session.store';
 
 @Injectable()
 export class AuthService {
@@ -65,30 +74,7 @@ export class AuthService {
 
   /** Authenticates one verified reviewer and creates an independent refresh-token family. */
   async signIn(input: PlatformSignInRequest): Promise<PlatformSessionSignInResponse> {
-    const { email, password } = input;
-
-    const user = await this.usersService.findByEmailWithPassword(email);
-    const isPasswordValid = await this.passwordService.verifyOrDummy(
-      password,
-      user?.passwordHash ?? null,
-    );
-
-    if (!user?.passwordHash || !isPasswordValid) {
-      this.rejectInvalidCredentials();
-    }
-
-    if (!user.emailVerifiedAt) {
-      this.logger.warn({
-        event: 'auth.sign_in.failed',
-        outcome: 'failure',
-        reason: 'email_unverified',
-        userId: user.id,
-      });
-      throw new PlatformAuthException(
-        AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
-        'Email confirmation is required',
-      );
-    }
+    const user = await this.authenticateVerifiedUser(input);
 
     const session = await this.authSessionStore.create(user.id);
 
@@ -102,6 +88,27 @@ export class AuthService {
     return platformSessionSignInResponseSchema.parse(await this.createSessionResponse(session));
   }
 
+  /** Authenticates one verified reviewer and creates an opaque browser session. */
+  async signInBrowserSession(
+    input: PlatformSignInRequest,
+  ): Promise<PlatformBrowserSessionSignInResponse> {
+    const user = await this.authenticateVerifiedUser(input);
+    const session = await this.authSessionStore.createBrowserSession(user.id);
+
+    this.logger.log({
+      event: 'auth.browser_session.sign_in.succeeded',
+      outcome: 'success',
+      sessionId: session.sessionId,
+      userId: user.id,
+    });
+
+    return platformBrowserSessionSignInResponseSchema.parse({
+      sessionCredential: session.sessionCredential,
+      sessionExpiresAt: session.sessionExpiresAt.toISOString(),
+      user: toPlatformUserView(session.user),
+    });
+  }
+
   /** Revokes the family proven by a valid current or historical refresh token. */
   async signOut(input: PlatformSessionSignOutRequest): Promise<PlatformSignOutResponse> {
     await this.authSessionStore.signOut(input.refreshToken);
@@ -109,6 +116,17 @@ export class AuthService {
     this.logger.log({ event: 'auth.sign_out.completed', outcome: 'success' });
 
     return platformSignOutResponseSchema.parse({ success: true });
+  }
+
+  /** Revokes the browser session proven by a valid opaque credential. */
+  async signOutBrowserSession(
+    input: PlatformBrowserSessionSignOutRequest,
+  ): Promise<PlatformBrowserSessionSignOutResponse> {
+    await this.authSessionStore.signOutBrowserSession(input.sessionCredential);
+
+    this.logger.log({ event: 'auth.browser_session.sign_out.completed', outcome: 'success' });
+
+    return platformBrowserSessionSignOutResponseSchema.parse({ success: true });
   }
 
   /** Creates an unverified reviewer account without altering exact password bytes. */
@@ -133,6 +151,50 @@ export class AuthService {
       success: true,
       user: toPlatformUserView(user),
     });
+  }
+
+  /** Resolves current browser-session identity and optional server-owned activity. */
+  async validateBrowserSession(
+    input: PlatformBrowserSessionValidationRequest,
+  ): Promise<PlatformBrowserSessionValidationResponse> {
+    const session = await this.authSessionStore.validateBrowserSession(
+      input.sessionCredential,
+      input.recordActivity,
+    );
+
+    return platformBrowserSessionValidationResponseSchema.parse({
+      sessionExpiresAt: session.sessionExpiresAt.toISOString(),
+      sessionId: session.sessionId,
+      user: toPlatformUserView(session.user),
+    });
+  }
+
+  /** Applies uniform password work and verified-identity policy to either sign-in flow. */
+  private async authenticateVerifiedUser(input: PlatformSignInRequest): Promise<User> {
+    const user = await this.usersService.findByEmailWithPassword(input.email);
+    const isPasswordValid = await this.passwordService.verifyOrDummy(
+      input.password,
+      user?.passwordHash ?? null,
+    );
+
+    if (!user?.passwordHash || !isPasswordValid) {
+      this.rejectInvalidCredentials();
+    }
+
+    if (!user.emailVerifiedAt) {
+      this.logger.warn({
+        event: 'auth.sign_in.failed',
+        outcome: 'failure',
+        reason: 'email_unverified',
+        userId: user.id,
+      });
+      throw new PlatformAuthException(
+        AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
+        'Email confirmation is required',
+      );
+    }
+
+    return user;
   }
 
   /** Projects one persisted family state into the private session transport contract. */

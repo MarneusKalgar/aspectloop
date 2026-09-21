@@ -1,4 +1,5 @@
 import {
+  PLATFORM_BROWSER_SESSION_CREDENTIAL_MAX_LENGTH,
   PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH,
   PLATFORM_REFRESH_TOKEN_MAX_LENGTH,
 } from '@aspectloop/contracts/platform';
@@ -6,13 +7,14 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 
-import { AUTH_DIGEST_HEX_LENGTH, AUTH_OPAQUE_SECRET_BYTES } from './auth.constants';
+import { AUTH_DIGEST_HEX_LENGTH, AUTH_OPAQUE_SECRET_BYTES } from './credential.constants';
 
 const OPAQUE_TOKEN_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[A-Za-z0-9_-]{43}$/;
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 
 export const OPAQUE_TOKEN_PURPOSE = Object.freeze({
+  BROWSER_SESSION: 'browser-session',
   EMAIL_VERIFICATION: 'email-verification',
   REFRESH: 'refresh',
 } as const);
@@ -85,10 +87,7 @@ export class OpaqueTokenService {
    * @returns Token identity and candidate digest, or null for malformed input.
    */
   parse(rawToken: string, purpose: OpaqueTokenPurpose): null | ParsedOpaqueToken {
-    const maximumLength =
-      purpose === OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION
-        ? PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH
-        : PLATFORM_REFRESH_TOKEN_MAX_LENGTH;
+    const maximumLength = getOpaqueTokenMaximumLength(purpose);
 
     if (rawToken.length > maximumLength || !OPAQUE_TOKEN_PATTERN.test(rawToken)) {
       return null;
@@ -118,5 +117,17 @@ export class OpaqueTokenService {
       .update('\0', 'utf8')
       .update(secret)
       .digest('hex');
+  }
+}
+
+/** Returns the contract boundary for one domain-separated opaque-token family. */
+function getOpaqueTokenMaximumLength(purpose: OpaqueTokenPurpose): number {
+  switch (purpose) {
+    case OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION:
+      return PLATFORM_BROWSER_SESSION_CREDENTIAL_MAX_LENGTH;
+    case OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION:
+      return PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH;
+    case OPAQUE_TOKEN_PURPOSE.REFRESH:
+      return PLATFORM_REFRESH_TOKEN_MAX_LENGTH;
   }
 }

@@ -1,9 +1,9 @@
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { expect, test, vi } from 'vitest';
 
-import type { AuthSessionStore } from '../../src/auth/auth-session.store';
-import type { PasswordService } from '../../src/auth/password.service';
-import type { TokenService } from '../../src/auth/token.service';
+import type { PasswordService } from '../../src/auth/credentials/password.service';
+import type { TokenService } from '../../src/auth/legacy/token.service';
+import type { AuthSessionStore } from '../../src/auth/sessions/auth-session.store';
 import type { User } from '../../src/users/user.entity';
 import type { UsersService } from '../../src/users/users.service';
 
@@ -27,9 +27,12 @@ const USER: User = {
 interface ServiceFixture {
   authSessionStore: {
     create: ReturnType<typeof vi.fn>;
+    createBrowserSession: ReturnType<typeof vi.fn>;
     getActiveUser: ReturnType<typeof vi.fn>;
     refresh: ReturnType<typeof vi.fn>;
     signOut: ReturnType<typeof vi.fn>;
+    signOutBrowserSession: ReturnType<typeof vi.fn>;
+    validateBrowserSession: ReturnType<typeof vi.fn>;
   };
   passwordService: {
     hash: ReturnType<typeof vi.fn>;
@@ -53,9 +56,21 @@ function createFixture(
   };
   const authSessionStore = {
     create: vi.fn().mockResolvedValue(session),
+    createBrowserSession: vi.fn().mockResolvedValue({
+      sessionCredential: 'browser-session-credential',
+      sessionExpiresAt: EXPIRES_AT,
+      sessionId: SESSION_ID,
+      user: USER,
+    }),
     getActiveUser: vi.fn().mockResolvedValue(USER),
     refresh: vi.fn().mockResolvedValue(session),
     signOut: vi.fn().mockResolvedValue(undefined),
+    signOutBrowserSession: vi.fn().mockResolvedValue(undefined),
+    validateBrowserSession: vi.fn().mockResolvedValue({
+      sessionExpiresAt: EXPIRES_AT,
+      sessionId: SESSION_ID,
+      user: USER,
+    }),
   };
   const passwordService = {
     hash: vi.fn().mockResolvedValue('new-hash'),
@@ -80,6 +95,40 @@ function createFixture(
     ),
     tokenService,
   };
+}
+
+/** Verifies prepared browser-session methods remain separate from legacy JWT issuance. */
+async function testBrowserSessionDelegation(): Promise<void> {
+  const fixture = createFixture();
+
+  await expect(
+    fixture.service.signInBrowserSession({ email: USER.email, password: ' password ' }),
+  ).resolves.toMatchObject({
+    sessionCredential: 'browser-session-credential',
+    sessionExpiresAt: EXPIRES_AT.toISOString(),
+    user: { id: USER.id },
+  });
+  await expect(
+    fixture.service.validateBrowserSession({
+      recordActivity: true,
+      sessionCredential: 'browser-session-credential',
+    }),
+  ).resolves.toMatchObject({
+    sessionExpiresAt: EXPIRES_AT.toISOString(),
+    sessionId: SESSION_ID,
+    user: { id: USER.id },
+  });
+  await expect(
+    fixture.service.signOutBrowserSession({ sessionCredential: 'browser-session-credential' }),
+  ).resolves.toEqual({ success: true });
+  expect(fixture.authSessionStore.validateBrowserSession).toHaveBeenCalledWith(
+    'browser-session-credential',
+    true,
+  );
+  expect(fixture.authSessionStore.signOutBrowserSession).toHaveBeenCalledWith(
+    'browser-session-credential',
+  );
+  expect(fixture.tokenService.generateAccessToken).not.toHaveBeenCalled();
 }
 
 /** Verifies sign-in keeps the same indistinguishable credential rejection. */
@@ -155,3 +204,4 @@ test('rejects invalid credentials without identity disclosure', testInvalidCrede
 test('performs a dummy password comparison for unknown identities', testUnknownIdentity);
 test('rejects unverified identities after correct credentials', testUnverifiedIdentity);
 test('delegates refresh, me, and logout session operations', testSessionDelegation);
+test('prepares browser-session operations without issuing a JWT', testBrowserSessionDelegation);

@@ -3,14 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
-import { parseAccessTokenTtlMs } from '../config/auth-duration';
-import { User } from '../users/user.entity';
+import { parseAccessTokenTtlMs } from '../../config/auth-duration';
+import { User } from '../../users/user.entity';
+import { PlatformAuthException } from '../platform-auth.exception';
 import {
   AUTH_JWT_AUTHORIZATION_VALUE_MAX_LENGTH,
   AUTH_JWT_AUTHORIZATION_VALUE_PATTERN,
   AUTH_JWT_AUTHORIZATION_VALUES_MAX,
-} from './auth.constants';
-import { PlatformAuthException } from './platform-auth.exception';
+} from './token.constants';
 
 interface JwtPayload {
   exp: number;
