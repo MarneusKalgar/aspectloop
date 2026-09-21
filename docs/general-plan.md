@@ -608,17 +608,23 @@ required.
 M04.2 is an umbrella outcome, not a single implementation-sized change. Its
 remaining work is accepted in bounded tasks:
 
-| Tasks      | Deliverable                                                                                    |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| B1, B2     | Revised contracts, then Platform session authority and new migration                           |
-| C1, C2, C3 | Gateway request protection, session transport/context, then retirement of the JWT/refresh path |
-| D1, D2, D3 | Local mail delivery, confirmation state, then confirmation HTTP integration                    |
-| E1, E2     | Browser session lifecycle, then confirmation UI                                                |
-| F          | Integrated acceptance and closeout, not a deferred implementation bucket                       |
+| Tasks      | Deliverable                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| B1, B2     | Additive contracts, then prepared Platform session authority and compatible migration        |
+| C1, C2a    | Gateway request protection, then prepared session transport/context                          |
+| C2b        | Coordinated Platform/Gateway/public schema cutover with a working basic browser session flow |
+| C3         | Retirement of disconnected JWT/refresh code, contracts, settings and persistence             |
+| D1, D2, D3 | Local mail delivery, confirmation state, then confirmation HTTP integration                  |
+| E1, E2     | Browser concurrency/failure handling, then confirmation UI                                   |
+| F          | Integrated acceptance and closeout, not a deferred implementation bucket                     |
 
 Each numbered task includes focused tests, documentation, and its own human
-verification gate. Historical A/B remains complete only under the old design;
-all replacement tasks are pending. Implement B1 next. Intermediate task
+verification gate. Every intermediate task must preserve successful generation,
+type-checking and relevant tests with its actual consumers. Breaking session
+contracts activate together with their callers in C2b; preparation retains
+explicitly temporary contracts until their consumers migrate. Historical A/B
+remains complete only under the old design; all replacement tasks are pending.
+Implement B1 next. Intermediate task
 acceptance is not authorization to deploy a partially cut-over authentication
 flow. Detailed dependencies and the replacement SESSION acceptance matrix live
 in the working M04.2 plan under `.plan/`; this section and ADR 0005 retain the
