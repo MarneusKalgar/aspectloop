@@ -6,12 +6,12 @@ import { join } from 'node:path';
 
 import { getCorsOrigins } from '#app/core/setupCors';
 
+import { maskGraphqlError } from './errors/mask-graphql-error';
+import { createDisableIntrospectionPlugin } from './introspection/disable-introspection.plugin';
+import { createGraphqlLoggingPlugin } from './logging/graphql-logging.plugin';
+import { createGatewayRequestProtectionPlugin } from './request-protection/gateway-request-protection.plugin';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { JsonScalar } from './scalars/json.scalar';
-import { createDisableIntrospectionPlugin } from './utils/createDisableIntrospectionPlugin';
-import { createGatewayRequestProtectionPlugin } from './utils/createGatewayRequestProtectionPlugin';
-import { createGraphqlLoggingPlugin } from './utils/createGraphqlLoggingPlugin';
-import { maskGraphqlError } from './utils/maskGraphqlError';
 
 @Module({
   imports: [

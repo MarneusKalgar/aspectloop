@@ -3,7 +3,7 @@ import type { Plugin } from 'graphql-yoga';
 import { NoSchemaIntrospectionCustomRule } from 'graphql';
 
 /**
- * Creates a Yoga validation plugin that rejects schema-introspection fields.
+ * Creates the Yoga validation plugin that rejects schema-introspection fields.
  *
  * @param disabled Whether introspection must be rejected for this environment.
  * @returns The validation plugin when disabled, otherwise no plugin.

@@ -1,9 +1,9 @@
 import { GatewayAuthIpLimiter } from '@gateway/graphql/request-protection/auth-ip-limiter';
+import { createGatewayRequestProtectionPlugin } from '@gateway/graphql/request-protection/gateway-request-protection.plugin';
 import {
   AUTH_OPERATION_NAME,
-  AUTH_RATE_LIMIT_ACTION,
+  AUTH_RATE_LIMIT_POLICIES,
 } from '@gateway/graphql/request-protection/operation-policy';
-import { createGatewayRequestProtectionPlugin } from '@gateway/graphql/utils/createGatewayRequestProtectionPlugin';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { expect, test, vi } from 'vitest';
 
@@ -119,20 +119,20 @@ function testLimiterWindowAndCapacity(): void {
   const limiter = new GatewayAuthIpLimiter(() => now);
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.REGISTRATION, '127.0.0.1')).toBeNull();
+    expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.REGISTRATION, '127.0.0.1')).toBeNull();
   }
 
-  expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.REGISTRATION, '127.0.0.1')).toBe(3_600_000);
+  expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.REGISTRATION, '127.0.0.1')).toBe(3_600_000);
   now = 3_600_000;
-  expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.REGISTRATION, '127.0.0.1')).toBeNull();
+  expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.REGISTRATION, '127.0.0.1')).toBeNull();
 
   for (let key = 1; key < 10_000; key += 1) {
-    expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.CONFIRMATION, `192.0.2.${key}`)).toBeNull();
+    expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.CONFIRMATION, `192.0.2.${key}`)).toBeNull();
   }
 
-  expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.CONFIRMATION, '198.51.100.1')).toBe(3_600_000);
+  expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.CONFIRMATION, '198.51.100.1')).toBe(3_600_000);
   now += 60_000;
-  expect(limiter.consume(AUTH_RATE_LIMIT_ACTION.CONFIRMATION, '198.51.100.1')).toBeNull();
+  expect(limiter.consume(AUTH_RATE_LIMIT_POLICIES.CONFIRMATION, '198.51.100.1')).toBeNull();
 }
 
 /** Proves malformed JSON cannot reflect credential-like input through Yoga errors. */

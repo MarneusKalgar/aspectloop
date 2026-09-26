@@ -11,7 +11,7 @@ const expectedStatusCodes = new Map<number, string>([
 const logger = new Logger('GraphQL');
 
 /**
- * Converts resolver failures into the stable GraphQL error contract.
+ * Maps resolver failures into the stable GraphQL error contract.
  *
  * @param error The error produced by GraphQL execution or a Nest resolver.
  * @returns A safe GraphQL error for the client.

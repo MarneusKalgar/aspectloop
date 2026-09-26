@@ -2,13 +2,9 @@ import type { Plugin } from 'graphql-yoga';
 
 import { GraphQLError } from 'graphql';
 
-import {
-  boundRetry,
-  GatewayAuthIpLimiter,
-  MAX_AUTH_RETRY_MS,
-} from '../request-protection/auth-ip-limiter';
-import { inspectMutationRoots } from '../request-protection/mutation-root-inspection';
-import { getOperationProtectionPolicy } from '../request-protection/operation-policy';
+import { boundRetry, GatewayAuthIpLimiter, MAX_AUTH_RETRY_MS } from './auth-ip-limiter';
+import { inspectMutationRoots } from './mutation-root-inspection';
+import { getOperationProtectionPolicy } from './operation-policy';
 
 /** Applies universal request rules and declared operation policies before execution. */
 export function createGatewayRequestProtectionPlugin(
@@ -47,9 +43,9 @@ export function createGatewayRequestProtectionPlugin(
       const ip = getSocketIp(context);
 
       for (const policy of policies) {
-        const action = policy?.rateLimit;
+        const limitPolicy = policy?.rateLimit;
 
-        if (!action) {
+        if (!limitPolicy) {
           continue;
         }
 
@@ -58,7 +54,7 @@ export function createGatewayRequestProtectionPlugin(
           return;
         }
 
-        const retryAfterMs = limiter.consume(action, ip);
+        const retryAfterMs = limiter.consume(limitPolicy, ip);
 
         if (retryAfterMs !== null) {
           setResult(rateLimited(retryAfterMs));

@@ -1,36 +1,13 @@
-import { AUTH_RATE_LIMIT_ACTION, type AuthRateLimitAction } from './operation-policy';
+import type { AuthRateLimitPolicy } from './operation-policy';
 
 export const MAX_AUTH_RETRY_MS = 3_600_000;
 
 const MAX_IP_KEYS = 10_000;
-const SIGN_IN_WINDOW_MS = 15 * 60 * 1000;
-const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
-const CONFIRMATION_WINDOW_MS = 60 * 1000;
-
-interface LimitPolicy {
-  attempts: number;
-  windowMs: number;
-}
 
 interface WindowState {
   count: number;
   expiresAt: number;
 }
-
-const LIMITS: Readonly<Record<AuthRateLimitAction, Readonly<LimitPolicy>>> = Object.freeze({
-  [AUTH_RATE_LIMIT_ACTION.CONFIRMATION]: Object.freeze({
-    attempts: 10,
-    windowMs: CONFIRMATION_WINDOW_MS,
-  }),
-  [AUTH_RATE_LIMIT_ACTION.REGISTRATION]: Object.freeze({
-    attempts: 20,
-    windowMs: REGISTRATION_WINDOW_MS,
-  }),
-  [AUTH_RATE_LIMIT_ACTION.SIGN_IN]: Object.freeze({
-    attempts: 30,
-    windowMs: SIGN_IN_WINDOW_MS,
-  }),
-});
 
 /** Keeps bounded, process-local IP counters; no forwarding header is read. */
 export class GatewayAuthIpLimiter {
@@ -39,14 +16,14 @@ export class GatewayAuthIpLimiter {
   /** Creates a limiter with an injectable clock for deterministic coverage. */
   constructor(private readonly now: () => number = Date.now) {}
 
-  /** Counts one auth-root attempt or returns bounded retry metadata. */
-  consume(action: AuthRateLimitAction, ip: string): null | number {
+  /** Enforces one declared auth limit policy for an IP-derived identity. */
+  consume(policy: AuthRateLimitPolicy, ip: string): null | number {
     const now = this.now();
-    const key = `${action}:${ip}`;
+    const key = `${policy.group}:${ip}`;
     const current = this.windows.get(key);
 
     if (current && current.expiresAt > now) {
-      if (current.count >= LIMITS[action].attempts) {
+      if (current.count >= policy.attempts) {
         return boundRetry(current.expiresAt - now);
       }
 
@@ -64,7 +41,7 @@ export class GatewayAuthIpLimiter {
 
     this.windows.set(key, {
       count: 1,
-      expiresAt: now + LIMITS[action].windowMs,
+      expiresAt: now + policy.windowMs,
     });
     return null;
   }

@@ -14,7 +14,7 @@ interface GraphqlResultSummary {
 }
 
 /**
- * Creates a Yoga plugin that emits one bounded completion event per operation.
+ * Creates the Yoga execution plugin that emits one bounded completion event per operation.
  *
  * @returns A GraphQL Yoga execution plugin with no document or payload logging.
  */

@@ -2,7 +2,8 @@ import { inspectMutationRoots } from '@gateway/graphql/request-protection/mutati
 import {
   AUTH_OPERATION_NAME,
   AUTH_OPERATION_POLICIES,
-  AUTH_RATE_LIMIT_ACTION,
+  AUTH_RATE_LIMIT_GROUP,
+  AUTH_RATE_LIMIT_POLICIES,
   getOperationProtectionPolicy,
 } from '@gateway/graphql/request-protection/operation-policy';
 import { expect, test } from 'vitest';
@@ -10,26 +11,35 @@ import { expect, test } from 'vitest';
 /** Keeps operation-specific protections declarative and unknown roots unconfigured. */
 function testOperationPolicyLookup(): void {
   expect(Object.isFrozen(AUTH_OPERATION_NAME)).toBe(true);
-  expect(Object.isFrozen(AUTH_RATE_LIMIT_ACTION)).toBe(true);
+  expect(Object.isFrozen(AUTH_RATE_LIMIT_GROUP)).toBe(true);
+  expect(Object.isFrozen(AUTH_RATE_LIMIT_POLICIES)).toBe(true);
+  expect(Object.values(AUTH_RATE_LIMIT_POLICIES).every((policy) => Object.isFrozen(policy))).toBe(
+    true,
+  );
   expect(Object.isFrozen(AUTH_OPERATION_POLICIES)).toBe(true);
   expect(Object.values(AUTH_OPERATION_POLICIES).every((policy) => Object.isFrozen(policy))).toBe(
     true,
   );
-  expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_IN)).toEqual({
-    rateLimit: AUTH_RATE_LIMIT_ACTION.SIGN_IN,
+  const signInPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_IN);
+  expect(signInPolicy).toEqual({
+    rateLimit: AUTH_RATE_LIMIT_POLICIES.SIGN_IN,
     requiresSoleRoot: true,
   });
+  expect(signInPolicy?.rateLimit).toBe(AUTH_RATE_LIMIT_POLICIES.SIGN_IN);
   expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_OUT)).toEqual({
     requiresSoleRoot: true,
   });
-  expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_UP)).toEqual({
-    rateLimit: AUTH_RATE_LIMIT_ACTION.REGISTRATION,
+  const signUpPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_UP);
+  const resendPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION);
+  expect(signUpPolicy).toEqual({
+    rateLimit: AUTH_RATE_LIMIT_POLICIES.REGISTRATION,
   });
-  expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION)).toEqual({
-    rateLimit: AUTH_RATE_LIMIT_ACTION.REGISTRATION,
+  expect(resendPolicy).toEqual({
+    rateLimit: AUTH_RATE_LIMIT_POLICIES.REGISTRATION,
   });
+  expect(signUpPolicy?.rateLimit).toBe(resendPolicy?.rateLimit);
   expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.CONFIRM_EMAIL)).toEqual({
-    rateLimit: AUTH_RATE_LIMIT_ACTION.CONFIRMATION,
+    rateLimit: AUTH_RATE_LIMIT_POLICIES.CONFIRMATION,
   });
   expect(getOperationProtectionPolicy('toString')).toBeNull();
   expect(getOperationProtectionPolicy('__proto__')).toBeNull();
