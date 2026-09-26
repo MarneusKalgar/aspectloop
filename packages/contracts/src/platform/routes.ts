@@ -9,6 +9,7 @@ export const PLATFORM_INTERNAL_ROUTES = Object.freeze({
     signIn: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-in`,
     signOut: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-out`,
     signUp: `${PLATFORM_INTERNAL_API_PREFIX}/auth/sign-up`,
+    validateSession: `${PLATFORM_INTERNAL_API_PREFIX}/auth/session/validate`,
   }),
   documentTypes: `${PLATFORM_INTERNAL_API_PREFIX}/document-types`,
   health: `${PLATFORM_INTERNAL_API_PREFIX}/health`,

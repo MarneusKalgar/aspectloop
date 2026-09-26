@@ -1,3 +1,4 @@
+import { PLATFORM_AUTH_ROLE, PLATFORM_AUTH_SCOPE } from '@aspectloop/contracts/platform';
 import { UseGuards } from '@nestjs/common';
 import { Query, Resolver } from '@nestjs/graphql';
 
@@ -12,8 +13,8 @@ export class DocumentTypesResolver {
   constructor(private readonly documentRegistryService: DocumentRegistryService) {}
 
   @Query('correctionDocumentTypes')
-  @Roles('CORRECTOR')
-  @Scopes('corrections:write')
+  @Roles(PLATFORM_AUTH_ROLE.CORRECTOR)
+  @Scopes(PLATFORM_AUTH_SCOPE.CORRECTIONS_WRITE)
   @UseGuards(GqlJwtAuthGuard, RolesGuard, ScopesGuard)
   correctionDocumentTypes(@RequestId() requestId?: string) {
     return this.documentRegistryService.listDocumentTypes({ requestId });

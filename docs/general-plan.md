@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-09-10
+Last updated: 2026-09-21
 
 ## Table Of Contents
 
@@ -605,20 +605,44 @@ replacement browser session flow is complete. The SPA and separately deployed
 GraphQL Gateway form a BFF arrangement; SSR or a Next/Nuxt migration is not
 required.
 
+Session validation deliberately places Platform and PostgreSQL on the protected
+request path. This supports next-validation revocation and current permissions;
+dependency failures make protected access unavailable. Extracting a separate
+Auth service would move this dependency, not remove it. Keep identity as a
+Platform module unless independent ownership, scaling, or multiple applications
+justify a separate runtime.
+
+Revisit this tradeoff after measuring end-to-end validation p95/p99 latency,
+database pool pressure, and availability requirements. Cross-request caching or
+locally verified short-lived credentials require an explicit acceptable window
+for stale permissions and revoked sessions, plus expiry/activity and outage
+policies. Redis changes storage performance and failure semantics without
+eliminating a runtime dependency. Co-locating Gateway and session authority
+could remove the HTTP hop while retaining a database dependency, but would
+require a separate revision of the current deployment and ownership boundaries.
+These are future decision options, not additional M04.2 implementation scope;
+retain request-scoped validation deduplication and throttled activity writes.
+
 M04.2 is an umbrella outcome, not a single implementation-sized change. Its
 remaining work is accepted in bounded tasks:
 
-| Tasks      | Deliverable                                                                                    |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| B1, B2     | Revised contracts, then Platform session authority and new migration                           |
-| C1, C2, C3 | Gateway request protection, session transport/context, then retirement of the JWT/refresh path |
-| D1, D2, D3 | Local mail delivery, confirmation state, then confirmation HTTP integration                    |
-| E1, E2     | Browser session lifecycle, then confirmation UI                                                |
-| F          | Integrated acceptance and closeout, not a deferred implementation bucket                       |
+| Tasks      | Deliverable                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| B1, B2     | Additive contracts, then prepared Platform session authority and compatible migration        |
+| C1, C2a    | Gateway request protection, then prepared session transport/context                          |
+| C2b        | Coordinated Platform/Gateway/public schema cutover with a working basic browser session flow |
+| C3         | Retirement of disconnected JWT/refresh code, contracts, settings and persistence             |
+| D1, D2, D3 | Local mail delivery, confirmation state, then confirmation HTTP integration                  |
+| E1, E2     | Browser concurrency/failure handling, then confirmation UI                                   |
+| F          | Integrated acceptance and closeout, not a deferred implementation bucket                     |
 
 Each numbered task includes focused tests, documentation, and its own human
-verification gate. Historical A/B remains complete only under the old design;
-all replacement tasks are pending. Implement B1 next. Intermediate task
+verification gate. Every intermediate task must preserve successful generation,
+type-checking and relevant tests with its actual consumers. Breaking session
+contracts activate together with their callers in C2b; preparation retains
+explicitly temporary contracts until their consumers migrate. Historical A/B
+remains complete only under the old design; all replacement tasks are pending.
+Implement B1 next. Intermediate task
 acceptance is not authorization to deploy a partially cut-over authentication
 flow. Detailed dependencies and the replacement SESSION acceptance matrix live
 in the working M04.2 plan under `.plan/`; this section and ADR 0005 retain the

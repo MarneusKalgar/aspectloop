@@ -1,9 +1,24 @@
 import { ConfigService } from '@nestjs/config';
+import {
+  OPAQUE_TOKEN_PURPOSE,
+  OpaqueTokenService,
+} from '@platform/auth/credentials/opaque-token.service';
 import { expect, test } from 'vitest';
 
-import { OPAQUE_TOKEN_PURPOSE, OpaqueTokenService } from '../../src/auth/opaque-token.service';
-
 const HMAC_SECRET = 'test-only-hmac-secret-at-least-32-bytes';
+
+/** Verifies browser credentials use a distinct domain-separation label. */
+function testBrowserSessionPurpose(): void {
+  const service = new OpaqueTokenService(
+    new ConfigService({ AUTH_TOKEN_HMAC_SECRET: HMAC_SECRET }),
+  );
+  const issued = service.issue(OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
+  const parsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
+  const refreshParsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.REFRESH);
+
+  expect(parsed).toEqual({ digest: issued.digest, id: issued.id });
+  expect(service.matches(refreshParsed?.digest ?? '', issued.digest)).toBe(false);
+}
 
 /** Verifies malformed, altered, and cross-purpose candidates fail authentication. */
 function testOpaqueTokenRejection(): void {
@@ -40,3 +55,4 @@ function testOpaqueTokenRoundTrip(): void {
 
 test('issues canonical opaque tokens backed by HMAC digests', testOpaqueTokenRoundTrip);
 test('rejects malformed, altered, and cross-purpose opaque tokens', testOpaqueTokenRejection);
+test('domain-separates opaque browser-session credentials', testBrowserSessionPurpose);

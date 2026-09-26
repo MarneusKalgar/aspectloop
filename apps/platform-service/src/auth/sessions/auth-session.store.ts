@@ -4,22 +4,39 @@ import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { DataSource, IsNull, QueryFailedError } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 
-import type { User } from '../users/user.entity';
-import type { ActiveAuthSession } from './auth-session.types';
-import type { ParsedOpaqueToken } from './opaque-token.service';
+import type { User } from '#app/users/user.entity';
 
-import { User as UserEntity } from '../users/user.entity';
+import { User as UserEntity } from '#app/users/user.entity';
+
+import type { ParsedOpaqueToken } from '../credentials/opaque-token.service';
+import type {
+  ActiveAuthSession,
+  IssuedBrowserSession,
+  ValidatedBrowserSession,
+} from './session.types';
+
+import { hasAllowedPlatformAuthorization } from '../authorization/authorization.policy';
+import { OPAQUE_TOKEN_PURPOSE, OpaqueTokenService } from '../credentials/opaque-token.service';
+import { readAuthDatabaseNow } from '../persistence/database-clock';
+import { isAuthDatabaseUnavailableError } from '../persistence/database.errors';
+import { PlatformAuthException } from '../platform-auth.exception';
+import { AuthRefreshToken } from './model/auth-refresh-token.entity';
+import { AuthSession } from './model/auth-session.entity';
 import {
   AUTH_LOCK_TIMEOUT_MS,
   AUTH_SESSION_REVOCATION_REASON,
   type AuthSessionRevocationReason,
-} from './auth.constants';
-import { AuthRefreshToken } from './model/auth-refresh-token.entity';
-import { AuthSession } from './model/auth-session.entity';
-import { OPAQUE_TOKEN_PURPOSE, OpaqueTokenService } from './opaque-token.service';
-import { PlatformAuthException } from './platform-auth.exception';
+} from './session.constants';
+import {
+  addMilliseconds,
+  createAuthSessionExpiry,
+  isAuthSessionActive,
+  minDate,
+  nextAuthSessionInactivityExpiry,
+  shouldRecordAuthSessionActivity,
+} from './session.policy';
 
 interface AuthenticatedTokenReference {
   parsed: ParsedOpaqueToken;
@@ -27,8 +44,9 @@ interface AuthenticatedTokenReference {
   userId: string;
 }
 
-interface DatabaseClockRow {
-  now: unknown;
+interface BrowserSessionState {
+  session: AuthSession;
+  user: User;
 }
 
 interface LockedSessionState {
@@ -84,11 +102,11 @@ export class AuthSessionStore {
           );
         }
 
-        const now = await readDatabaseNow(manager);
-        const absoluteExpiresAt = addMilliseconds(now, this.absoluteTtlMs);
-        const inactivityExpiresAt = minDate(
-          addMilliseconds(now, this.idleTtlMs),
-          absoluteExpiresAt,
+        const now = await readAuthDatabaseNow(manager);
+        const { absoluteExpiresAt, inactivityExpiresAt } = createAuthSessionExpiry(
+          now,
+          this.absoluteTtlMs,
+          this.idleTtlMs,
         );
         const sessionId = randomUUID();
         const issuedToken = this.opaqueTokenService.issue(OPAQUE_TOKEN_PURPOSE.REFRESH);
@@ -96,8 +114,10 @@ export class AuthSessionStore {
         await manager.getRepository(AuthSession).insert({
           absoluteExpiresAt,
           createdAt: now,
+          credentialDigest: null,
           id: sessionId,
           inactivityExpiresAt,
+          lastActivityAt: null,
           lastRefreshedAt: now,
           revocationReason: null,
           revokedAt: null,
@@ -125,6 +145,50 @@ export class AuthSessionStore {
     );
   }
 
+  /** Creates a new opaque browser session without creating a refresh-token family. */
+  async createBrowserSession(userId: string): Promise<IssuedBrowserSession> {
+    return this.withDatabaseBoundary(() =>
+      this.withLockedTransaction(async (manager) => {
+        const user = await manager.getRepository(UserEntity).findOne({
+          lock: { mode: 'pessimistic_write' },
+          where: { id: userId },
+        });
+
+        if (!user?.emailVerifiedAt || !hasAllowedPlatformAuthorization(user)) {
+          this.rejectInvalidSession();
+        }
+
+        const now = await readAuthDatabaseNow(manager);
+        const { absoluteExpiresAt, inactivityExpiresAt } = createAuthSessionExpiry(
+          now,
+          this.absoluteTtlMs,
+          this.idleTtlMs,
+        );
+        const issuedToken = this.opaqueTokenService.issue(OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
+
+        await manager.getRepository(AuthSession).insert({
+          absoluteExpiresAt,
+          createdAt: now,
+          credentialDigest: issuedToken.digest,
+          id: issuedToken.id,
+          inactivityExpiresAt,
+          lastActivityAt: now,
+          lastRefreshedAt: now,
+          revocationReason: null,
+          revokedAt: null,
+          userId: user.id,
+        });
+
+        return {
+          sessionCredential: issuedToken.rawToken,
+          sessionExpiresAt: absoluteExpiresAt,
+          sessionId: issuedToken.id,
+          user,
+        };
+      }),
+    );
+  }
+
   /**
    * Confirms that bearer subject and session claims still identify active persisted state.
    *
@@ -135,13 +199,13 @@ export class AuthSessionStore {
   async getActiveUser(userId: string, sessionId: string): Promise<User> {
     return this.withDatabaseBoundary(() =>
       this.dataSource.transaction(async (manager) => {
-        const now = await readDatabaseNow(manager);
+        const now = await readAuthDatabaseNow(manager);
         const session = await manager.getRepository(AuthSession).findOne({
           where: { id: sessionId, userId },
         });
         const user = await manager.getRepository(UserEntity).findOne({ where: { id: userId } });
 
-        if (!session || !user || !isActiveSession(session, user, now)) {
+        if (!session || !user || !isAuthSessionActive(session, user, now)) {
           throw new PlatformAuthException(
             AUTH_ERROR_CODE.SESSION_INVALID,
             'Authentication session is invalid',
@@ -211,7 +275,7 @@ export class AuthSessionStore {
         }
 
         if (!state.session.revokedAt) {
-          const now = await readDatabaseNow(manager);
+          const now = await readAuthDatabaseNow(manager);
           await this.revokeFamily(
             manager,
             state.session,
@@ -221,6 +285,110 @@ export class AuthSessionStore {
         }
       });
     });
+  }
+
+  /** Revokes only the browser session authenticated by the supplied opaque secret. */
+  async signOutBrowserSession(rawCredential: string): Promise<void> {
+    const parsed = this.opaqueTokenService.parse(
+      rawCredential,
+      OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION,
+    );
+
+    if (!parsed) {
+      return;
+    }
+
+    await this.withDatabaseBoundary(() =>
+      this.withLockedTransaction(async (manager) => {
+        const session = await manager.getRepository(AuthSession).findOne({
+          where: { id: parsed.id },
+        });
+
+        if (
+          !session?.credentialDigest ||
+          !this.opaqueTokenService.matches(parsed.digest, session.credentialDigest) ||
+          session.revokedAt
+        ) {
+          return;
+        }
+
+        const now = await readAuthDatabaseNow(manager);
+        await manager
+          .getRepository(AuthSession)
+          .createQueryBuilder()
+          .update(AuthSession)
+          .set({
+            revocationReason: AUTH_SESSION_REVOCATION_REASON.LOGOUT,
+            revokedAt: now,
+          })
+          .where('id = :id', { id: session.id })
+          .andWhere('credential_digest = :credentialDigest', {
+            credentialDigest: session.credentialDigest,
+          })
+          .andWhere('revoked_at IS NULL')
+          .execute();
+      }),
+    );
+  }
+
+  /** Authenticates an opaque browser session and optionally persists throttled activity. */
+  async validateBrowserSession(
+    rawCredential: string,
+    recordActivity: boolean,
+  ): Promise<ValidatedBrowserSession> {
+    const parsed = this.opaqueTokenService.parse(
+      rawCredential,
+      OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION,
+    );
+
+    if (!parsed) {
+      this.rejectInvalidSession();
+    }
+
+    return this.withDatabaseBoundary(() =>
+      this.withLockedTransaction(async (manager) => {
+        const now = await readAuthDatabaseNow(manager);
+        let state = await this.loadValidBrowserSession(manager, parsed, now);
+
+        if (
+          recordActivity &&
+          state.session.lastActivityAt &&
+          shouldRecordAuthSessionActivity(state.session.lastActivityAt, now)
+        ) {
+          const inactivityExpiresAt = nextAuthSessionInactivityExpiry(
+            now,
+            this.idleTtlMs,
+            state.session.absoluteExpiresAt,
+          );
+          const result = await manager
+            .getRepository(AuthSession)
+            .createQueryBuilder()
+            .update(AuthSession)
+            .set({ inactivityExpiresAt, lastActivityAt: now })
+            .where('id = :id', { id: state.session.id })
+            .andWhere('credential_digest = :credentialDigest', {
+              credentialDigest: state.session.credentialDigest,
+            })
+            .andWhere('revoked_at IS NULL')
+            .andWhere('absolute_expires_at > :now', { now })
+            .andWhere('inactivity_expires_at > :now', { now })
+            .andWhere('last_activity_at = :lastActivityAt', {
+              lastActivityAt: state.session.lastActivityAt,
+            })
+            .execute();
+
+          if (result.affected !== 1) {
+            state = await this.loadValidBrowserSession(manager, parsed, now);
+          }
+        }
+
+        return {
+          sessionExpiresAt: state.session.absoluteExpiresAt,
+          sessionId: state.session.id,
+          user: state.user,
+        };
+      }),
+    );
   }
 
   /** Authenticates a candidate secret before any transaction may mutate its family. */
@@ -246,6 +414,37 @@ export class AuthSessionStore {
     });
 
     return session ? { parsed, sessionId: session.id, userId: session.userId } : null;
+  }
+
+  /** Loads and authenticates one browser-session row and its current user state. */
+  private async loadValidBrowserSession(
+    manager: EntityManager,
+    parsed: ParsedOpaqueToken,
+    now: Date,
+  ): Promise<BrowserSessionState> {
+    const session = await manager.getRepository(AuthSession).findOne({ where: { id: parsed.id } });
+
+    if (
+      !session?.credentialDigest ||
+      !session.lastActivityAt ||
+      !this.opaqueTokenService.matches(parsed.digest, session.credentialDigest)
+    ) {
+      this.rejectInvalidSession();
+    }
+
+    const user = await manager.getRepository(UserEntity).findOne({
+      where: { id: session.userId },
+    });
+
+    if (
+      !user ||
+      !isAuthSessionActive(session, user, now) ||
+      !hasAllowedPlatformAuthorization(user)
+    ) {
+      this.rejectInvalidSession();
+    }
+
+    return { session, user };
   }
 
   /** Locks user, family, and token in the mandatory global order. */
@@ -277,6 +476,14 @@ export class AuthSessionStore {
     });
 
     return token ? { session, token, user } : null;
+  }
+
+  /** Rejects browser-session authentication without revealing which state failed. */
+  private rejectInvalidSession(): never {
+    throw new PlatformAuthException(
+      AUTH_ERROR_CODE.SESSION_INVALID,
+      'Authentication session is invalid',
+    );
   }
 
   /** Persists family revocation and marks every retained token terminal. */
@@ -311,9 +518,9 @@ export class AuthSessionStore {
       );
     }
 
-    const now = await readDatabaseNow(manager);
+    const now = await readAuthDatabaseNow(manager);
 
-    if (!isActiveSession(state.session, state.user, now)) {
+    if (!isAuthSessionActive(state.session, state.user, now)) {
       throw new PlatformAuthException(
         AUTH_ERROR_CODE.SESSION_INVALID,
         'Authentication session is invalid',
@@ -387,7 +594,7 @@ export class AuthSessionStore {
     try {
       return await work();
     } catch (error) {
-      if (error instanceof QueryFailedError) {
+      if (isAuthDatabaseUnavailableError(error)) {
         throw new PlatformAuthException(
           AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
           'Authentication dependency is unavailable',
@@ -408,53 +615,4 @@ export class AuthSessionStore {
       return work(manager);
     });
   }
-}
-
-/** Adds a validated duration without leaking application-host time into decisions. */
-function addMilliseconds(value: Date, durationMs: number): Date {
-  return new Date(value.getTime() + durationMs);
-}
-
-/** Returns whether persisted family and user state may authorize refresh or me. */
-function isActiveSession(session: AuthSession, user: User, now: Date): boolean {
-  return (
-    user.emailVerifiedAt !== null &&
-    session.revokedAt === null &&
-    session.absoluteExpiresAt.getTime() > now.getTime() &&
-    session.inactivityExpiresAt.getTime() > now.getTime()
-  );
-}
-
-/** Narrows an arbitrary query response to the expected database-clock row. */
-function isDatabaseClockResult(rows: unknown): rows is [DatabaseClockRow, ...unknown[]] {
-  if (!Array.isArray(rows)) {
-    return false;
-  }
-
-  const firstRow: unknown = rows[0];
-
-  return firstRow !== null && typeof firstRow === 'object' && 'now' in firstRow;
-}
-
-/** Returns the earlier of two expiry boundaries. */
-function minDate(left: Date, right: Date): Date {
-  return left.getTime() <= right.getTime() ? left : right;
-}
-
-/** Reads PostgreSQL's wall clock for all expiry and grace decisions. */
-async function readDatabaseNow(manager: EntityManager): Promise<Date> {
-  const rows = await manager.query<unknown>('SELECT clock_timestamp() AS "now"');
-
-  if (
-    !isDatabaseClockResult(rows) ||
-    !(rows[0].now instanceof Date) ||
-    Number.isNaN(rows[0].now.getTime())
-  ) {
-    throw new PlatformAuthException(
-      AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
-      'Authentication dependency is unavailable',
-    );
-  }
-
-  return rows[0].now;
 }

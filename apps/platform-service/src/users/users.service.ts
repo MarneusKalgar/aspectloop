@@ -1,3 +1,4 @@
+import { PLATFORM_AUTH_ROLES, PLATFORM_AUTH_SCOPES } from '@aspectloop/contracts/platform';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -34,8 +35,8 @@ export class UsersService {
       email: normalizeEmail(input.email),
       emailVerifiedAt: null,
       passwordHash: input.passwordHash,
-      roles: input.roles ?? ['CORRECTOR'],
-      scopes: input.scopes ?? ['corrections:write'],
+      roles: input.roles ?? [...PLATFORM_AUTH_ROLES],
+      scopes: input.scopes ?? [...PLATFORM_AUTH_SCOPES],
     });
 
     const savedUser = await this.usersRepository.save(user);
