@@ -8,8 +8,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { User } from '../../../users/user.entity';
-import { AUTH_DIGEST_HEX_LENGTH } from '../../credentials/credential.constants';
+import { AUTH_DIGEST_HEX_LENGTH } from '#app/auth/credentials/credential.constants';
+import { User } from '#app/users/user.entity';
+
 import { AUTH_REVOCATION_REASON_MAX_LENGTH } from '../session.constants';
 
 @Check(

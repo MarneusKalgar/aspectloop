@@ -1,10 +1,9 @@
-import { QueryFailedError } from 'typeorm';
-import { expect, test } from 'vitest';
-
 import {
   AuthDatabaseUnavailableError,
   isAuthDatabaseUnavailableError,
-} from '../../src/auth/persistence/database.errors';
+} from '@platform/auth/persistence/database.errors';
+import { QueryFailedError } from 'typeorm';
+import { expect, test } from 'vitest';
 
 /** Verifies only explicit connectivity, timeout, and lock failures map to unavailable. */
 function testDatabaseFailureClassification(): void {

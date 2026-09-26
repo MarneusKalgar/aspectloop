@@ -2,10 +2,9 @@ import type { ArgumentsHost } from '@nestjs/common';
 
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { BadRequestException } from '@nestjs/common';
+import { PlatformAuthException } from '@platform/auth/platform-auth.exception';
+import { PlatformHttpExceptionFilter } from '@platform/internal/platform-http-exception.filter';
 import { expect, test, vi } from 'vitest';
-
-import { PlatformAuthException } from '../../src/auth/platform-auth.exception';
-import { PlatformHttpExceptionFilter } from '../../src/internal/platform-http-exception.filter';
 
 interface FilterFixture {
   body: ReturnType<typeof vi.fn>;

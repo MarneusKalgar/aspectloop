@@ -1,13 +1,12 @@
+import type { PasswordService } from '@platform/auth/credentials/password.service';
+import type { TokenService } from '@platform/auth/legacy/token.service';
+import type { AuthSessionStore } from '@platform/auth/sessions/auth-session.store';
+import type { User } from '@platform/users/user.entity';
+import type { UsersService } from '@platform/users/users.service';
+
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
+import { AuthService } from '@platform/auth/auth.service';
 import { expect, test, vi } from 'vitest';
-
-import type { PasswordService } from '../../src/auth/credentials/password.service';
-import type { TokenService } from '../../src/auth/legacy/token.service';
-import type { AuthSessionStore } from '../../src/auth/sessions/auth-session.store';
-import type { User } from '../../src/users/user.entity';
-import type { UsersService } from '../../src/users/users.service';
-
-import { AuthService } from '../../src/auth/auth.service';
 
 const ISSUED_AT = new Date('2026-09-12T00:00:00.000Z');
 const EXPIRES_AT = new Date('2026-09-13T00:00:00.000Z');

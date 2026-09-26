@@ -1,15 +1,14 @@
-import { expect, test } from 'vitest';
+import type { AuthSession } from '@platform/auth/sessions/model/auth-session.entity';
+import type { User } from '@platform/users/user.entity';
 
-import type { AuthSession } from '../../src/auth/sessions/model/auth-session.entity';
-import type { User } from '../../src/users/user.entity';
-
-import { AUTH_SESSION_ACTIVITY_WRITE_INTERVAL_MS } from '../../src/auth/sessions/session.constants';
+import { AUTH_SESSION_ACTIVITY_WRITE_INTERVAL_MS } from '@platform/auth/sessions/session.constants';
 import {
   createAuthSessionExpiry,
   isAuthSessionActive,
   nextAuthSessionInactivityExpiry,
   shouldRecordAuthSessionActivity,
-} from '../../src/auth/sessions/session.policy';
+} from '@platform/auth/sessions/session.policy';
+import { expect, test } from 'vitest';
 
 const NOW = new Date('2026-09-21T00:00:00.000Z');
 

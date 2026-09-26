@@ -1,6 +1,6 @@
 import { PLATFORM_AUTH_ROLES, PLATFORM_AUTH_SCOPES } from '@aspectloop/contracts/platform';
 
-import type { User } from '../../users/user.entity';
+import type { User } from '#app/users/user.entity';
 
 const ALLOWED_PLATFORM_AUTH_ROLES: ReadonlySet<string> = new Set(PLATFORM_AUTH_ROLES);
 const ALLOWED_PLATFORM_AUTH_SCOPES: ReadonlySet<string> = new Set(PLATFORM_AUTH_SCOPES);

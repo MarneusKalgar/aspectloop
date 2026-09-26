@@ -1,10 +1,9 @@
 import { ConfigService } from '@nestjs/config';
-import { expect, test } from 'vitest';
-
 import {
   OPAQUE_TOKEN_PURPOSE,
   OpaqueTokenService,
-} from '../../src/auth/credentials/opaque-token.service';
+} from '@platform/auth/credentials/opaque-token.service';
+import { expect, test } from 'vitest';
 
 const HMAC_SECRET = 'test-only-hmac-secret-at-least-32-bytes';
 

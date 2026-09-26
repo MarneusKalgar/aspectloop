@@ -1,4 +1,5 @@
-import type { User } from '../../users/user.entity';
+import type { User } from '#app/users/user.entity';
+
 import type { AuthSession } from './model/auth-session.entity';
 
 import { AUTH_SESSION_ACTIVITY_WRITE_INTERVAL_MS } from './session.constants';

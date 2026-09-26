@@ -1,9 +1,8 @@
+import type { User } from '@platform/users/user.entity';
+
 import { PLATFORM_AUTH_ROLE, PLATFORM_AUTH_SCOPE } from '@aspectloop/contracts/platform';
+import { hasAllowedPlatformAuthorization } from '@platform/auth/authorization/authorization.policy';
 import { expect, test } from 'vitest';
-
-import type { User } from '../../src/users/user.entity';
-
-import { hasAllowedPlatformAuthorization } from '../../src/auth/authorization/authorization.policy';
 
 /** Verifies persisted roles and scopes are restricted to explicit Platform values. */
 function testAuthorizationAllowlist(): void {

@@ -1,4 +1,4 @@
-import type { User } from '../../users/user.entity';
+import type { User } from '#app/users/user.entity';
 
 export interface ActiveAuthSession {
   effectiveExpiresAt: Date;

@@ -6,7 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { DataSource, IsNull } from 'typeorm';
 
-import type { User } from '../../users/user.entity';
+import type { User } from '#app/users/user.entity';
+
+import { User as UserEntity } from '#app/users/user.entity';
+
 import type { ParsedOpaqueToken } from '../credentials/opaque-token.service';
 import type {
   ActiveAuthSession,
@@ -14,7 +17,6 @@ import type {
   ValidatedBrowserSession,
 } from './session.types';
 
-import { User as UserEntity } from '../../users/user.entity';
 import { hasAllowedPlatformAuthorization } from '../authorization/authorization.policy';
 import { OPAQUE_TOKEN_PURPOSE, OpaqueTokenService } from '../credentials/opaque-token.service';
 import { readAuthDatabaseNow } from '../persistence/database-clock';

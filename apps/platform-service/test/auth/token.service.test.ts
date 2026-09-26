@@ -1,10 +1,9 @@
+import type { User } from '@platform/users/user.entity';
+
 import { ConfigService } from '@nestjs/config';
+import { TokenService } from '@platform/auth/legacy/token.service';
+import { PlatformAuthException } from '@platform/auth/platform-auth.exception';
 import { expect, test, vi } from 'vitest';
-
-import type { User } from '../../src/users/user.entity';
-
-import { TokenService } from '../../src/auth/legacy/token.service';
-import { PlatformAuthException } from '../../src/auth/platform-auth.exception';
 
 const ISSUED_AT = new Date('2026-09-12T00:00:00.000Z');
 const SESSION_ID = '3a1df370-e0cf-4f70-a6b9-4243bd42e825';

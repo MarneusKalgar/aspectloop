@@ -1,8 +1,7 @@
 import { ConfigService } from '@nestjs/config';
+import { PasswordService } from '@platform/auth/credentials/password.service';
 import * as bcrypt from 'bcryptjs';
 import { expect, test, vi } from 'vitest';
-
-import { PasswordService } from '../../src/auth/credentials/password.service';
 
 const { DUMMY_HASH } = vi.hoisted(() => ({
   DUMMY_HASH: '$2b$04$verification-only-dummy-hash',

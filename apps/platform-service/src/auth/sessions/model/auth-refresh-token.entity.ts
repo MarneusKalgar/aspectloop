@@ -1,6 +1,7 @@
 import { Check, Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 
-import { AUTH_DIGEST_HEX_LENGTH } from '../../credentials/credential.constants';
+import { AUTH_DIGEST_HEX_LENGTH } from '#app/auth/credentials/credential.constants';
+
 import { AuthSession } from './auth-session.entity';
 
 @Check('CHK_auth_refresh_token_expiry', '"expires_at" > "created_at"')

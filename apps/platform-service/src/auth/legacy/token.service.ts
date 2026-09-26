@@ -3,8 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
-import { parseAccessTokenTtlMs } from '../../config/auth-duration';
-import { User } from '../../users/user.entity';
+import { parseAccessTokenTtlMs } from '#app/config/auth-duration';
+import { User } from '#app/users/user.entity';
+
 import { PlatformAuthException } from '../platform-auth.exception';
 import {
   AUTH_JWT_AUTHORIZATION_VALUE_MAX_LENGTH,
