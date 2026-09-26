@@ -1,14 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
 
-import { PlatformClient } from '../platform/platform-client';
+import { GATEWAY_SERVICE_NAME } from '#app/core/service-name';
+import { PlatformClient } from '#app/platform/platform-client';
 
 interface GatewayHealthResponse {
-  service: 'gateway-api';
+  service: typeof GATEWAY_SERVICE_NAME;
   status: 'ok';
 }
 
 interface GatewayReadinessResponse {
-  service: 'gateway-api';
+  service: typeof GATEWAY_SERVICE_NAME;
   status: 'ready';
 }
 
@@ -21,7 +22,7 @@ export class HealthController {
   /** Reports process liveness without probing downstream services. */
   @Get()
   getHealth(): GatewayHealthResponse {
-    return { service: 'gateway-api', status: 'ok' };
+    return { service: GATEWAY_SERVICE_NAME, status: 'ok' };
   }
 
   /** Reports readiness only after the required Platform dependency is ready. */
@@ -29,6 +30,6 @@ export class HealthController {
   async getReadiness(): Promise<GatewayReadinessResponse> {
     await this.platformClient.getReadiness();
 
-    return { service: 'gateway-api', status: 'ready' };
+    return { service: GATEWAY_SERVICE_NAME, status: 'ready' };
   }
 }

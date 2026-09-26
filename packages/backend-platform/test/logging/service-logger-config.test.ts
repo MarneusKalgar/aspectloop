@@ -16,6 +16,8 @@ function testServiceLoggerContract(): void {
   expect(config.pinoHttp.customAttributeKeys.reqId).toBe('requestId');
   expect(config.pinoHttp.redact.remove).toBe(true);
   expect(config.pinoHttp.redact.paths).toContain('authorization');
+  expect(config.pinoHttp.redact.paths).toContain('*.sessionCredential');
+  expect(config.pinoHttp.redact.paths).toContain('*.confirmationUrl');
   expect(config.pinoHttp.redact.paths).toContain('*.passwordHash');
   expect(config.pinoHttp.transport).toBeUndefined();
 

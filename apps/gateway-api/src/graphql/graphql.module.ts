@@ -4,9 +4,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { join } from 'node:path';
 
+import { getCorsOrigins } from '#app/core/setupCors';
+
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { JsonScalar } from './scalars/json.scalar';
 import { createDisableIntrospectionPlugin } from './utils/createDisableIntrospectionPlugin';
+import { createGatewayRequestProtectionPlugin } from './utils/createGatewayRequestProtectionPlugin';
 import { createGraphqlLoggingPlugin } from './utils/createGraphqlLoggingPlugin';
 import { maskGraphqlError } from './utils/maskGraphqlError';
 
@@ -23,18 +26,25 @@ import { maskGraphqlError } from './utils/maskGraphqlError';
           ? 'dist/graphql/schema/**/*.graphql'
           : 'src/graphql/schema/**/*.graphql';
         const disableIntrospectionPlugin = createDisableIntrospectionPlugin(isRuntimeBuild);
-        const plugins = [createGraphqlLoggingPlugin()];
+        const plugins = [
+          createGatewayRequestProtectionPlugin(
+            getCorsOrigins(configService.getOrThrow<string>('CORS_ALLOWED_ORIGINS')),
+          ),
+          createGraphqlLoggingPlugin(),
+        ];
 
         if (disableIntrospectionPlugin) {
           plugins.push(disableIntrospectionPlugin);
         }
 
         return {
+          batching: false,
           context: ({ req }: { req: unknown }) => ({ req }),
           cors: false,
           graphiql: !isRuntimeBuild,
           logging: false,
           maskedErrors: { maskError: maskGraphqlError },
+          multipart: false,
           path: '/graphql',
           plugins,
           sortSchema: true,

@@ -1,5 +1,7 @@
 import { validateEnvironment } from '@aspectloop/backend-platform/config';
 
+import { getCorsOrigins } from '#app/core/setupCors';
+
 import { EnvironmentVariables } from './env.schema';
 
 /**
@@ -9,5 +11,7 @@ import { EnvironmentVariables } from './env.schema';
  * @returns A transformed and validated gateway configuration.
  */
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
-  return validateEnvironment(EnvironmentVariables, config);
+  const environment = validateEnvironment(EnvironmentVariables, config);
+  getCorsOrigins(environment.CORS_ALLOWED_ORIGINS);
+  return environment;
 }
