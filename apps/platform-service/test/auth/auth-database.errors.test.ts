@@ -28,6 +28,26 @@ function testDatabaseFailureClassification(): void {
     ),
   ).toBe(false);
   expect(isAuthDatabaseUnavailableError(new TypeError('programming error'))).toBe(false);
+  for (const message of [
+    'timeout exceeded when trying to connect',
+    'Connection terminated due to connection timeout',
+  ]) {
+    expect(isAuthDatabaseUnavailableError(new Error(message))).toBe(true);
+    expect(
+      isAuthDatabaseUnavailableError(new QueryFailedError('SELECT 1', [], new Error(message))),
+    ).toBe(true);
+  }
+  expect(isAuthDatabaseUnavailableError(new Error('timeout exceeded in application code'))).toBe(
+    false,
+  );
+  expect(
+    isAuthDatabaseUnavailableError(new TypeError('timeout exceeded when trying to connect')),
+  ).toBe(false);
+  expect(
+    isAuthDatabaseUnavailableError(
+      new QueryFailedError('INSERT', [], Object.assign(new Error('integrity'), { code: '23505' })),
+    ),
+  ).toBe(false);
 }
 
 test('classifies only supported transient database failures', testDatabaseFailureClassification);

@@ -1,4 +1,4 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, QueryRunner } from 'typeorm';
 
 import {
   AUTH_ERROR_CODE,
@@ -13,7 +13,10 @@ import type { EnvironmentVariables } from '#app/config/env.schema';
 import { OPAQUE_TOKEN_PURPOSE } from '#app/auth/credentials/opaque-token.service';
 import { AuthRefreshToken } from '#app/auth/sessions/model/auth-refresh-token.entity';
 import { AuthSession } from '#app/auth/sessions/model/auth-session.entity';
-import { AUTH_SESSION_ACTIVITY_WRITE_INTERVAL_MS } from '#app/auth/sessions/session.constants';
+import {
+  AUTH_LOCK_TIMEOUT_MS,
+  AUTH_SESSION_ACTIVITY_WRITE_INTERVAL_MS,
+} from '#app/auth/sessions/session.constants';
 import { User } from '#app/users/user.entity';
 
 import type { VerificationClient } from './verification-support';
@@ -22,9 +25,12 @@ import {
   assertAuthError,
   assertCompletesWithin,
   AUTH_LOCK_VERIFY_MAX_ELAPSED_MS,
+  hasAuthErrorCode,
   insertVerifiedUser,
   readVerificationDatabaseNow,
 } from './verification-support';
+
+type SessionWriteOutcome = { error: unknown; status: 'rejected' } | { status: 'fulfilled' };
 
 /** Proves activity is optional, throttled, absolute-capped, and unable to revive terminal rows. */
 export async function verifyBrowserSessionActivity(
@@ -174,33 +180,15 @@ export async function verifyBrowserSessionIssuance(
   ]);
 }
 
-/** Proves both validation-before-logout and logout-before-validation ordering deterministically. */
+/** Proves competing activity and logout writes cannot resurrect a revoked session. */
 export async function verifyBrowserSessionLogoutOrderings(
   first: VerificationClient,
   second: VerificationClient,
   cleanup: DataSource,
   userId: string,
 ): Promise<void> {
-  const validationFirst = await first.store.createBrowserSession(userId);
-  await first.store.validateBrowserSession(validationFirst.sessionCredential, true);
-  await second.store.signOutBrowserSession(validationFirst.sessionCredential);
-  await assertAuthError(
-    first.store.validateBrowserSession(validationFirst.sessionCredential, false),
-    AUTH_ERROR_CODE.SESSION_INVALID,
-  );
-
-  const logoutFirst = await first.store.createBrowserSession(userId);
-  await second.store.signOutBrowserSession(logoutFirst.sessionCredential);
-  await assertAuthError(
-    first.store.validateBrowserSession(logoutFirst.sessionCredential, true),
-    AUTH_ERROR_CODE.SESSION_INVALID,
-  );
-
-  const sessions = await cleanup.getRepository(AuthSession).findBy({
-    id: logoutFirst.sessionId,
-  });
-  assert.equal(sessions.length, 1);
-  assert.notEqual(sessions[0]?.revokedAt, null);
+  await verifyContendingBrowserSessionWrites(first, second, cleanup, userId, true);
+  await verifyContendingBrowserSessionWrites(first, second, cleanup, userId, false);
 }
 
 /** Proves malformed, cross-purpose, legacy, and invalid identity state all fail closed. */
@@ -323,4 +311,134 @@ async function ageBrowserSessionActivity(cleanup: DataSource, sessionId: string)
       lastActivityAt: staleActivityAt,
     },
   );
+}
+
+/** Narrows PostgreSQL activity results to a backend identifier. */
+function hasBackendPid(rows: unknown): rows is [{ pid: number }, ...unknown[]] {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return false;
+  }
+
+  const firstRow: unknown = rows[0] as unknown;
+
+  return (
+    firstRow !== null &&
+    typeof firstRow === 'object' &&
+    'pid' in firstRow &&
+    typeof firstRow.pid === 'number'
+  );
+}
+
+/** Reads the backend holding the row lock without exposing connection details. */
+async function readVerificationBackendPid(lock: QueryRunner): Promise<number> {
+  const rows: unknown = (await lock.query('SELECT pg_backend_pid() AS pid')) as unknown;
+  assert.ok(hasBackendPid(rows));
+
+  return rows[0].pid;
+}
+
+/** Captures either result immediately so a blocked operation cannot reject unobserved. */
+function settleSessionWrite(operation: Promise<unknown>): Promise<SessionWriteOutcome> {
+  return operation.then(
+    () => ({ status: 'fulfilled' as const }),
+    (error: unknown) => ({ error, status: 'rejected' as const }),
+  );
+}
+
+/** Queues both session writes behind one PostgreSQL row lock in the requested order. */
+async function verifyContendingBrowserSessionWrites(
+  first: VerificationClient,
+  second: VerificationClient,
+  cleanup: DataSource,
+  userId: string,
+  validationFirst: boolean,
+): Promise<void> {
+  const issued = await first.store.createBrowserSession(userId);
+  await ageBrowserSessionActivity(cleanup, issued.sessionId);
+  const before = await cleanup.getRepository(AuthSession).findOneByOrFail({ id: issued.sessionId });
+  const lock = cleanup.createQueryRunner();
+  await lock.connect();
+  await lock.startTransaction();
+
+  let firstOutcome: Promise<SessionWriteOutcome> | undefined;
+  let secondOutcome: Promise<SessionWriteOutcome> | undefined;
+
+  try {
+    await lock.query('SELECT id FROM auth_session WHERE id = $1 FOR UPDATE', [issued.sessionId]);
+    const blockerPid = await readVerificationBackendPid(lock);
+    const deadline = Date.now() + AUTH_LOCK_TIMEOUT_MS - 500;
+    const validation = () => first.store.validateBrowserSession(issued.sessionCredential, true);
+    const logout = () => second.store.signOutBrowserSession(issued.sessionCredential);
+
+    firstOutcome = settleSessionWrite(validationFirst ? validation() : logout());
+    const firstPid = await waitForBlockedSessionWrite(first.dataSource, blockerPid, null, deadline);
+    secondOutcome = settleSessionWrite(validationFirst ? logout() : validation());
+    await waitForBlockedSessionWrite(first.dataSource, blockerPid, firstPid, deadline);
+  } finally {
+    await lock.rollbackTransaction();
+    await lock.release();
+  }
+
+  if (firstOutcome === undefined || secondOutcome === undefined) {
+    throw new Error('Both writes must reach the PostgreSQL barrier');
+  }
+  const outcomes = Promise.all([firstOutcome, secondOutcome]);
+  await assertCompletesWithin(
+    outcomes.then(() => undefined),
+    AUTH_LOCK_VERIFY_MAX_ELAPSED_MS,
+  );
+  const [firstResult, secondResult] = await outcomes;
+
+  if (validationFirst) {
+    assert.equal(firstResult.status, 'fulfilled');
+    assert.equal(secondResult.status, 'fulfilled');
+  } else {
+    assert.equal(firstResult.status, 'fulfilled');
+    assert.ok(
+      secondResult.status === 'rejected' &&
+        hasAuthErrorCode(secondResult.error, AUTH_ERROR_CODE.SESSION_INVALID),
+    );
+  }
+
+  const after = await cleanup.getRepository(AuthSession).findOneByOrFail({ id: issued.sessionId });
+  assert.ok(after.revokedAt instanceof Date);
+  if (validationFirst) {
+    assert.ok((after.lastActivityAt?.getTime() ?? 0) > (before.lastActivityAt?.getTime() ?? 0));
+  } else {
+    assert.equal(after.lastActivityAt?.getTime(), before.lastActivityAt?.getTime());
+  }
+  await assertAuthError(
+    first.store.validateBrowserSession(issued.sessionCredential, false),
+    AUTH_ERROR_CODE.SESSION_INVALID,
+  );
+}
+
+/** Waits for one distinct activity or logout UPDATE to block on the fixture lock queue. */
+async function waitForBlockedSessionWrite(
+  observer: DataSource,
+  blockerPid: number,
+  previousPid: null | number,
+  deadline: number,
+): Promise<number> {
+  while (Date.now() < deadline) {
+    const rows: unknown = (await observer.query(
+      `SELECT pid FROM pg_stat_activity
+       WHERE datname = current_database()
+         AND usename = current_user
+         AND wait_event_type = 'Lock'
+         AND query LIKE 'UPDATE %auth_session%'
+         AND pid <> COALESCE($2::integer, -1)
+         AND ($1::integer = ANY(pg_blocking_pids(pid))
+              OR $2::integer = ANY(pg_blocking_pids(pid)))`,
+      [blockerPid, previousPid],
+    )) as unknown;
+
+    if (hasBackendPid(rows)) {
+      return rows[0].pid;
+    }
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+  }
+
+  throw new Error('Session write did not reach the PostgreSQL row-lock barrier');
 }

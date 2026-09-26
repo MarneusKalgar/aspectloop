@@ -40,6 +40,7 @@ interface ServiceFixture {
   };
   service: AuthService;
   tokenService: { generateAccessToken: ReturnType<typeof vi.fn> };
+  usersService: { findByEmailWithPassword: ReturnType<typeof vi.fn> };
 }
 
 /** Creates auth behavior with isolated persistence, password, and token boundaries. */
@@ -94,6 +95,7 @@ function createFixture(
       usersService as unknown as UsersService,
     ),
     tokenService,
+    usersService,
   };
 }
 
@@ -179,6 +181,40 @@ async function testSignIn(): Promise<void> {
   expect(response.user).not.toHaveProperty('passwordHash');
 }
 
+/** Verifies supported lookup failures retain the public dependency-unavailable envelope. */
+async function testSignInLookupDatabaseFailure(): Promise<void> {
+  const fixture = createFixture();
+  fixture.usersService.findByEmailWithPassword.mockRejectedValue(
+    Object.assign(new Error('connect refused'), { code: 'ECONNREFUSED' }),
+  );
+
+  await expect(
+    fixture.service.signInBrowserSession({ email: USER.email, password: ' password ' }),
+  ).rejects.toMatchObject({
+    response: { code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE, statusCode: 503 },
+  });
+  await expect(
+    fixture.service.signIn({ email: USER.email, password: ' password ' }),
+  ).rejects.toMatchObject({
+    response: { code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE, statusCode: 503 },
+  });
+  expect(fixture.passwordService.verifyOrDummy).not.toHaveBeenCalled();
+  expect(fixture.authSessionStore.createBrowserSession).not.toHaveBeenCalled();
+  expect(fixture.authSessionStore.create).not.toHaveBeenCalled();
+}
+
+/** Verifies programming failures escape lookup classification unchanged. */
+async function testSignInLookupUnexpectedFailure(): Promise<void> {
+  const fixture = createFixture();
+  const failure = new TypeError('unexpected lookup failure');
+  fixture.usersService.findByEmailWithPassword.mockRejectedValue(failure);
+
+  await expect(
+    fixture.service.signInBrowserSession({ email: USER.email, password: ' password ' }),
+  ).rejects.toBe(failure);
+  expect(fixture.authSessionStore.createBrowserSession).not.toHaveBeenCalled();
+}
+
 /** Verifies unknown identities use the same dummy comparison and credential envelope. */
 async function testUnknownIdentity(): Promise<void> {
   const fixture = createFixture({ user: null });
@@ -205,3 +241,8 @@ test('performs a dummy password comparison for unknown identities', testUnknownI
 test('rejects unverified identities after correct credentials', testUnverifiedIdentity);
 test('delegates refresh, me, and logout session operations', testSessionDelegation);
 test('prepares browser-session operations without issuing a JWT', testBrowserSessionDelegation);
+test(
+  'maps sign-in lookup connectivity failures to dependency unavailable',
+  testSignInLookupDatabaseFailure,
+);
+test('preserves unexpected sign-in lookup failures', testSignInLookupUnexpectedFailure);

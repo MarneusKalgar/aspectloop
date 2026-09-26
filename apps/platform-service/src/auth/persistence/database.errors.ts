@@ -18,6 +18,10 @@ const TYPEORM_UNAVAILABLE_ERROR_NAMES = new Set([
   'CannotGetEntityManagerNotConnectedError',
   'ConnectionIsNotSetError',
 ]);
+const PG_POOL_TIMEOUT_MESSAGES = new Set([
+  'Connection terminated due to connection timeout',
+  'timeout exceeded when trying to connect',
+]);
 
 /** Marks an invalid database-clock result as an unavailable auth dependency. */
 export class AuthDatabaseUnavailableError extends Error {}
@@ -36,7 +40,15 @@ export function isAuthDatabaseUnavailableError(error: unknown): boolean {
     error instanceof QueryFailedError ? (error.driverError as unknown) : error;
   const code = readErrorCode(candidate);
 
-  return code !== null && (code.startsWith('08') || POSTGRES_UNAVAILABLE_CODES.has(code));
+  if (code !== null) {
+    return code.startsWith('08') || POSTGRES_UNAVAILABLE_CODES.has(code);
+  }
+
+  return (
+    candidate instanceof Error &&
+    candidate.constructor === Error &&
+    PG_POOL_TIMEOUT_MESSAGES.has(candidate.message)
+  );
 }
 
 /** Reads a bounded driver error code without trusting arbitrary error objects. */

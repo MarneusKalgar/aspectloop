@@ -36,6 +36,7 @@ import { toPlatformUserView } from '../users/user-view';
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './credentials/password.service';
 import { TokenService } from './legacy/token.service';
+import { isAuthDatabaseUnavailableError } from './persistence/database.errors';
 import { PlatformAuthException } from './platform-auth.exception';
 import { AuthSessionStore } from './sessions/auth-session.store';
 
@@ -171,7 +172,21 @@ export class AuthService {
 
   /** Applies uniform password work and verified-identity policy to either sign-in flow. */
   private async authenticateVerifiedUser(input: PlatformSignInRequest): Promise<User> {
-    const user = await this.usersService.findByEmailWithPassword(input.email);
+    let user: null | User;
+
+    try {
+      user = await this.usersService.findByEmailWithPassword(input.email);
+    } catch (error) {
+      if (isAuthDatabaseUnavailableError(error)) {
+        throw new PlatformAuthException(
+          AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
+          'Authentication dependency is unavailable',
+        );
+      }
+
+      throw error;
+    }
+
     const isPasswordValid = await this.passwordService.verifyOrDummy(
       input.password,
       user?.passwordHash ?? null,

@@ -80,7 +80,7 @@ async function main(): Promise<void> {
     await verifyBrowserSessionActivity(first, cleanup, userId);
     reportScenario('SESSION-03', 'database-clock expiry, throttled activity, and no resurrection');
     await verifyBrowserSessionLogoutOrderings(first, second, cleanup, userId);
-    reportScenario('SESSION-04', 'validation-before-logout and logout-before-validation ordering');
+    reportScenario('SESSION-04', 'contending activity and logout writes in both orderings');
     await verifyDeletedUser(first, cleanup, userId);
     reportScenario('AUTH-B09', 'deleted-user cascade and fail-closed refresh');
     console.log(
