@@ -1,4 +1,9 @@
 import type {
+  PlatformBrowserSessionSignInResponse,
+  PlatformBrowserSessionSignOutRequest,
+  PlatformBrowserSessionSignOutResponse,
+  PlatformBrowserSessionValidationRequest,
+  PlatformBrowserSessionValidationResponse,
   PlatformDocumentTypeResponse,
   PlatformDocumentTypesResponse,
   PlatformHealthResponse,
@@ -19,6 +24,11 @@ import {
   getPlatformUserRoute,
   PLATFORM_INTERNAL_API_PREFIX,
   PLATFORM_INTERNAL_ROUTES,
+  platformBrowserSessionSignInResponseSchema,
+  platformBrowserSessionSignOutRequestSchema,
+  platformBrowserSessionSignOutResponseSchema,
+  platformBrowserSessionValidationRequestSchema,
+  platformBrowserSessionValidationResponseSchema,
   platformDocumentTypeResponseSchema,
   platformDocumentTypesResponseSchema,
   platformHealthResponseSchema,
@@ -36,8 +46,37 @@ import {
 
 import type { PlatformGetEndpoint, PlatformPostEndpoint } from './platform-http-transport';
 
+import { BROWSER_SESSION_RESPONSE_POLICY } from './platform-response-policy';
+
 /** Static Platform route bindings; dynamic identity routes use the helpers below. */
 export const PLATFORM_ENDPOINTS = {
+  browserSessionSignIn: {
+    logRoute: PLATFORM_INTERNAL_ROUTES.auth.signIn,
+    path: PLATFORM_INTERNAL_ROUTES.auth.signIn,
+    requestSchema: platformSignInRequestSchema,
+    responsePolicy: BROWSER_SESSION_RESPONSE_POLICY,
+    responseSchema: platformBrowserSessionSignInResponseSchema,
+  } satisfies PlatformPostEndpoint<PlatformSignInRequest, PlatformBrowserSessionSignInResponse>,
+  browserSessionSignOut: {
+    logRoute: PLATFORM_INTERNAL_ROUTES.auth.signOut,
+    path: PLATFORM_INTERNAL_ROUTES.auth.signOut,
+    requestSchema: platformBrowserSessionSignOutRequestSchema,
+    responsePolicy: BROWSER_SESSION_RESPONSE_POLICY,
+    responseSchema: platformBrowserSessionSignOutResponseSchema,
+  } satisfies PlatformPostEndpoint<
+    PlatformBrowserSessionSignOutRequest,
+    PlatformBrowserSessionSignOutResponse
+  >,
+  browserSessionValidate: {
+    logRoute: PLATFORM_INTERNAL_ROUTES.auth.validateSession,
+    path: PLATFORM_INTERNAL_ROUTES.auth.validateSession,
+    requestSchema: platformBrowserSessionValidationRequestSchema,
+    responsePolicy: BROWSER_SESSION_RESPONSE_POLICY,
+    responseSchema: platformBrowserSessionValidationResponseSchema,
+  } satisfies PlatformPostEndpoint<
+    PlatformBrowserSessionValidationRequest,
+    PlatformBrowserSessionValidationResponse
+  >,
   documentTypes: {
     logRoute: PLATFORM_INTERNAL_ROUTES.documentTypes,
     path: PLATFORM_INTERNAL_ROUTES.documentTypes,

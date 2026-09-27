@@ -1,4 +1,4 @@
-import type { AuthRateLimitPolicy } from './operation-policy';
+import type { AuthRateLimitPolicy } from '../operation-policy/auth-operation.policy';
 
 export const MAX_AUTH_RETRY_MS = 3_600_000;
 

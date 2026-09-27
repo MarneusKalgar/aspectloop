@@ -1,9 +1,9 @@
-import { GatewayAuthIpLimiter } from '@gateway/graphql/request-protection/auth-ip-limiter';
-import { createGatewayRequestProtectionPlugin } from '@gateway/graphql/request-protection/gateway-request-protection.plugin';
 import {
   AUTH_OPERATION_NAME,
   AUTH_RATE_LIMIT_POLICIES,
-} from '@gateway/graphql/request-protection/operation-policy';
+} from '@gateway/graphql/operation-policy/auth-operation.policy';
+import { GatewayAuthIpLimiter } from '@gateway/graphql/request-protection/auth-ip-limiter';
+import { createGatewayRequestProtectionPlugin } from '@gateway/graphql/request-protection/gateway-request-protection.plugin';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { expect, test, vi } from 'vitest';
 

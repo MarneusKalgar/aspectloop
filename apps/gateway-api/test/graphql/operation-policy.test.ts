@@ -1,11 +1,17 @@
-import { inspectMutationRoots } from '@gateway/graphql/request-protection/mutation-root-inspection';
 import {
   AUTH_OPERATION_NAME,
   AUTH_OPERATION_POLICIES,
   AUTH_RATE_LIMIT_GROUP,
   AUTH_RATE_LIMIT_POLICIES,
-  getOperationProtectionPolicy,
-} from '@gateway/graphql/request-protection/operation-policy';
+} from '@gateway/graphql/operation-policy/auth-operation.policy';
+import {
+  CORRECTION_MUTATION_POLICIES,
+  CORRECTION_OPERATION_NAME,
+  CORRECTION_QUERY_POLICIES,
+} from '@gateway/graphql/operation-policy/correction-operation.policy';
+import { getOperationPolicy } from '@gateway/graphql/operation-policy/operation-policy';
+import { inspectMutationRoots } from '@gateway/graphql/operations/root-field-inspection';
+import { OperationTypeNode } from 'graphql';
 import { expect, test } from 'vitest';
 
 /** Keeps operation-specific protections declarative and unknown roots unconfigured. */
@@ -20,17 +26,20 @@ function testOperationPolicyLookup(): void {
   expect(Object.values(AUTH_OPERATION_POLICIES).every((policy) => Object.isFrozen(policy))).toBe(
     true,
   );
-  const signInPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_IN);
+  const signInPolicy = getOperationPolicy(OperationTypeNode.MUTATION, AUTH_OPERATION_NAME.SIGN_IN);
   expect(signInPolicy).toEqual({
     rateLimit: AUTH_RATE_LIMIT_POLICIES.SIGN_IN,
     requiresSoleRoot: true,
   });
   expect(signInPolicy?.rateLimit).toBe(AUTH_RATE_LIMIT_POLICIES.SIGN_IN);
-  expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_OUT)).toEqual({
+  expect(getOperationPolicy(OperationTypeNode.MUTATION, AUTH_OPERATION_NAME.SIGN_OUT)).toEqual({
     requiresSoleRoot: true,
   });
-  const signUpPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.SIGN_UP);
-  const resendPolicy = getOperationProtectionPolicy(AUTH_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION);
+  const signUpPolicy = getOperationPolicy(OperationTypeNode.MUTATION, AUTH_OPERATION_NAME.SIGN_UP);
+  const resendPolicy = getOperationPolicy(
+    OperationTypeNode.MUTATION,
+    AUTH_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION,
+  );
   expect(signUpPolicy).toEqual({
     rateLimit: AUTH_RATE_LIMIT_POLICIES.REGISTRATION,
   });
@@ -38,12 +47,24 @@ function testOperationPolicyLookup(): void {
     rateLimit: AUTH_RATE_LIMIT_POLICIES.REGISTRATION,
   });
   expect(signUpPolicy?.rateLimit).toBe(resendPolicy?.rateLimit);
-  expect(getOperationProtectionPolicy(AUTH_OPERATION_NAME.CONFIRM_EMAIL)).toEqual({
-    rateLimit: AUTH_RATE_LIMIT_POLICIES.CONFIRMATION,
-  });
-  expect(getOperationProtectionPolicy('toString')).toBeNull();
-  expect(getOperationProtectionPolicy('__proto__')).toBeNull();
-  expect(getOperationProtectionPolicy('submitCorrections')).toBeNull();
+  expect(getOperationPolicy(OperationTypeNode.MUTATION, AUTH_OPERATION_NAME.CONFIRM_EMAIL)).toEqual(
+    {
+      rateLimit: AUTH_RATE_LIMIT_POLICIES.CONFIRMATION,
+    },
+  );
+  expect(getOperationPolicy(OperationTypeNode.MUTATION, 'toString')).toBeNull();
+  expect(getOperationPolicy(OperationTypeNode.MUTATION, '__proto__')).toBeNull();
+  expect(getOperationPolicy(OperationTypeNode.MUTATION, 'unknownRoot')).toBeNull();
+  expect(getOperationPolicy(OperationTypeNode.QUERY, AUTH_OPERATION_NAME.SIGN_IN)).toBeNull();
+  expect(Object.isFrozen(CORRECTION_OPERATION_NAME)).toBe(true);
+  expect(Object.isFrozen(CORRECTION_QUERY_POLICIES)).toBe(true);
+  expect(Object.isFrozen(CORRECTION_MUTATION_POLICIES)).toBe(true);
+  expect(
+    getOperationPolicy(OperationTypeNode.QUERY, CORRECTION_OPERATION_NAME.CORRECTION_SESSION),
+  ).toEqual({ recordActivity: true });
+  expect(
+    getOperationPolicy(OperationTypeNode.MUTATION, CORRECTION_OPERATION_NAME.CORRECTION_SESSION),
+  ).toBeNull();
 }
 
 /** Confirms root inspection follows aliases and fragments without counting child fields. */

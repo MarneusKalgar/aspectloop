@@ -8,19 +8,37 @@ import {
   type SelectionSetNode,
 } from 'graphql';
 
+export interface SelectedRootFields {
+  readonly operation: OperationTypeNode;
+  readonly roots: readonly string[];
+}
+
 /** Reads only selected mutation roots; queries and unresolved operations have none. */
 export function inspectMutationRoots(
   query: string,
   operationName?: null | string,
 ): null | string[] {
+  const selected = inspectSelectedRootFields(query, operationName);
+
+  return selected?.operation === OperationTypeNode.MUTATION ? [...selected.roots] : null;
+}
+
+/** Reads the selected operation's actual top-level fields for Gateway policies. */
+export function inspectSelectedRootFields(
+  query: string,
+  operationName?: null | string,
+): null | SelectedRootFields {
   const document = parse(query);
   const operation = getOperationAST(document, operationName ?? undefined);
 
-  if (operation?.operation !== OperationTypeNode.MUTATION) {
+  if (!operation) {
     return null;
   }
 
-  return collectRootFields(document, operation.selectionSet);
+  return {
+    operation: operation.operation,
+    roots: collectRootFields(document, operation.selectionSet),
+  };
 }
 
 /** Finds actual root field names, including aliases and nested fragments. */

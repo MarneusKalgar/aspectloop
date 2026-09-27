@@ -1,10 +1,10 @@
 import type { Plugin } from 'graphql-yoga';
 
-import { GraphQLError } from 'graphql';
+import { GraphQLError, OperationTypeNode } from 'graphql';
 
+import { getOperationPolicy } from '../operation-policy/operation-policy';
+import { inspectMutationRoots } from '../operations/root-field-inspection';
 import { boundRetry, GatewayAuthIpLimiter, MAX_AUTH_RETRY_MS } from './auth-ip-limiter';
-import { inspectMutationRoots } from './mutation-root-inspection';
-import { getOperationProtectionPolicy } from './operation-policy';
 
 /** Applies universal request rules and declared operation policies before execution. */
 export function createGatewayRequestProtectionPlugin(
@@ -33,7 +33,7 @@ export function createGatewayRequestProtectionPlugin(
         return;
       }
 
-      const policies = roots.map(getOperationProtectionPolicy);
+      const policies = roots.map((root) => getOperationPolicy(OperationTypeNode.MUTATION, root));
 
       if (roots.length !== 1 && policies.some((policy) => policy?.requiresSoleRoot)) {
         setResult(rejectedOperation('This mutation must be the sole root field.'));
