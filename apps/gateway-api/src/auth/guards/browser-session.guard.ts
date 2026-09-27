@@ -15,7 +15,7 @@ import {
   type BrowserSessionRequest,
 } from '../session/browser-session-authentication.service';
 
-/** Prepared fail-closed guard; not registered globally until coordinated cutover. */
+/** Fail-closed global guard for the active browser-session boundary. */
 @Injectable()
 export class BrowserSessionGuard implements CanActivate {
   /** Receives public metadata and request-scoped authentication. */

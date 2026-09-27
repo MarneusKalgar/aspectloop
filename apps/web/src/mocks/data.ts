@@ -1,8 +1,3 @@
-import {
-  type AuthenticatedUser,
-  createUnsignedAccessToken,
-  readUserFromAccessToken,
-} from '../auth/access-token';
 import { defaultMockReviewerCredentials } from './fixtures/default-reviewer';
 
 interface CorrectionSessionSummary {
@@ -14,9 +9,16 @@ interface CorrectionSessionSummary {
   version: number;
 }
 
-interface MockUserRecord extends AuthenticatedUser {
+type MockPublicUser = Omit<MockUserRecord, 'password'>;
+
+interface MockUserRecord {
   createdAt: string;
+  displayName: string;
+  email: string;
+  id: string;
   password: string;
+  roles: string[];
+  scopes: string[];
   updatedAt: string;
 }
 
@@ -43,21 +45,17 @@ const defaultSession: CorrectionSessionSummary = {
 };
 
 const mockUsers = new Map<string, MockUserRecord>([[defaultUser.email, defaultUser]]);
+let currentSessionUserId: null | string = null;
 const mockSessions = new Map<string, CorrectionSessionSummary>([
   [defaultSession.id, defaultSession],
 ]);
 
-export function createMockToken(user: MockUserRecord): string {
-  return createUnsignedAccessToken({
-    displayName: user.displayName,
-    email: user.email,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
-    roles: user.roles,
-    scopes: user.scopes,
-    sub: user.id,
-  });
+/** Removes the mock session between tests or after sign-out. */
+export function clearMockSessionUser(): void {
+  currentSessionUserId = null;
 }
 
+/** Adds a mock account without creating an authenticated session. */
 export function createMockUser(input: {
   displayName: string;
   email: string;
@@ -80,28 +78,40 @@ export function createMockUser(input: {
   return user;
 }
 
+/** Finds only the mock account required to verify sign-in credentials. */
 export function findMockUserByEmail(email: string): MockUserRecord | undefined {
   return mockUsers.get(email);
-}
-
-export function findMockUserByToken(token: null | string): MockUserRecord | null {
-  if (!token) {
-    return null;
-  }
-
-  const userFromToken = readUserFromAccessToken(token);
-
-  if (!userFromToken) {
-    return null;
-  }
-
-  return [...mockUsers.values()].find((user) => user.id === userFromToken.id) ?? null;
 }
 
 export function getMockSession(sessionId: string) {
   return mockSessions.get(sessionId) ?? null;
 }
 
+/** Returns a secret-free public projection for the current mock session. */
+export function getMockSessionUser(): MockPublicUser | null {
+  const user = [...mockUsers.values()].find((candidate) => candidate.id === currentSessionUserId);
+
+  return user ? toMockPublicUser(user) : null;
+}
+
 export function listMockSessions(): CorrectionSessionSummary[] {
   return [...mockSessions.values()];
+}
+
+/** Keeps a browser-mock session in memory without issuing a readable credential. */
+export function setMockSessionUser(userId: string): void {
+  currentSessionUserId = userId;
+}
+
+/** Projects only public user fields into mocked GraphQL responses. */
+export function toMockPublicUser(user: MockUserRecord): MockPublicUser {
+  return {
+    createdAt: user.createdAt,
+    displayName: user.displayName,
+    email: user.email,
+    id: user.id,
+    roles: user.roles,
+    scopes: user.scopes,
+    updatedAt: user.updatedAt,
+  };
 }

@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
@@ -6,6 +7,8 @@ import { defineConfig } from 'vitest/config';
 const gatewaySourceRoot = fileURLToPath(new URL('./apps/gateway-api/src', import.meta.url));
 /** Absolute Platform source root for its unambiguous backend-test alias. */
 const platformSourceRoot = fileURLToPath(new URL('./apps/platform-service/src', import.meta.url));
+/** Shares Nest's CommonJS GraphQL constructors with transformed application imports. */
+const graphqlEntryPoint = createRequire(import.meta.url).resolve('graphql');
 /** Source roots for the backend applications sharing this test runner. */
 const applicationSourceRoots = [
   fileURLToPath(new URL('./apps/correction-service/src', import.meta.url)),
@@ -46,10 +49,11 @@ export default defineConfig({
     },
   ],
   resolve: {
-    alias: {
-      '@gateway': gatewaySourceRoot,
-      '@platform': platformSourceRoot,
-    },
+    alias: [
+      { find: /^graphql$/, replacement: graphqlEntryPoint },
+      { find: '@gateway', replacement: gatewaySourceRoot },
+      { find: '@platform', replacement: platformSourceRoot },
+    ],
   },
   test: {
     exclude: ['apps/platform-service/test/database/**/*.test.ts'],

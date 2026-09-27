@@ -1,23 +1,16 @@
 import { graphql, HttpResponse } from 'msw';
 
+import { BROWSER_SESSION_ERROR_CODE } from '../../auth/session-error';
 import {
-  createMockToken,
+  clearMockSessionUser,
   createMockUser,
   findMockUserByEmail,
-  findMockUserByToken,
   getMockSession,
+  getMockSessionUser,
   listMockSessions,
+  setMockSessionUser,
+  toMockPublicUser,
 } from '../data';
-
-function getAuthorizationToken(request: Request): null | string {
-  const authorization = request.headers.get('authorization');
-
-  if (!authorization?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  return authorization.replace('Bearer ', '').trim();
-}
 
 export const graphqlHandlers = [
   graphql.mutation('SignUp', ({ variables }) => {
@@ -41,7 +34,7 @@ export const graphqlHandlers = [
       data: {
         signUp: {
           success: true,
-          user,
+          user: toMockPublicUser(user),
         },
       },
     });
@@ -55,27 +48,27 @@ export const graphqlHandlers = [
 
     if (user?.password !== input.password) {
       return HttpResponse.json({
-        errors: [{ message: 'Invalid email or password' }],
+        errors: [
+          {
+            extensions: { code: BROWSER_SESSION_ERROR_CODE.INVALID_CREDENTIALS },
+            message: 'Invalid email or password',
+          },
+        ],
       });
     }
+
+    setMockSessionUser(user.id);
 
     return HttpResponse.json({
       data: {
         signIn: {
-          accessToken: createMockToken(user),
-          user,
+          user: toMockPublicUser(user),
         },
       },
     });
   }),
-  graphql.mutation('SignOut', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
-
-    if (!user) {
-      return HttpResponse.json({
-        errors: [{ message: 'Unauthenticated' }],
-      });
-    }
+  graphql.mutation('SignOut', () => {
+    clearMockSessionUser();
 
     return HttpResponse.json({
       data: {
@@ -85,8 +78,19 @@ export const graphqlHandlers = [
       },
     });
   }),
-  graphql.query('Me', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
+  graphql.query('Me', () => {
+    const user = getMockSessionUser();
+
+    if (!user) {
+      return HttpResponse.json({
+        errors: [
+          {
+            extensions: { code: BROWSER_SESSION_ERROR_CODE.SESSION_INVALID },
+            message: 'Browser session is invalid',
+          },
+        ],
+      });
+    }
 
     return HttpResponse.json({
       data: {
@@ -94,8 +98,8 @@ export const graphqlHandlers = [
       },
     });
   }),
-  graphql.query('CorrectionSessions', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
+  graphql.query('CorrectionSessions', () => {
+    const user = getMockSessionUser();
 
     if (!user) {
       return HttpResponse.json({
@@ -109,8 +113,8 @@ export const graphqlHandlers = [
       },
     });
   }),
-  graphql.query('CorrectionSession', ({ request, variables }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
+  graphql.query('CorrectionSession', ({ variables }) => {
+    const user = getMockSessionUser();
     const session = getMockSession(String(variables.sessionId));
 
     if (!user) {

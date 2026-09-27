@@ -11,13 +11,13 @@ import { Injectable } from '@nestjs/common';
 import { PLATFORM_ENDPOINTS } from './platform-endpoints';
 import { PlatformHttpTransport, type PlatformRequestContext } from './platform-http-transport';
 
-/** Prepared target-only Platform adapter; the active JWT client is unchanged. */
+/** Calls the active browser-session endpoints through the bounded Platform transport. */
 @Injectable()
 export class BrowserSessionPlatformClient {
-  /** Shares the existing bounded Platform transport without changing active routes. */
+  /** Shares the Gateway's existing bounded Platform transport. */
   constructor(private readonly transport: PlatformHttpTransport) {}
 
-  /** Calls the prepared opaque sign-in contract. */
+  /** Calls the opaque browser sign-in contract. */
   async signIn(
     input: PlatformSignInRequest,
     context: PlatformRequestContext = {},
@@ -25,7 +25,7 @@ export class BrowserSessionPlatformClient {
     return this.transport.post(PLATFORM_ENDPOINTS.browserSessionSignIn, input, context);
   }
 
-  /** Calls the prepared opaque sign-out contract. */
+  /** Calls the opaque browser sign-out contract. */
   async signOut(
     sessionCredential: string,
     context: PlatformRequestContext = {},

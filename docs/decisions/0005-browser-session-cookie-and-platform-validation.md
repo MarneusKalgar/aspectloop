@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; implementation pending
+Status: Accepted design; basic C2b cutover verified, remaining M04.2 work pending
 
 Date: 2026-09-20
 
@@ -95,5 +95,8 @@ would require explicit durability, expiry, eviction, and failure semantics.
   additional operational boundary; not selected for the initial implementation.
 
 This decision revises the M04.2 authentication mechanism in ADR 0004 without
-changing Platform domain ownership or Gateway's BFF responsibilities. It does
-not claim the running implementation has already changed.
+changing Platform domain ownership or Gateway's BFF responsibilities. The
+basic Platform/Gateway/Web browser-session cutover was human-verified on
+2026-09-27. Disconnected JWT/refresh code and persistence remain for C3
+retirement; advanced browser resilience, email confirmation, and final
+integrated acceptance remain separate M04.2 work.

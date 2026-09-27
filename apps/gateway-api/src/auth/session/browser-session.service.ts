@@ -8,8 +8,9 @@ import {
   BrowserSessionCookieAdapter,
   type SessionCookieResponse,
 } from './browser-session-cookie.adapter';
+import { mapBrowserSessionError } from './browser-session.errors';
 
-/** Coordinates prepared sign-in and sign-out with Gateway-owned cookie effects. */
+/** Coordinates active sign-in and sign-out with Gateway-owned cookie effects. */
 export class BrowserSessionService {
   /** Keeps cookie ownership at the Gateway boundary. */
   constructor(
@@ -23,9 +24,13 @@ export class BrowserSessionService {
     response: SessionCookieResponse,
     context: PlatformRequestContext = {},
   ): Promise<PlatformUserView> {
-    const session = await this.platform.signIn(input, context);
-    this.cookie.set(response, session.sessionCredential, session.sessionExpiresAt);
-    return session.user;
+    try {
+      const session = await this.platform.signIn(input, context);
+      this.cookie.set(response, session.sessionCredential, session.sessionExpiresAt);
+      return session.user;
+    } catch (error) {
+      throw mapBrowserSessionError(error);
+    }
   }
 
   /** Always clears the browser credential, even when revocation is unconfirmed. */
@@ -40,6 +45,8 @@ export class BrowserSessionService {
       if (credential) {
         await this.platform.signOut(credential, context);
       }
+    } catch (error) {
+      throw mapBrowserSessionError(error);
     } finally {
       this.cookie.clear(response);
     }

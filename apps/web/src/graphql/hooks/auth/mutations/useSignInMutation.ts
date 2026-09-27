@@ -8,7 +8,6 @@ import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMe
 const signInMutationDocument = graphql(`
   mutation SignIn($input: SignInInput!) {
     signIn(input: $input) {
-      accessToken
       user {
         id
         email
@@ -39,8 +38,12 @@ export function useSignInMutation(): GraphqlMutationState<SignInMutation['signIn
      * @param input The credentials submitted by the user.
      * @returns The authenticated payload when the mutation succeeds.
      */
-    execute: async (input: SignInInput): Promise<null | SignInMutation['signIn']> => {
+    execute: async (
+      input: SignInInput,
+      signal?: AbortSignal,
+    ): Promise<null | SignInMutation['signIn']> => {
       const result = await runSignInMutation({
+        context: signal ? { fetchOptions: { signal } } : undefined,
         variables: { input },
       });
 

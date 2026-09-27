@@ -567,9 +567,9 @@ separately restricted legacy exception using only
 
 #### Identity and session stabilization
 
-The existing local JWT flow is PoC-level: the gateway has authentication,
-role, and scope guards, but the browser can still render a user decoded from a
-stale access token while protected GraphQL operations return `Unauthorized`.
+The original local JWT flow was PoC-level: the gateway had authentication,
+role, and scope guards, but the browser could render a user decoded from a
+stale access token while protected GraphQL operations returned `Unauthorized`.
 M04.2 stabilizes the complete FE/BE session contract inside Platform after the
 M04.1 ownership move and before M07 accepts the end-to-end browser workflow.
 
@@ -599,11 +599,12 @@ Authentication and authorization baseline:
   a separate caching and revocation-consistency decision.
 
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
-records this accepted 2026-09-20 target. Existing A/B JWT/refresh implementation
-and passing rotation tests are historical foundations, not evidence that the
-replacement browser session flow is complete. The SPA and separately deployed
-GraphQL Gateway form a BFF arrangement; SSR or a Next/Nuxt migration is not
-required.
+records this accepted 2026-09-20 target. A/B JWT/refresh implementation and
+passing rotation tests are historical foundations, not evidence for the new
+flow. C2b's basic browser-session cutover passed its human verification gate on
+2026-09-27; C3 retirement and later M04.2 acceptance remain pending. The SPA
+and separately deployed GraphQL Gateway form a BFF arrangement; SSR or a
+Next/Nuxt migration is not required.
 
 Session validation deliberately places Platform and PostgreSQL on the protected
 request path. This supports next-validation revocation and current permissions;
@@ -641,10 +642,10 @@ verification gate. Every intermediate task must preserve successful generation,
 type-checking and relevant tests with its actual consumers. Breaking session
 contracts activate together with their callers in C2b; preparation retains
 explicitly temporary contracts until their consumers migrate. Historical A/B
-remains complete only under the old design; all replacement tasks are pending.
-Implement B1 next. Intermediate task
-acceptance is not authorization to deploy a partially cut-over authentication
-flow. Detailed dependencies and the replacement SESSION acceptance matrix live
+remains complete only under the old design. B1, B2, C1, C2a, and C2b have
+passed their task gates; C3 is next, with E1, D1-D3, E2, and F still pending.
+Intermediate task acceptance is not authorization to deploy a partially cut-over
+authentication flow. Detailed dependencies and the replacement SESSION acceptance matrix live
 in the working M04.2 plan under `.plan/`; this section and ADR 0005 retain the
 canonical scope and decision.
 

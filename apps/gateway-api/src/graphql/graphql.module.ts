@@ -6,6 +6,7 @@ import { join } from 'node:path';
 
 import { getCorsOrigins } from '#app/core/setupCors';
 
+import { createBrowserSessionGraphqlContext } from './browser-session-context';
 import { maskGraphqlError } from './errors/mask-graphql-error';
 import { createDisableIntrospectionPlugin } from './introspection/disable-introspection.plugin';
 import { createGraphqlLoggingPlugin } from './logging/graphql-logging.plugin';
@@ -39,7 +40,7 @@ import { JsonScalar } from './scalars/json.scalar';
 
         return {
           batching: false,
-          context: ({ req }: { req: unknown }) => ({ req }),
+          context: createBrowserSessionGraphqlContext,
           cors: false,
           graphiql: !isRuntimeBuild,
           logging: false,

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 
+import { PublicBrowserSession } from '#app/auth/decorators/public-browser-session.decorator';
 import { GATEWAY_SERVICE_NAME } from '#app/core/service-name';
 import { PlatformClient } from '#app/platform/platform-client';
 
@@ -21,12 +22,14 @@ export class HealthController {
 
   /** Reports process liveness without probing downstream services. */
   @Get()
+  @PublicBrowserSession()
   getHealth(): GatewayHealthResponse {
     return { service: GATEWAY_SERVICE_NAME, status: 'ok' };
   }
 
   /** Reports readiness only after the required Platform dependency is ready. */
   @Get('readiness')
+  @PublicBrowserSession()
   async getReadiness(): Promise<GatewayReadinessResponse> {
     await this.platformClient.getReadiness();
 

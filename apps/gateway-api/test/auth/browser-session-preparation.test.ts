@@ -3,6 +3,7 @@ import type { ExecutionContext } from '@nestjs/common';
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { GraphQLError } from 'graphql';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -17,18 +18,17 @@ import {
   type BrowserSessionRequest,
 } from '../../src/auth/session/browser-session-authentication.service';
 import { BrowserSessionCookieAdapter } from '../../src/auth/session/browser-session-cookie.adapter';
+import { BrowserSessionException } from '../../src/auth/session/browser-session.errors';
 import { BrowserSessionService } from '../../src/auth/session/browser-session.service';
 import {
   type BrowserSessionGraphqlContext,
   createBrowserSessionGraphqlContext,
 } from '../../src/graphql/browser-session-context';
+import { maskGraphqlError } from '../../src/graphql/errors/mask-graphql-error';
 import { recordsSessionActivity } from '../../src/graphql/operation-policy/session-activity.policy';
 import { BrowserSessionPlatformClient } from '../../src/platform/browser-session-platform-client';
 import { PlatformHttpTransport } from '../../src/platform/platform-http-transport';
-import {
-  PlatformBrowserSessionRejectedException,
-  PlatformUnavailableException,
-} from '../../src/platform/platform.errors';
+import { PlatformUnavailableException } from '../../src/platform/platform.errors';
 
 const CREDENTIAL = `88d58420-dcdb-4d35-a80c-fad8f3d81119.${'a'.repeat(43)}`;
 const USER = {
@@ -93,7 +93,8 @@ function testActivityPolicy(): void {
   };
   const publicParams = { query: 'query { me }', recordActivity: true };
   expect(
-    createBrowserSessionGraphqlContext(request, publicParams).browserSession.recordActivity,
+    createBrowserSessionGraphqlContext({ params: publicParams, req: request, res: new Headers() })
+      .browserSession.recordActivity,
   ).toBe(false);
 }
 
@@ -143,13 +144,13 @@ async function testCookieHttpBoundary(): Promise<void> {
   const rejectedHeaders = new Headers();
   await expect(
     sessionService.signIn({ email: USER.email, password: 'bad-password' }, rejectedHeaders),
-  ).rejects.toBeInstanceOf(PlatformBrowserSessionRejectedException);
+  ).rejects.toBeInstanceOf(BrowserSessionException);
   expect(rejectedHeaders.has('set-cookie')).toBe(false);
 
   const signOutHeaders = new Headers();
   await expect(
     sessionService.signOut(`aspectloop_session=${CREDENTIAL}`, signOutHeaders),
-  ).rejects.toBeInstanceOf(PlatformUnavailableException);
+  ).rejects.toMatchObject({ code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE });
   expect(signOutHeaders.get('set-cookie')).toContain('Max-Age=0');
   expect(signOutHeaders.get('set-cookie')).toContain('Path=/graphql');
   expect(signOutHeaders.get('set-cookie')).toContain('Secure');
@@ -266,10 +267,11 @@ async function testIsolatedHttpValidation(): Promise<void> {
   const yoga = createYoga<Record<string, never>, BrowserSessionGraphqlContext>({
     batching: false,
     context: ({ params, request }) =>
-      createBrowserSessionGraphqlContext(
-        { headers: { cookie: request.headers.get('cookie') } },
+      createBrowserSessionGraphqlContext({
         params,
-      ),
+        req: { headers: { cookie: request.headers.get('cookie') } },
+        res: new Headers(),
+      }),
     cors: false,
     graphiql: false,
     landingPage: false,
@@ -332,7 +334,28 @@ async function testMalformedPlatformFailure(): Promise<void> {
       { headers: { cookie: `aspectloop_session=${CREDENTIAL}` } },
       { recordActivity: false },
     ),
-  ).rejects.toBeInstanceOf(PlatformUnavailableException);
+  ).rejects.toMatchObject({ code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE });
+}
+
+/** Preserves only declared session codes and bounded retry metadata in GraphQL. */
+function testSessionErrorProjection(): void {
+  const outage = maskGraphqlError(
+    new GraphQLError('wrapped', {
+      originalError: new BrowserSessionException(AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE),
+      path: ['me'],
+    }),
+  );
+  expect(outage).toBeInstanceOf(GraphQLError);
+  expect((outage as GraphQLError).extensions).toMatchObject({
+    code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
+  });
+  expect((outage as GraphQLError).path).toEqual(['me']);
+
+  const limited = maskGraphqlError(new BrowserSessionException(AUTH_ERROR_CODE.RATE_LIMITED, 2500));
+  expect((limited as GraphQLError).extensions).toMatchObject({
+    code: AUTH_ERROR_CODE.RATE_LIMITED,
+    retryAfterMs: 2500,
+  });
 }
 
 /** Invalid target envelopes and successes cannot be interpreted as sessions. */
@@ -364,3 +387,4 @@ test('C2a fail-closed invalid sessions', testInvalidSession);
 test('C2a default guard and authoritative permissions', testGuardAndPermissions);
 test('C2a malformed Platform failure is unavailable', testMalformedPlatformFailure);
 test('C2a endpoint policy rejects invalid target responses', testStrictTargetResponsePolicy);
+test('C2b session errors preserve canonical GraphQL extensions', testSessionErrorProjection);

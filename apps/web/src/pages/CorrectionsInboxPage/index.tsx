@@ -91,7 +91,9 @@ export function CorrectionsInboxPage() {
         liveRuntimeLabel={t('app.runtime.live')}
         mockRuntimeLabel={t('app.runtime.mock')}
         onSignOut={() => {
-          void signOut();
+          void signOut().catch(() => {
+            // AuthProvider displays the unconfirmed revocation state.
+          });
         }}
         pageLabel={t('corrections.inbox.heading')}
         signOutLabel={t('auth.signOut.trigger')}

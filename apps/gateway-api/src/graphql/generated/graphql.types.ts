@@ -84,7 +84,6 @@ export class SubmitCorrectionsInput {
 }
 
 export class AuthPayload {
-    accessToken: string;
     user: User;
 }
 
@@ -212,8 +211,6 @@ export abstract class IMutation {
     abstract confirmEmail(input: ConfirmEmailInput): EmailConfirmationPayload | Promise<EmailConfirmationPayload>;
 
     abstract openCorrectionSession(input: OpenCorrectionSessionInput): CorrectionSession | Promise<CorrectionSession>;
-
-    abstract refreshSession(): AuthPayload | Promise<AuthPayload>;
 
     abstract resendEmailConfirmation(input: ResendEmailConfirmationInput): EmailConfirmationRequestPayload | Promise<EmailConfirmationRequestPayload>;
 

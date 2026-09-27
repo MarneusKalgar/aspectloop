@@ -422,13 +422,23 @@ it does not replace runtime-role operations under test.
 Those AUTH-B results are historical evidence for the JWT/refresh design.
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
 changes the target to opaque session cookies and per-request Platform validation.
-The revised M04.2 plan defines pending SESSION-01 through SESSION-17 acceptance
+The revised M04.2 plan defines SESSION-01 through SESSION-17 acceptance
 for digest-only session issuance, legacy-credential rejection, expiry/activity,
 validation/logout races, real HTTP cookie and mutation-CSRF behavior, request
 deduplication, dependency failures, browser lifecycle, confirmation, and measured
 database/validation performance. Adapt the verifier with its owning task;
 do not relabel old rotation passes as replacement-session acceptance. A working
 store alone does not prove browser or GraphQL transport behavior.
+
+The C2b basic cutover passed human verification on 2026-09-27 using the
+default-stack `local:auth:verify -- --http` session scenarios, focused and full
+tests, readiness probes, and a private verified Web fixture. The HTTP runner
+checks sign-in, protected operations, cookie boundaries, logout revocation and
+subsequent rejection. The browser check covered reload, unavailable/recovery
+states, cookie-only transport, and fixture cleanup. This is partial M04.2
+evidence, not completion of the full SESSION matrix; email confirmation,
+advanced browser resilience, fresh-stack and stage gates remain with later
+tasks.
 
 ### 8.1 Dedicated local E2E stack
 

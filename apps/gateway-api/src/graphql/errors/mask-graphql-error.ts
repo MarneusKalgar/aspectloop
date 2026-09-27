@@ -1,6 +1,8 @@
 import { HttpException, Logger } from '@nestjs/common';
 import { GraphQLError } from 'graphql';
 
+import { BrowserSessionException } from '#app/auth/session/browser-session.errors';
+
 const expectedStatusCodes = new Map<number, string>([
   [400, 'BAD_REQUEST'],
   [401, 'UNAUTHENTICATED'],
@@ -18,6 +20,20 @@ const logger = new Logger('GraphQL');
  */
 export function maskGraphqlError(error: unknown): Error {
   const httpException = findHttpException(error);
+
+  if (httpException instanceof BrowserSessionException) {
+    const graphQLError = error instanceof GraphQLError ? error : undefined;
+
+    return new GraphQLError(httpException.message, {
+      extensions: {
+        code: httpException.code,
+        ...(httpException.retryAfterMs === undefined
+          ? {}
+          : { retryAfterMs: httpException.retryAfterMs }),
+      },
+      path: graphQLError?.path,
+    });
+  }
 
   if (httpException && httpException.getStatus() >= 400 && httpException.getStatus() < 500) {
     return createExpectedError(error, httpException);

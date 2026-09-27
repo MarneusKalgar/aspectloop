@@ -16,7 +16,8 @@
     "db:seed:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/seed/index.ts",
     "db:artifact:concurrency:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-artifact-concurrency.ts",
     "db:artifact:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-artifact.ts",
-    "db:auth:sessions:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-auth-sessions.ts"
+    "db:auth:sessions:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-auth-sessions.ts",
+    "db:auth:http:verify:local": "NODE_ENV=development ts-node -r tsconfig-paths/register ./src/db/verify/platform-auth-http.ts"
   },
   "dependencies": {
     "@aspectloop/backend-platform": "^0.1.0",
