@@ -23,6 +23,7 @@ export function useMeQuery(): (signal: AbortSignal) => Promise<MeQuery['me']> {
   const client = useApolloClient();
 
   return useCallback(
+    /** Fetches uncached identity with caller cancellation; missing data fails bootstrap. */
     async (signal: AbortSignal): Promise<MeQuery['me']> => {
       const result = await client.query({
         context: { fetchOptions: { signal } },

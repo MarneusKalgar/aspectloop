@@ -89,7 +89,9 @@ async function main(): Promise<void> {
     } finally {
       await Promise.all(
         [runtime, cleanup]
+          /** Closes only data sources that completed initialization. */
           .filter((dataSource) => dataSource.isInitialized)
+          /** Releases each owned connection even when fixture cleanup failed. */
           .map((dataSource) => dataSource.destroy()),
       );
     }

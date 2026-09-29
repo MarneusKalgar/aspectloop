@@ -78,6 +78,20 @@ function testActivityPolicy(): void {
   ).toBe(true);
   expect(recordsSessionActivity('mutation { saveCorrectionSessionDraft }')).toBe(true);
   expect(
+    recordsSessionActivity(`query { me ...Outer ...Outer }
+      fragment Outer on Query { ...Product ...Product }
+      fragment Product on Query { c: correctionSession }`),
+  ).toBe(true);
+  expect(
+    recordsSessionActivity(`query { me ...Only ...Only }
+      fragment Only on Query { me }`),
+  ).toBe(false);
+  expect(
+    recordsSessionActivity(`mutation { ...Outer ...Outer }
+      fragment Outer on Mutation { ...Save ...Save }
+      fragment Save on Mutation { saveCorrectionSessionDraft }`),
+  ).toBe(true);
+  expect(
     recordsSessionActivity(
       'query Product { correctionSession } query Bootstrap { me }',
       'Bootstrap',
@@ -264,8 +278,9 @@ async function testIsolatedHttpValidation(): Promise<void> {
     client(),
     new BrowserSessionCookieAdapter('test'),
   );
-  const yoga = createYoga<Record<string, never>, BrowserSessionGraphqlContext>({
+  const yoga = createYoga<Record<never, never>, BrowserSessionGraphqlContext>({
     batching: false,
+    /** Reuses the parsed operation for request-wide activity and memoized validation. */
     context: ({ params, request }) =>
       createBrowserSessionGraphqlContext({
         params,
@@ -276,7 +291,7 @@ async function testIsolatedHttpValidation(): Promise<void> {
     graphiql: false,
     landingPage: false,
     logging: false,
-    schema: createSchema({
+    schema: createSchema<BrowserSessionGraphqlContext>({
       resolvers: {
         Query: {
           /** Uses the same request object as other selected roots. */
@@ -299,7 +314,10 @@ async function testIsolatedHttpValidation(): Promise<void> {
     }),
   });
   const response = await yoga.fetch('http://gateway.test/graphql', {
-    body: JSON.stringify({ query: 'query { me correctionSession }' }),
+    body: JSON.stringify({
+      query: `query { me ...Product ...Product }
+        fragment Product on Query { correctionSession }`,
+    }),
     headers: { 'content-type': 'application/json', cookie: `aspectloop_session=${CREDENTIAL}` },
     method: 'POST',
   });

@@ -247,9 +247,9 @@ async function testRejectMismatchedRecovery(): Promise<void> {
 
   await expect(
     new SourceObjectCoordinator(store, storage).createSourceObject(command()),
-  ).rejects.toMatchObject<Partial<SourceObjectReservationError>>({
+  ).rejects.toMatchObject({
     code: 'recovery_required',
-  });
+  } satisfies Pick<SourceObjectReservationError, 'code'>);
   expect(store.fail).toHaveBeenCalledWith(RESERVATION_ID, LEASE_ID, 'integrity_mismatch');
   expect(store.finalize).not.toHaveBeenCalled();
 }

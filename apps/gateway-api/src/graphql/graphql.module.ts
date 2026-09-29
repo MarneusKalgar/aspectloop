@@ -20,6 +20,7 @@ import { JsonScalar } from './scalars/json.scalar';
     GraphQLModule.forRootAsync<YogaDriverConfig>({
       driver: YogaDriver,
       inject: [ConfigService],
+      /** Configures one Yoga boundary with session context, request policy, and safe errors. */
       useFactory: (configService: ConfigService) => {
         const nodeEnv = configService.get<string>('NODE_ENV');
         const isRuntimeBuild = nodeEnv === 'production' || nodeEnv === 'stage';

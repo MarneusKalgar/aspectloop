@@ -37,6 +37,7 @@ interface TestGraphqlBody {
       ignoreEnvFile: true,
       isGlobal: true,
       load: [
+        /** Supplies only safe local configuration to the real Nest composition. */
         () => ({
           CORS_ALLOWED_ORIGINS: ORIGIN,
           NODE_ENV: 'test',
@@ -146,6 +147,7 @@ async function testNestSessionComposition(): Promise<void> {
   const originalFetch = globalThis.fetch.bind(globalThis);
   const upstreamCalls: { body: Record<string, unknown>; path: string }[] = [];
   let failValidation = false;
+  /** Routes only Platform requests to controlled responses; local Nest calls use real fetch. */
   vi.stubGlobal('fetch', async (input: Request | string | URL, init?: RequestInit) => {
     const url = String(input);
 

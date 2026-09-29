@@ -1,6 +1,6 @@
-import type { AuthRateLimitPolicy } from '../operation-policy/auth-operation.policy';
+import { AUTH_ERROR_POLICY } from '@aspectloop/contracts/platform';
 
-export const MAX_AUTH_RETRY_MS = 3_600_000;
+import type { AuthRateLimitPolicy } from '../operation-policy/auth-operation.policy';
 
 const MAX_IP_KEYS = 10_000;
 
@@ -36,7 +36,7 @@ export class GatewayAuthIpLimiter {
     }
 
     if (!this.windows.has(key) && this.windows.size >= MAX_IP_KEYS) {
-      return MAX_AUTH_RETRY_MS;
+      return AUTH_ERROR_POLICY.RETRY_AFTER_MS_MAX;
     }
 
     this.windows.set(key, {
@@ -58,5 +58,8 @@ export class GatewayAuthIpLimiter {
 
 /** Constrains public retry metadata to the accepted millisecond interval. */
 export function boundRetry(value: number): number {
-  return Math.min(MAX_AUTH_RETRY_MS, Math.max(1, Math.ceil(value)));
+  return Math.min(
+    AUTH_ERROR_POLICY.RETRY_AFTER_MS_MAX,
+    Math.max(AUTH_ERROR_POLICY.RETRY_AFTER_MS_MIN, Math.ceil(value)),
+  );
 }

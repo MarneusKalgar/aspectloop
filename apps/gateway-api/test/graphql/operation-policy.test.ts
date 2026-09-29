@@ -10,9 +10,20 @@ import {
   CORRECTION_QUERY_POLICIES,
 } from '@gateway/graphql/operation-policy/correction-operation.policy';
 import { getOperationPolicy } from '@gateway/graphql/operation-policy/operation-policy';
-import { inspectMutationRoots } from '@gateway/graphql/operations/root-field-inspection';
+import {
+  inspectMutationRoots,
+  inspectSelectedRootFields,
+} from '@gateway/graphql/operations/root-field-inspection';
 import { OperationTypeNode } from 'graphql';
 import { expect, test } from 'vitest';
+
+/** Ensures invalid fragment references cannot expand forever or manufacture extra roots. */
+function testCyclicAndMissingFragments(): void {
+  expect(
+    inspectMutationRoots('mutation { ...Loop } fragment Loop on Mutation { signOut ...Loop }'),
+  ).toEqual(['signOut']);
+  expect(inspectMutationRoots('mutation { ...Missing signIn }')).toEqual(['signIn']);
+}
 
 /** Keeps operation-specific protections declarative and unknown roots unconfigured. */
 function testOperationPolicyLookup(): void {
@@ -82,5 +93,36 @@ function testSelectedMutationRoots(): void {
   expect(inspectMutationRoots('query { me { id } }')).toBeNull();
 }
 
+/** Confirms shared fragments are collected once while separate aliases remain distinct roots. */
+function testSharedFragmentTraversal(): void {
+  const query = `
+    mutation Selected {
+      first: signOut
+      ...Outer
+      ...Outer
+      ... on Mutation { second: signOut }
+    }
+    mutation Other { signIn }
+    fragment Outer on Mutation { ...Middle ...Middle }
+    fragment Middle on Mutation { submitCorrections ...Leaf ...Leaf }
+    fragment Leaf on Mutation { third: signOut }
+  `;
+
+  expect(inspectMutationRoots(query, 'Selected')).toEqual([
+    'signOut',
+    'submitCorrections',
+    'signOut',
+    'signOut',
+  ]);
+  expect(inspectMutationRoots(query, 'Other')).toEqual(['signIn']);
+  expect(inspectMutationRoots(query)).toBeNull();
+  expect(inspectSelectedRootFields('query { me { id } }')?.roots).toEqual(['me']);
+}
+
 test('inspects selected mutation roots through aliases and fragments', testSelectedMutationRoots);
+test(
+  'bounds shared-fragment traversal while preserving aliases and operation selection',
+  testSharedFragmentTraversal,
+);
+test('does not expand cyclic or missing fragments indefinitely', testCyclicAndMissingFragments);
 test('maps operation metadata without inherited-name matches', testOperationPolicyLookup);

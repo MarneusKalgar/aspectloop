@@ -1,3 +1,5 @@
+import type { MeQuery } from '@app/graphql/generated/graphql';
+
 import { defaultMockReviewerCredentials } from './fixtures/default-reviewer';
 
 interface CorrectionSessionSummary {
@@ -9,18 +11,8 @@ interface CorrectionSessionSummary {
   version: number;
 }
 
-type MockPublicUser = Omit<MockUserRecord, 'password'>;
-
-interface MockUserRecord {
-  createdAt: string;
-  displayName: string;
-  email: string;
-  id: string;
-  password: string;
-  roles: string[];
-  scopes: string[];
-  updatedAt: string;
-}
+type MockPublicUser = NonNullable<MeQuery['me']>;
+type MockUserRecord = MockPublicUser & { password: string };
 
 const now = new Date().toISOString();
 
@@ -83,6 +75,7 @@ export function findMockUserByEmail(email: string): MockUserRecord | undefined {
   return mockUsers.get(email);
 }
 
+/** Finds one stable correction fixture without changing authentication state. */
 export function getMockSession(sessionId: string) {
   return mockSessions.get(sessionId) ?? null;
 }
@@ -94,6 +87,7 @@ export function getMockSessionUser(): MockPublicUser | null {
   return user ? toMockPublicUser(user) : null;
 }
 
+/** Returns the in-memory correction fixtures for an authenticated mock query. */
 export function listMockSessions(): CorrectionSessionSummary[] {
   return [...mockSessions.values()];
 }

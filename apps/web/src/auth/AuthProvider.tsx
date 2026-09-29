@@ -73,21 +73,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [loadMe],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    queueMicrotask(() => {
-      if (!controller.signal.aborted) {
-        void bootstrap(
-          AbortSignal.any([controller.signal, AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS)]),
-        );
-      }
-    });
+  useEffect(
+    /** Starts an abortable bootstrap and invalidates its result when this provider unmounts. */
+    () => {
+      const controller = new AbortController();
+      /** Defers the request until the effect is committed and still mounted. */
+      queueMicrotask(() => {
+        if (!controller.signal.aborted) {
+          void bootstrap(
+            AbortSignal.any([controller.signal, AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS)]),
+          );
+        }
+      });
 
-    return () => {
-      generation.current += 1;
-      controller.abort();
-    };
-  }, [bootstrap]);
+      /** Prevents an obsolete bootstrap response from changing session state. */
+      return () => {
+        generation.current += 1;
+        controller.abort();
+      };
+    },
+    [bootstrap],
+  );
 
   /** Rechecks the cookie explicitly after an ordinary dependency failure. */
   function retryBootstrap(): void {

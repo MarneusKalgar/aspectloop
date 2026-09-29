@@ -54,6 +54,7 @@ export async function readPrivateFixturePassword(): Promise<string> {
   process.stdout.write('Fixture password (12-72 ASCII characters; hidden): ');
 
   try {
+    /** Collects one hidden terminal line and settles on Enter or cancellation. */
     return await new Promise<string>((resolve, reject) => {
       let password = '';
 

@@ -2,18 +2,25 @@ import {
   AUTH_OPERATION_NAME,
   AUTH_RATE_LIMIT_POLICIES,
 } from '@gateway/graphql/operation-policy/auth-operation.policy';
-import { GatewayAuthIpLimiter } from '@gateway/graphql/request-protection/auth-ip-limiter';
+import {
+  boundRetry,
+  GatewayAuthIpLimiter,
+} from '@gateway/graphql/request-protection/auth-ip-limiter';
 import { createGatewayRequestProtectionPlugin } from '@gateway/graphql/request-protection/gateway-request-protection.plugin';
 import { createSchema, createYoga } from 'graphql-yoga';
 import { expect, test, vi } from 'vitest';
 
 const URL = 'http://gateway.test/graphql';
 const ORIGIN = 'http://localhost:5173';
+interface GatewaySocketContext {
+  req: { socket: { remoteAddress: string } };
+}
 
 /** Creates a real Yoga HTTP boundary with observable mutation resolvers. */
 function createProtectedYoga() {
+  /** Records each mutation resolver call so rejected requests prove no side effect. */
   const domainCall = vi.fn(() => 'done');
-  const schema = createSchema({
+  const schema = createSchema<GatewaySocketContext>({
     resolvers: {
       Mutation: {
         [AUTH_OPERATION_NAME.CONFIRM_EMAIL]: domainCall,
@@ -39,7 +46,7 @@ function createProtectedYoga() {
       }
     `,
   });
-  const yoga = createYoga<{ req: { socket: { remoteAddress: string } } }>({
+  const yoga = createYoga<GatewaySocketContext>({
     batching: false,
     cors: false,
     graphiql: false,
@@ -93,11 +100,31 @@ async function testBatchAndRootIsolation(): Promise<void> {
   const repeated = await post(yoga, {
     query: `mutation { first: ${AUTH_OPERATION_NAME.SIGN_OUT} second: ${AUTH_OPERATION_NAME.SIGN_OUT} }`,
   });
+  const sharedMixed = await post(yoga, {
+    query: `mutation { ...Outer ...Outer }
+      fragment Outer on Mutation { ...Session ...Product }
+      fragment Session on Mutation { first: ${AUTH_OPERATION_NAME.SIGN_IN} }
+      fragment Product on Mutation { submitCorrections }`,
+  });
+  const sharedAliases = await post(yoga, {
+    query: `mutation { ...First ...Second }
+      fragment First on Mutation { first: ${AUTH_OPERATION_NAME.SIGN_OUT} }
+      fragment Second on Mutation { second: ${AUTH_OPERATION_NAME.SIGN_OUT} ...First }`,
+  });
 
   expect(batch.status).toBe(400);
   expect(aliased.status).toBe(400);
   expect(repeated.status).toBe(400);
+  expect(sharedMixed.status).toBe(400);
+  expect(sharedAliases.status).toBe(400);
   expect(domainCall).not.toHaveBeenCalled();
+
+  const singleRoot = await post(yoga, {
+    query: `mutation { ...Only ...Only }
+      fragment Only on Mutation { ${AUTH_OPERATION_NAME.SIGN_OUT} }`,
+  });
+  expect(singleRoot.status).toBe(200);
+  expect(domainCall).toHaveBeenCalledOnce();
 }
 
 /** Proves GET cannot execute a product mutation. */
@@ -110,6 +137,19 @@ async function testGetMutationDenied(): Promise<void> {
   );
 
   expect(response.status).toBe(405);
+  expect(domainCall).not.toHaveBeenCalled();
+}
+
+/** Invalid cycles and missing fragments fail validation without invoking a resolver. */
+async function testInvalidFragmentsHaveNoSideEffects(): Promise<void> {
+  const { domainCall, yoga } = createProtectedYoga();
+  const cycle = await post(yoga, {
+    query: `mutation { ...Loop } fragment Loop on Mutation { ${AUTH_OPERATION_NAME.SIGN_IN} ...Loop }`,
+  });
+  const missing = await post(yoga, { query: 'mutation { ...Missing }' });
+
+  expect((await cycle.json()) as { errors?: unknown[] }).toHaveProperty('errors');
+  expect((await missing.json()) as { errors?: unknown[] }).toHaveProperty('errors');
   expect(domainCall).not.toHaveBeenCalled();
 }
 
@@ -174,6 +214,15 @@ async function testOriginAndJsonGate(): Promise<void> {
   expect(domainCall).toHaveBeenCalledOnce();
 }
 
+/** Pins literal retry bounds independently of the shared constants used by production. */
+function testRetryClamping(): void {
+  expect(boundRetry(-10)).toBe(1);
+  expect(boundRetry(0.01)).toBe(1);
+  expect(boundRetry(1.01)).toBe(2);
+  expect(boundRetry(3_599_999.01)).toBe(3_600_000);
+  expect(boundRetry(3_600_000.1)).toBe(3_600_000);
+}
+
 /** Proves forwarded-IP spoofing cannot evade the process-local auth limit. */
 async function testSignInIpLimit(): Promise<void> {
   const { domainCall, yoga } = createProtectedYoga();
@@ -210,9 +259,14 @@ async function testSignInIpLimit(): Promise<void> {
 test('gates Origin and JSON before product mutations', testOriginAndJsonGate);
 test('does not reflect malformed JSON credentials', testMalformedJsonRedaction);
 test('rejects HTTP batches and mixed or repeated session roots', testBatchAndRootIsolation);
+test(
+  'invalid fragment graphs have no mutation side effects',
+  testInvalidFragmentsHaveNoSideEffects,
+);
 test('denies product mutation execution over GET', testGetMutationDenied);
 test('limits sign-in by socket IP despite forwarded headers', testSignInIpLimit);
 test(
   'bounds registration counters, expires entries, and fails closed on capacity',
   testLimiterWindowAndCapacity,
 );
+test('rounds and clamps retry metadata to literal wire bounds', testRetryClamping);

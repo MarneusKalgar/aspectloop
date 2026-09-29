@@ -5,6 +5,7 @@ import {
   Kind,
   OperationTypeNode,
   parse,
+  type SelectionNode,
   type SelectionSetNode,
 } from 'graphql';
 
@@ -41,7 +42,7 @@ export function inspectSelectedRootFields(
   };
 }
 
-/** Finds actual root field names, including aliases and nested fragments. */
+/** Collects selected top-level fields with each named fragment expanded at most once. */
 function collectRootFields(document: DocumentNode, selectionSet: SelectionSetNode): string[] {
   const fragments = new Map<string, FragmentDefinitionNode>();
 
@@ -52,25 +53,46 @@ function collectRootFields(document: DocumentNode, selectionSet: SelectionSetNod
   }
 
   const roots: string[] = [];
+  const visitedFragments = new Set<string>();
+  const worklist: SelectionNode[] = [];
+  pushSelections(selectionSet);
 
-  /** Walks only root-level selection sets and avoids cyclic fragment input. */
-  function visit(current: SelectionSetNode, visited: Set<string>): void {
-    for (const selection of current.selections) {
-      if (selection.kind === Kind.FIELD) {
-        roots.push(selection.name.value);
-      } else if (selection.kind === Kind.INLINE_FRAGMENT) {
-        visit(selection.selectionSet, visited);
-      } else {
-        const name = selection.name.value;
-        const fragment = fragments.get(name);
+  /** Preserves document order without recursive expansion or argument spreading. */
+  function pushSelections(current: SelectionSetNode): void {
+    for (let index = current.selections.length - 1; index >= 0; index -= 1) {
+      const selection = current.selections[index];
 
-        if (fragment && !visited.has(name)) {
-          visit(fragment.selectionSet, new Set([...visited, name]));
-        }
+      if (selection) {
+        worklist.push(selection);
       }
     }
   }
 
-  visit(selectionSet, new Set());
+  while (worklist.length > 0) {
+    const selection = worklist.pop();
+
+    if (!selection) {
+      continue;
+    }
+
+    if (selection.kind === Kind.FIELD) {
+      roots.push(selection.name.value);
+      continue;
+    }
+
+    if (selection.kind === Kind.INLINE_FRAGMENT) {
+      pushSelections(selection.selectionSet);
+      continue;
+    }
+
+    const name = selection.name.value;
+    const fragment = fragments.get(name);
+
+    if (fragment && !visitedFragments.has(name)) {
+      visitedFragments.add(name);
+      pushSelections(fragment.selectionSet);
+    }
+  }
+
   return roots;
 }

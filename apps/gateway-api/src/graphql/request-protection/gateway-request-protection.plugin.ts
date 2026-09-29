@@ -1,10 +1,15 @@
 import type { Plugin } from 'graphql-yoga';
 
+import {
+  AUTH_ERROR_CODE,
+  AUTH_ERROR_HTTP_STATUS,
+  AUTH_ERROR_POLICY,
+} from '@aspectloop/contracts/platform';
 import { GraphQLError, OperationTypeNode } from 'graphql';
 
 import { getOperationPolicy } from '../operation-policy/operation-policy';
 import { inspectMutationRoots } from '../operations/root-field-inspection';
-import { boundRetry, GatewayAuthIpLimiter, MAX_AUTH_RETRY_MS } from './auth-ip-limiter';
+import { boundRetry, GatewayAuthIpLimiter } from './auth-ip-limiter';
 
 /** Applies universal request rules and declared operation policies before execution. */
 export function createGatewayRequestProtectionPlugin(
@@ -50,7 +55,7 @@ export function createGatewayRequestProtectionPlugin(
         }
 
         if (!ip) {
-          setResult(rateLimited(MAX_AUTH_RETRY_MS));
+          setResult(rateLimited(AUTH_ERROR_POLICY.RETRY_AFTER_MS_MAX));
           return;
         }
 
@@ -84,6 +89,7 @@ export function createGatewayRequestProtectionPlugin(
       }
 
       if (requestParser) {
+        /** Converts parse failures to a generic response without disclosing the raw request body. */
         setRequestParser(async (incomingRequest) => {
           try {
             return await requestParser(incomingRequest);
@@ -125,8 +131,8 @@ function rateLimited(retryAfterMs: number): { errors: GraphQLError[] } {
     errors: [
       new GraphQLError('Too many authentication requests.', {
         extensions: {
-          code: 'AUTH_RATE_LIMITED',
-          http: { status: 429 },
+          code: AUTH_ERROR_CODE.RATE_LIMITED,
+          http: { status: AUTH_ERROR_HTTP_STATUS.RATE_LIMITED },
           retryAfterMs: boundRetry(retryAfterMs),
         },
       }),
