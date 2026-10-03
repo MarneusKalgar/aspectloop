@@ -1,14 +1,13 @@
-import type { PlatformAuthErrorResponse } from '@aspectloop/contracts/platform';
+import type { PlatformBrowserSessionAuthErrorResponse } from '@aspectloop/contracts/platform';
 
 import {
   AUTH_ERROR_CODE,
   AUTH_ERROR_HTTP_STATUS,
-  AUTH_ERROR_POLICY,
-  platformAuthErrorResponseSchema,
+  platformBrowserSessionAuthErrorResponseSchema,
 } from '@aspectloop/contracts/platform';
 import { HttpException } from '@nestjs/common';
 
-type PlatformAuthErrorCode = PlatformAuthErrorResponse['code'];
+type PlatformAuthErrorCode = PlatformBrowserSessionAuthErrorResponse['code'];
 
 /** Emits only the allowlisted internal auth error envelope. */
 export class PlatformAuthException extends HttpException {
@@ -21,12 +20,9 @@ export class PlatformAuthException extends HttpException {
    */
   constructor(code: PlatformAuthErrorCode, message: string, retryAfterMs?: number) {
     const statusCode = platformAuthStatus(code);
-    const response = platformAuthErrorResponseSchema.parse({
+    const response = platformBrowserSessionAuthErrorResponseSchema.parse({
       code,
       message,
-      ...(code === AUTH_ERROR_CODE.REFRESH_CONFLICT
-        ? { retryAfterMs: AUTH_ERROR_POLICY.REFRESH_CONFLICT_RETRY_AFTER_MS }
-        : {}),
       ...(code === AUTH_ERROR_CODE.RATE_LIMITED && retryAfterMs !== undefined
         ? { retryAfterMs }
         : {}),
@@ -50,8 +46,6 @@ function platformAuthStatus(code: PlatformAuthErrorCode): number {
       return AUTH_ERROR_HTTP_STATUS.INVALID_CREDENTIALS;
     case AUTH_ERROR_CODE.RATE_LIMITED:
       return AUTH_ERROR_HTTP_STATUS.RATE_LIMITED;
-    case AUTH_ERROR_CODE.REFRESH_CONFLICT:
-      return AUTH_ERROR_HTTP_STATUS.REFRESH_CONFLICT;
     case AUTH_ERROR_CODE.SESSION_INVALID:
       return AUTH_ERROR_HTTP_STATUS.SESSION_INVALID;
   }

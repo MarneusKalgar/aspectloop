@@ -47,9 +47,6 @@ export class EnvironmentVariables {
   @Type(() => Number)
   DB_SLOW_QUERY_THRESHOLD_MS = 1000;
 
-  @IsString()
-  JWT_ACCESS_SECRET!: string;
-
   @IsNodeEnvironment()
   NODE_ENV: NodeEnvironment = 'development';
 

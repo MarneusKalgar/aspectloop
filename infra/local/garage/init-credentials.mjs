@@ -6,7 +6,6 @@ import {
   CREDENTIAL_PLACEHOLDER,
   DEFAULT_ASSIGNMENTS,
   ENV_FILE,
-  GATEWAY_ENV_FILE,
   LOCAL_GARAGE_REGION,
   PLATFORM_ENV_FILE,
   PLATFORM_S3_DEFAULTS,
@@ -27,10 +26,6 @@ import {
 function main() {
   if (!existsSync(ENV_FILE)) {
     throw new Error('Copy infra/local/.env.example to infra/local/.env.local first');
-  }
-
-  if (!existsSync(GATEWAY_ENV_FILE)) {
-    throw new Error('Copy apps/gateway-api/.env.example to apps/gateway-api/.env.local first');
   }
 
   if (!existsSync(PLATFORM_ENV_FILE)) {
@@ -76,7 +71,6 @@ function main() {
   }
 
   const initializedEnvironment = parseEnv(content);
-  const gatewayEnvironment = parseEnv(readFileSync(GATEWAY_ENV_FILE, 'utf8'));
   const originalPlatform = readFileSync(PLATFORM_ENV_FILE, 'utf8');
   const platformEnvironment = parseEnv(originalPlatform);
   let platformContent = originalPlatform;
@@ -102,14 +96,6 @@ function main() {
     'PLATFORM_S3_SECRET_ACCESS_KEY',
   ]) {
     platformContent = setAssignment(platformContent, name, initializedEnvironment[name]);
-  }
-
-  for (const name of ['JWT_ACCESS_SECRET']) {
-    if (!gatewayEnvironment[name]) {
-      throw new Error(`${name} is missing from the gateway verifier environment`);
-    }
-
-    platformContent = setAssignment(platformContent, name, gatewayEnvironment[name]);
   }
 
   if (platformContent !== originalPlatform) {

@@ -231,8 +231,11 @@ npm run local:verify -- --integration
 # Also prove the gateway fails closed and recovers when Platform is stopped.
 npm run local:verify -- --outage
 
-# Prove Platform session issuance, rotation, rollback, replay, logout, and expiry semantics.
+# Prove opaque sessions, retirement, expiry/activity, rollback, and logout contention.
 npm run local:auth:verify -- --sessions
+
+# Prove the active browser-session HTTP cookie and GraphQL protection boundary.
+npm run local:auth:verify -- --http
 ```
 
 `npm run local:verify -- --fresh` is the destructive end-to-end local matrix.
@@ -247,9 +250,14 @@ In a second terminal, start the web app in live-backend mode:
 npm run dev:web
 ```
 
-Open `http://localhost:5173`, create a disposable local account, sign in, and
-confirm that the correction inbox loads without an authorization error. Stop
-the web process, then stop the backend stack while preserving its local data:
+Open `http://localhost:5173` and use a private verified fixture from
+`npm run local:auth:verify -- --fixture-create`. Confirm sign-in, reload, the empty
+correction inbox, and logout, then remove that fixture with
+`npm run local:auth:verify -- --fixture-cleanup <fixture-id>` using its printed ID.
+New sign-up accounts remain unverified; confirmation delivery/UI is later M04.2
+work, so registration alone does not permit sign-in. Never publish fixture
+credentials or cookie values. Stop the web process, then stop the backend stack
+while preserving its local data:
 
 ```bash
 npm run local:down

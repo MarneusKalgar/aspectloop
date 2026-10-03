@@ -1,6 +1,6 @@
 # Data Authority And Recovery
 
-Status: Accepted authority and recovery boundary (updated 2026-09-17 for M04.1)
+Status: Accepted authority and recovery boundary (updated 2026-10-03 for M04.2 C3)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
@@ -39,27 +39,31 @@ metadata. M06 moves the remaining correction tables and behavior to
 `correction_db`. Identity remains part of Platform; M04.2 hardens its
 browser-session behavior.
 
-M04.2-B source now defines Platform-owned `auth_session`,
-`auth_refresh_token`, and `email_verification_token` state plus runtime
-`SELECT`/`INSERT`/`UPDATE` allowlists. Refresh and confirmation secrets are
-represented only by HMAC digests in these tables; predecessor rows are retained
-for replay detection, and deleting a user cascades its auth state. This schema
-is materialized by the generated and reviewed `AddPlatformAuthSessions`
-migration. Local migration, privilege, and session verification on 2026-09-20
-confirmed the tables, runtime allowlists, rotation/replay behavior, bounded
-locking, transaction rollback after a failed successor insert, and cascades.
-Platform disables TypeORM query/error logging because SQL parameters may
-contain credential-adjacent identity or token-digest data.
+Platform owns `auth_session` and `email_verification_token` state with narrow
+runtime `SELECT`/`INSERT`/`UPDATE` allowlists. Opaque browser credentials and
+confirmation secrets are represented by domain-separated HMAC digests, and
+deleting a user cascades its auth state. The C2b browser-session cutover and C3
+retirement are locally accepted under
+[ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md).
+Platform/PostgreSQL validates each protected request; Redis is not part of the
+initial authority. Platform disables TypeORM query/error logging because SQL
+parameters may contain credential-adjacent identity or token-digest data.
 
-This describes the existing B implementation, not the revised final session
-design. [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
-accepts opaque session cookies with per-request Platform/PostgreSQL validation.
-The planned cutover adds a session credential digest, adapts activity tracking,
-and later removes obsolete refresh-token state through new human-generated
-migrations. Applied migrations remain immutable; legacy refresh credentials
-must not become valid browser session credentials. Redis is not part of this
-initial session authority. Migration and acceptance evidence for the revised
-design remain pending.
+The immutable historical migrations first create the superseded refresh schema.
+`RetireRefreshTokenState1791037176093` then removes `auth_refresh_token` and
+`auth_session.last_refreshed_at`, replacing the expiry CHECK within an active
+transaction. Runtime grants and verification no longer require the retired table.
+Its `down()` rejects without SQL: dropped refresh data cannot be reconstructed.
+Do not restart old JWT/refresh code against the retired schema; repair requires
+a reviewed forward migration, not schema synchronization or historical edits.
+Legacy refresh credentials never become valid browser-session credentials.
+
+C3 existing-schema application, repeat application, least-privilege roles, and
+session/HTTP behavior were human-verified and accepted on 2026-10-03. Empty-schema
+replay and direct pre-retirement session-preservation evidence were not supplied;
+fresh-stack rehearsal remains with F. Local acceptance does not authorize a
+deployed/non-disposable migration or establish backup/restore readiness. Email
+confirmation delivery/UI and advanced browser resilience remain later work.
 
 | Current state                                          | Authority and recovery consequence                                                                                                                                          |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

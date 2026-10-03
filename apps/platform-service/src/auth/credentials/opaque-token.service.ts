@@ -1,7 +1,6 @@
 import {
   PLATFORM_BROWSER_SESSION_CREDENTIAL_MAX_LENGTH,
   PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH,
-  PLATFORM_REFRESH_TOKEN_MAX_LENGTH,
 } from '@aspectloop/contracts/platform';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -16,7 +15,6 @@ const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 export const OPAQUE_TOKEN_PURPOSE = Object.freeze({
   BROWSER_SESSION: 'browser-session',
   EMAIL_VERIFICATION: 'email-verification',
-  REFRESH: 'refresh',
 } as const);
 
 export interface IssuedOpaqueToken {
@@ -127,7 +125,5 @@ function getOpaqueTokenMaximumLength(purpose: OpaqueTokenPurpose): number {
       return PLATFORM_BROWSER_SESSION_CREDENTIAL_MAX_LENGTH;
     case OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION:
       return PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH;
-    case OPAQUE_TOKEN_PURPOSE.REFRESH:
-      return PLATFORM_REFRESH_TOKEN_MAX_LENGTH;
   }
 }

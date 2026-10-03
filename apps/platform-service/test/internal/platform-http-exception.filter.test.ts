@@ -1,7 +1,7 @@
 import type { ArgumentsHost } from '@nestjs/common';
 
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, HttpException } from '@nestjs/common';
 import { PlatformAuthException } from '@platform/auth/platform-auth.exception';
 import { PlatformHttpExceptionFilter } from '@platform/internal/platform-http-exception.filter';
 import { expect, test, vi } from 'vitest';
@@ -76,3 +76,26 @@ function testUnexpectedException(): void {
 test('preserves validated Platform auth exceptions', testExpectedAuthException);
 test('normalizes safe Nest HTTP exceptions', testExpectedGenericException);
 test('redacts unexpected exception details', testUnexpectedException);
+
+/** Verifies retired auth fields cannot escape through the surviving generic error policy. */
+function testRetiredAuthEnvelope(): void {
+  const fixture = createFixture();
+  fixture.filter.catch(
+    new HttpException(
+      {
+        code: 'AUTH_ACCESS_INVALID',
+        message: 'Authentication is invalid',
+        refreshToken: 'private-fixture-value',
+        statusCode: 401,
+      },
+      401,
+    ),
+    fixture.host,
+  );
+  expect(fixture.body).toHaveBeenCalledWith({
+    message: 'Authentication is invalid',
+    statusCode: 401,
+  });
+}
+
+test('omits retired auth codes and credentials from generic errors', testRetiredAuthEnvelope);

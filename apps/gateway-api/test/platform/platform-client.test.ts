@@ -192,7 +192,7 @@ async function testRejectedRequest(): Promise<void> {
   );
 
   const error = await createClient()
-    .signIn({ email: 'reviewer@example.test', password: 'wrong-password' })
+    .signUp({ displayName: 'Reviewer', email: 'reviewer@example.test', password: 'wrong-password' })
     .catch((reason: unknown) => reason);
 
   expect(error).toBeInstanceOf(PlatformRejectedRequestException);
@@ -200,9 +200,9 @@ async function testRejectedRequest(): Promise<void> {
 }
 
 /** Verifies auth commands use validated JSON and the versioned Platform route. */
-async function testSignInContract(): Promise<void> {
+async function testSignUpContract(): Promise<void> {
   const response = {
-    accessToken: 'token',
+    success: true,
     user: {
       createdAt: '2026-09-12T00:00:00.000Z',
       displayName: 'Reviewer',
@@ -218,13 +218,13 @@ async function testSignInContract(): Promise<void> {
     .mockResolvedValue(new Response(JSON.stringify(response), { status: 200 }));
   vi.stubGlobal('fetch', fetchMock);
 
-  const request = { email: 'reviewer@example.test', password: 'password' };
-  await expect(createClient().signIn(request, { requestId: 'm04.1-b:test' })).resolves.toEqual(
+  const request = { displayName: 'Reviewer', email: 'reviewer@example.test', password: 'password' };
+  await expect(createClient().signUp(request, { requestId: 'm04.1-b:test' })).resolves.toEqual(
     response,
   );
 
   const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-  expect(url).toBe('http://platform-service:8083/internal/v1/auth/sign-in');
+  expect(url).toBe('http://platform-service:8083/internal/v1/auth/sign-up');
   expect(options.method).toBe('POST');
   expect(options.body).toBe(JSON.stringify(request));
   expect(new Headers(options.headers).get('content-type')).toBe('application/json');
@@ -255,7 +255,7 @@ async function testUnsafeCorrelationIsDropped(): Promise<void> {
 
 afterEach(restoreGlobals);
 test('validates Platform health and propagates safe correlation', testHealthContract);
-test('posts validated Platform auth commands', testSignInContract);
+test('posts validated Platform auth commands', testSignUpContract);
 test('preserves expected Platform domain rejection categories', testRejectedRequest);
 test('encodes Platform document-type routes', testDocumentTypeRoute);
 test('drops unsafe Platform correlation input', testUnsafeCorrelationIsDropped);

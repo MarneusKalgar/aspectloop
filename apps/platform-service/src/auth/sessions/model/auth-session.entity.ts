@@ -27,7 +27,7 @@ import { AUTH_REVOCATION_REASON_MAX_LENGTH } from '../session.constants';
 )
 @Check(
   'CHK_auth_session_expiry_order',
-  '"created_at" <= "last_refreshed_at" AND "last_refreshed_at" <= "inactivity_expires_at" AND "inactivity_expires_at" <= "absolute_expires_at"',
+  '"created_at" <= "inactivity_expires_at" AND "inactivity_expires_at" <= "absolute_expires_at"',
 )
 @Check(
   'CHK_auth_session_revocation_state',
@@ -64,9 +64,6 @@ export class AuthSession {
 
   @Column({ name: 'last_activity_at', nullable: true, type: 'timestamptz' })
   lastActivityAt!: Date | null;
-
-  @Column({ name: 'last_refreshed_at', type: 'timestamptz' })
-  lastRefreshedAt!: Date;
 
   @Column({
     length: AUTH_REVOCATION_REASON_MAX_LENGTH,

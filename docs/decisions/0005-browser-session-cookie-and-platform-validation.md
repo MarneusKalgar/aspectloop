@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; basic C2b cutover verified, remaining M04.2 work pending
+Status: Accepted design; C2b cutover and C3 retirement locally accepted, remaining M04.2 work pending
 
 Date: 2026-09-20
 
@@ -81,7 +81,7 @@ would require explicit durability, expiry, eviction, and failure semantics.
   is made without representative measurements.
 - Session expiry, revocation, multi-login isolation, verification state, role
   boundaries, and digest primitives from B remain useful. Refresh rotation and
-  JWT-specific contracts/tests must be retired or replaced during cutover.
+  JWT-specific runtime contracts/tests were retired or replaced in C3.
 - Applied migrations are immutable. Schema adaptation uses new human-generated
   migrations; existing refresh credentials must not authenticate as sessions.
 
@@ -97,6 +97,20 @@ would require explicit durability, expiry, eviction, and failure semantics.
 This decision revises the M04.2 authentication mechanism in ADR 0004 without
 changing Platform domain ownership or Gateway's BFF responsibilities. The
 basic Platform/Gateway/Web browser-session cutover was human-verified on
-2026-09-27. Disconnected JWT/refresh code and persistence remain for C3
-retirement; advanced browser resilience, email confirmation, and final
-integrated acceptance remain separate M04.2 work.
+2026-09-27. C3 retirement was accepted by the human on 2026-10-03 after source,
+contract, test/build, existing-schema migration, role, session/HTTP, and manual
+browser verification. Disconnected JWT/refresh runtime code, contracts,
+configuration, direct dependencies, and refresh persistence are removed.
+Historical applied migrations and negative compatibility coverage remain.
+
+`RetireRefreshTokenState1791037176093` atomically replaces the session expiry
+CHECK and removes `last_refreshed_at` and `auth_refresh_token`. It requires an
+active migration transaction and is forward-only: rollback cannot reconstruct
+retired timestamps or credentials. Existing users and opaque-session state are
+not intentionally rewritten. Empty-schema replay and direct before/after proof
+of pre-retirement session preservation were not supplied for C3 acceptance;
+fresh-stack rehearsal remains an F gate. This is local task acceptance, not a
+production migration authorization or completion of SESSION-16.
+
+E1 still owns legacy-cookie clearing and advanced browser resilience. Email
+confirmation and final integrated acceptance remain separate M04.2 work.

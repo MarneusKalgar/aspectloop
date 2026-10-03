@@ -3,10 +3,6 @@ import type {
   PlatformDocumentTypesResponse,
   PlatformHealthResponse,
   PlatformReadinessResponse,
-  PlatformSignInRequest,
-  PlatformSignInResponse,
-  PlatformSignOutRequest,
-  PlatformSignOutResponse,
   PlatformSignUpRequest,
   PlatformSignUpResponse,
   PlatformUserResponse,
@@ -74,22 +70,6 @@ export class PlatformClient {
     context: PlatformRequestContext = {},
   ): Promise<PlatformDocumentTypesResponse> {
     return this.transport.get(PLATFORM_ENDPOINTS.documentTypes, context);
-  }
-
-  /** Authenticates through Platform while preserving the public gateway boundary. */
-  async signIn(
-    input: PlatformSignInRequest,
-    context: PlatformRequestContext = {},
-  ): Promise<PlatformSignInResponse> {
-    return this.transport.post(PLATFORM_ENDPOINTS.signIn, input, context);
-  }
-
-  /** Records the current stateless sign-out through Platform. */
-  async signOut(
-    input: PlatformSignOutRequest,
-    context: PlatformRequestContext = {},
-  ): Promise<PlatformSignOutResponse> {
-    return this.transport.post(PLATFORM_ENDPOINTS.signOut, input, context);
   }
 
   /** Creates a Platform-owned user through the internal contract. */

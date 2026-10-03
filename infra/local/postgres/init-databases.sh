@@ -358,7 +358,6 @@ FROM (
     ('users'),
     ('document'),
     ('auth_session'),
-    ('auth_refresh_token'),
     ('email_verification_token')
 ) AS allowed(table_name)
 WHERE to_regclass(format('public.%I', table_name)) IS NOT NULL

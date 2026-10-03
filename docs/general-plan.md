@@ -602,7 +602,8 @@ Authentication and authorization baseline:
 records this accepted 2026-09-20 target. A/B JWT/refresh implementation and
 passing rotation tests are historical foundations, not evidence for the new
 flow. C2b's basic browser-session cutover passed its human verification gate on
-2026-09-27; C3 retirement and later M04.2 acceptance remain pending. The SPA
+2026-09-27; C3 retirement was locally accepted on 2026-10-03. E1 and later
+M04.2 acceptance remain pending. The SPA
 and separately deployed GraphQL Gateway form a BFF arrangement; SSR or a
 Next/Nuxt migration is not required.
 
@@ -643,7 +644,11 @@ type-checking and relevant tests with its actual consumers. Breaking session
 contracts activate together with their callers in C2b; preparation retains
 explicitly temporary contracts until their consumers migrate. Historical A/B
 remains complete only under the old design. B1, B2, C1, C2a, and C2b have
-passed their task gates; C3 is next, with E1, D1-D3, E2, and F still pending.
+passed their task gates; C3 retirement is locally accepted, with E1 next and
+D1-D3, E2, and F still pending. C3 acceptance uses the supplied human verification;
+fresh replay, direct pre-retirement session-preservation proof, and unshown outage
+cookie/retry details were not recorded as passes. Fresh-stack rehearsal remains
+with F and advanced browser guarantees with E1.
 Intermediate task acceptance is not authorization to deploy a partially cut-over
 authentication flow. Detailed dependencies and the replacement SESSION acceptance matrix live
 in the working M04.2 plan under `.plan/`; this section and ADR 0005 retain the
@@ -1589,7 +1594,7 @@ only at milestone granularity.
 | M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress            | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory                                                       |
 | M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed              | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred                                                          |
 | M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | In Progress (closeout) | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles; manual correction draft/submit setup remains unavailable |
-| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Opaque session cookies, Platform/PostgreSQL validation, auth/authz and CSRF guards, local email confirmation; revised cutover pending                              |
+| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Browser-session cutover and C3 retirement locally accepted; E1 resilience, D1-D3/E2 confirmation, and F integrated acceptance pending                              |
 | M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned                | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                                                                           |
 | M06   | Correction domain and service hardening        | BE             | P0       | Planned                | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                                                                      |
 | M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned                | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                                                                                |

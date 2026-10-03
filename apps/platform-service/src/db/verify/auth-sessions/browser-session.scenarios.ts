@@ -11,7 +11,6 @@ import { randomUUID } from 'node:crypto';
 import type { EnvironmentVariables } from '#app/config/env.schema';
 
 import { OPAQUE_TOKEN_PURPOSE } from '#app/auth/credentials/opaque-token.service';
-import { AuthRefreshToken } from '#app/auth/sessions/model/auth-refresh-token.entity';
 import { AuthSession } from '#app/auth/sessions/model/auth-session.entity';
 import {
   AUTH_LOCK_TIMEOUT_MS,
@@ -170,10 +169,6 @@ export async function verifyBrowserSessionIssuance(
     session.inactivityExpiresAt.getTime() - session.createdAt.getTime(),
     environment.AUTH_SESSION_IDLE_TTL_MS,
   );
-  assert.equal(
-    await first.dataSource.getRepository(AuthRefreshToken).countBy({ sessionId: left.sessionId }),
-    0,
-  );
   await Promise.all([
     first.store.validateBrowserSession(left.sessionCredential, false),
     second.store.validateBrowserSession(right.sessionCredential, false),
@@ -237,7 +232,6 @@ export async function verifyBrowserSessionRejection(
     id: legacyCredential.id,
     inactivityExpiresAt: new Date(now.getTime() + environment.AUTH_SESSION_IDLE_TTL_MS),
     lastActivityAt: null,
-    lastRefreshedAt: now,
     revocationReason: null,
     revokedAt: null,
     userId,
@@ -247,21 +241,20 @@ export async function verifyBrowserSessionRejection(
     AUTH_ERROR_CODE.SESSION_INVALID,
   );
 
-  const refreshCredential = client.tokens.issue(OPAQUE_TOKEN_PURPOSE.REFRESH);
+  const confirmationCredential = client.tokens.issue(OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION);
   await cleanup.getRepository(AuthSession).insert({
     absoluteExpiresAt: new Date(now.getTime() + environment.AUTH_SESSION_ABSOLUTE_TTL_MS),
     createdAt: now,
-    credentialDigest: refreshCredential.digest,
-    id: refreshCredential.id,
+    credentialDigest: confirmationCredential.digest,
+    id: confirmationCredential.id,
     inactivityExpiresAt: new Date(now.getTime() + environment.AUTH_SESSION_IDLE_TTL_MS),
     lastActivityAt: now,
-    lastRefreshedAt: now,
     revocationReason: null,
     revokedAt: null,
     userId,
   });
   await assertAuthError(
-    client.store.validateBrowserSession(refreshCredential.rawToken, false),
+    client.store.validateBrowserSession(confirmationCredential.rawToken, false),
     AUTH_ERROR_CODE.SESSION_INVALID,
   );
 

@@ -6,7 +6,6 @@ const VALID_ENVIRONMENT = {
   CORS_ALLOWED_ORIGINS: 'http://localhost:5173,http://localhost:8080',
   DATABASE_URL:
     'postgresql://gateway_correction_runtime:gateway_correction_runtime@postgres:5432/platform_db',
-  JWT_ACCESS_SECRET: 'test-only-secret',
   NODE_ENV: 'test',
   PERSISTENCE_BASE_URL: 'http://persistence-mock:8090',
   PLATFORM_BASE_URL: 'http://platform-service:8083',
