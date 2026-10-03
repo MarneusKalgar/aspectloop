@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
 import { platformUserViewSchema } from '../users.contracts';
+import { platformIdentityEmailSchema, platformSignInPasswordSchema } from './identity.contracts';
+
+/** Normalized email and exact password accepted at the private sign-in boundary. */
+export const platformSignInRequestSchema = z
+  .object({
+    email: platformIdentityEmailSchema,
+    password: platformSignInPasswordSchema,
+  })
+  .strict();
 
 /** Maximum encoded length accepted for an opaque browser-session credential. */
 export const PLATFORM_BROWSER_SESSION_CREDENTIAL_MAX_LENGTH = 128;
@@ -66,3 +75,5 @@ export type PlatformBrowserSessionValidationRequest = z.infer<
 export type PlatformBrowserSessionValidationResponse = z.infer<
   typeof platformBrowserSessionValidationResponseSchema
 >;
+
+export type PlatformSignInRequest = z.infer<typeof platformSignInRequestSchema>;

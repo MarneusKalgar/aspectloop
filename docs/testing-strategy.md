@@ -411,24 +411,54 @@ internals to tests. `local:reset` is destructive and explicit. This contract is
 a foundation for later suites, not an automated `test:e2e:local` command or a
 parallel CI fixture.
 
-M04.2-B adds `npm run local:auth:verify -- --sessions` as a focused
-real-PostgreSQL verifier. It uses production session stores through runtime
-credentials and isolated fixture state to prove digest-only issuance, rotation
-and replay revocation, independent families, logout races, expiry boundaries,
-bounded lock waits, transaction rollback after a failed successor insert, and
-user-deletion cascades. The cleanup datasource owns fixture setup and cleanup;
-it does not replace runtime-role operations under test.
+M04.2-B originally added `npm run local:auth:verify -- --sessions` as a focused
+real-PostgreSQL verifier for the superseded JWT/refresh mechanism, including
+rotation, replay revocation, and successor-insert rollback. C3 replaces its legacy
+refresh scenarios with opaque-session coverage. Production session stores run
+through runtime credentials; the cleanup datasource owns isolated fixture setup
+and cleanup and does not replace runtime-role operations under test.
 
 Those AUTH-B results are historical evidence for the JWT/refresh design.
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md)
 changes the target to opaque session cookies and per-request Platform validation.
-The revised M04.2 plan defines pending SESSION-01 through SESSION-17 acceptance
+The revised M04.2 plan defines SESSION-01 through SESSION-17 acceptance
 for digest-only session issuance, legacy-credential rejection, expiry/activity,
 validation/logout races, real HTTP cookie and mutation-CSRF behavior, request
 deduplication, dependency failures, browser lifecycle, confirmation, and measured
 database/validation performance. Adapt the verifier with its owning task;
 do not relabel old rotation passes as replacement-session acceptance. A working
 store alone does not prove browser or GraphQL transport behavior.
+
+The C2b basic cutover passed human verification on 2026-09-27 using the
+default-stack `local:auth:verify -- --http` session scenarios, focused and full
+tests, readiness probes, and a private verified Web fixture. The HTTP runner
+checks sign-in, protected operations, cookie boundaries, logout revocation and
+subsequent rejection. The browser check covered reload, unavailable/recovery
+states, cookie-only transport, and fixture cleanup. This is partial M04.2
+evidence, not completion of the full SESSION matrix; email confirmation,
+advanced browser resilience, fresh-stack and stage gates remain with later
+tasks.
+
+C3 retirement was locally accepted by the human on 2026-10-03. Human evidence
+covers all source/contract/test/build checklist commands, including the TypeORM
+compatibility rerun with the current runtime identity; existing-schema migration
+and a second run with no pending migrations; database ownership/grants; readiness;
+SESSION-01 through SESSION-04; C3-DB01 through C3-DB04; and the default-stack
+HTTP-SESSION-00 through 05 scenarios, including 01A and 03A. The C3 database
+scenarios assert retired-table/column absence, bounded issuance-lock failure
+mapping, integrity-failure rollback without remapping, and idempotent expired
+logout with independent-session preservation.
+
+Manual browser evidence covers authenticated reload, public `me`, empty inbox,
+cookie-only transport and attributes, empty auth storage, normal logout/cookie
+removal, Gateway outage/recovery, Platform-unavailable blocking, and the explicit
+outage-logout warning followed by signed-out reload. Platform-only Retry recovery
+and outage cookie non-rewrite/removal were not independently shown. Empty-schema
+replay and direct before/after pre-retirement session preservation were also not
+supplied. The human accepted C3 without further repetition; these limitations
+are not passes. E1 retains advanced browser verification and F retains fresh-stack
+and integrated acceptance. Private fixture cleanup was not confirmed for C3.
+No agent-run verification is implied by this record.
 
 ### 8.1 Dedicated local E2E stack
 

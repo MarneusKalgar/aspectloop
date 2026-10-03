@@ -1,21 +1,18 @@
 import type {
-  PlatformMeRequest,
-  PlatformMeResponse,
-  PlatformRefreshSessionRequest,
-  PlatformRefreshSessionResponse,
-  PlatformSessionSignInResponse,
-  PlatformSessionSignOutRequest,
+  PlatformBrowserSessionSignInResponse,
+  PlatformBrowserSessionSignOutRequest,
+  PlatformBrowserSessionSignOutResponse,
+  PlatformBrowserSessionValidationRequest,
+  PlatformBrowserSessionValidationResponse,
   PlatformSignInRequest,
-  PlatformSignOutResponse,
   PlatformSignUpRequest,
   PlatformSignUpResponse,
 } from '@aspectloop/contracts/platform';
 
 import {
   PLATFORM_INTERNAL_API_PREFIX,
-  platformMeRequestSchema,
-  platformRefreshSessionRequestSchema,
-  platformSessionSignOutRequestSchema,
+  platformBrowserSessionSignOutRequestSchema,
+  platformBrowserSessionValidationRequestSchema,
   platformSignInRequestSchema,
   platformSignUpRequestSchema,
 } from '@aspectloop/contracts/platform';
@@ -30,42 +27,23 @@ export class AuthController {
   /** Creates the internal authentication transport boundary. */
   constructor(private readonly authService: AuthService) {}
 
-  /** Validates bearer claims and resolves current authoritative user state. */
-  @Post('me')
-  me(@Body() body: unknown): Promise<PlatformMeResponse> {
-    const request: PlatformMeRequest = parsePlatformRequest(platformMeRequestSchema, body);
-
-    return this.authService.me(request);
-  }
-
-  /** Validates and delegates one refresh-token rotation command. */
-  @Post('refresh')
-  refresh(@Body() body: unknown): Promise<PlatformRefreshSessionResponse> {
-    const request: PlatformRefreshSessionRequest = parsePlatformRequest(
-      platformRefreshSessionRequestSchema,
-      body,
-    );
-
-    return this.authService.refresh(request);
-  }
-
-  /** Validates and delegates one sign-in command. */
+  /** Validates credentials and issues one opaque browser session. */
   @Post('sign-in')
-  signIn(@Body() body: unknown): Promise<PlatformSessionSignInResponse> {
+  signIn(@Body() body: unknown): Promise<PlatformBrowserSessionSignInResponse> {
     const request: PlatformSignInRequest = parsePlatformRequest(platformSignInRequestSchema, body);
 
-    return this.authService.signIn(request);
+    return this.authService.signInBrowserSession(request);
   }
 
-  /** Validates and delegates one idempotent refresh-family revocation command. */
+  /** Revokes only the family proven by the supplied opaque credential. */
   @Post('sign-out')
-  signOut(@Body() body: unknown): Promise<PlatformSignOutResponse> {
-    const request: PlatformSessionSignOutRequest = parsePlatformRequest(
-      platformSessionSignOutRequestSchema,
+  signOut(@Body() body: unknown): Promise<PlatformBrowserSessionSignOutResponse> {
+    const request: PlatformBrowserSessionSignOutRequest = parsePlatformRequest(
+      platformBrowserSessionSignOutRequestSchema,
       body,
     );
 
-    return this.authService.signOut(request);
+    return this.authService.signOutBrowserSession(request);
   }
 
   /** Validates and delegates one account-creation command. */
@@ -74,5 +52,16 @@ export class AuthController {
     const request: PlatformSignUpRequest = parsePlatformRequest(platformSignUpRequestSchema, body);
 
     return this.authService.signUp(request);
+  }
+
+  /** Validates current browser-session state and optionally records activity. */
+  @Post('session/validate')
+  validateSession(@Body() body: unknown): Promise<PlatformBrowserSessionValidationResponse> {
+    const request: PlatformBrowserSessionValidationRequest = parsePlatformRequest(
+      platformBrowserSessionValidationRequestSchema,
+      body,
+    );
+
+    return this.authService.validateBrowserSession(request);
   }
 }

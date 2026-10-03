@@ -14,10 +14,13 @@ function testBrowserSessionPurpose(): void {
   );
   const issued = service.issue(OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
   const parsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
-  const refreshParsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.REFRESH);
+  const wrongPurposeParsed = service.parse(
+    issued.rawToken,
+    OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION,
+  );
 
   expect(parsed).toEqual({ digest: issued.digest, id: issued.id });
-  expect(service.matches(refreshParsed?.digest ?? '', issued.digest)).toBe(false);
+  expect(service.matches(wrongPurposeParsed?.digest ?? '', issued.digest)).toBe(false);
 }
 
 /** Verifies malformed, altered, and cross-purpose candidates fail authentication. */
@@ -25,16 +28,16 @@ function testOpaqueTokenRejection(): void {
   const service = new OpaqueTokenService(
     new ConfigService({ AUTH_TOKEN_HMAC_SECRET: HMAC_SECRET }),
   );
-  const issued = service.issue(OPAQUE_TOKEN_PURPOSE.REFRESH);
+  const issued = service.issue(OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
   const separatorIndex = issued.rawToken.indexOf('.');
   const secret = issued.rawToken.slice(separatorIndex + 1);
   const altered = `${issued.rawToken.slice(0, separatorIndex + 1)}${
     secret.startsWith('A') ? 'B' : 'A'
   }${secret.slice(1)}`;
-  const alteredParsed = service.parse(altered, OPAQUE_TOKEN_PURPOSE.REFRESH);
+  const alteredParsed = service.parse(altered, OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
   const wrongPurpose = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION);
 
-  expect(service.parse('not-a-token', OPAQUE_TOKEN_PURPOSE.REFRESH)).toBeNull();
+  expect(service.parse('not-a-token', OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION)).toBeNull();
   expect(alteredParsed).not.toBeNull();
   expect(service.matches(alteredParsed?.digest ?? '', issued.digest)).toBe(false);
   expect(service.matches(wrongPurpose?.digest ?? '', issued.digest)).toBe(false);
@@ -45,8 +48,8 @@ function testOpaqueTokenRoundTrip(): void {
   const service = new OpaqueTokenService(
     new ConfigService({ AUTH_TOKEN_HMAC_SECRET: HMAC_SECRET }),
   );
-  const issued = service.issue(OPAQUE_TOKEN_PURPOSE.REFRESH);
-  const parsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.REFRESH);
+  const issued = service.issue(OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
+  const parsed = service.parse(issued.rawToken, OPAQUE_TOKEN_PURPOSE.BROWSER_SESSION);
 
   expect(parsed).toEqual({ digest: issued.digest, id: issued.id });
   expect(issued.digest).not.toContain(issued.rawToken);

@@ -2,7 +2,6 @@ import { Type } from 'class-transformer';
 import {
   IsBooleanString,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -17,8 +16,6 @@ import { S3_BUCKET_NAME_PATTERN } from '../storage/artifact-storage.constants';
 import { DatabaseEnvironmentVariables } from './database-env.schema';
 import {
   AUTH_TOKEN_HMAC_SECRET_PLACEHOLDER,
-  JWT_ACCESS_SECRET_PLACEHOLDER,
-  JWT_CLAIM_VALUE_PATTERN,
   LOCAL_GARAGE_CREDENTIAL_PLACEHOLDER,
   MAX_AUTH_DURATION_MS,
   MAX_AUTH_SECRET_LENGTH,
@@ -53,13 +50,6 @@ export class EnvironmentVariables extends DatabaseEnvironmentVariables {
   @IsInt()
   @IsOptional()
   @Max(MAX_AUTH_DURATION_MS)
-  @Min(1)
-  @Type(() => Number)
-  AUTH_REFRESH_GRACE_MS = 5000;
-
-  @IsInt()
-  @IsOptional()
-  @Max(MAX_AUTH_DURATION_MS)
   @Min(MIN_AUTH_DURATION_MS)
   @Type(() => Number)
   AUTH_SESSION_ABSOLUTE_TTL_MS = 604_800_000;
@@ -82,26 +72,6 @@ export class EnvironmentVariables extends DatabaseEnvironmentVariables {
   @Min(MIN_BCRYPT_SALT_ROUNDS)
   @Type(() => Number)
   BCRYPT_SALT_ROUNDS = 10;
-
-  @IsNotEmpty()
-  @IsString()
-  @Matches(JWT_CLAIM_VALUE_PATTERN)
-  JWT_ACCESS_AUDIENCE = 'aspectloop-gateway';
-
-  @IsNotEmpty()
-  @IsString()
-  @Matches(JWT_CLAIM_VALUE_PATTERN)
-  JWT_ACCESS_ISSUER = 'aspectloop-platform';
-
-  @IsNotEmpty()
-  @IsString()
-  @Length(MIN_AUTH_SECRET_LENGTH, MAX_AUTH_SECRET_LENGTH)
-  @NotEquals(JWT_ACCESS_SECRET_PLACEHOLDER)
-  JWT_ACCESS_SECRET!: string;
-
-  @IsOptional()
-  @IsString()
-  JWT_ACCESS_TTL = '15m';
 
   @IsString()
   @Length(1, 128)

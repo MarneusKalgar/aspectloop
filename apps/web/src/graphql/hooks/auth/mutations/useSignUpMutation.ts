@@ -39,8 +39,12 @@ export function useSignUpMutation(): GraphqlMutationState<SignUpMutation['signUp
      * @param input The registration details submitted by the user.
      * @returns The registration payload when the mutation succeeds.
      */
-    execute: async (input: SignUpInput): Promise<null | SignUpMutation['signUp']> => {
+    execute: async (
+      input: SignUpInput,
+      signal?: AbortSignal,
+    ): Promise<null | SignUpMutation['signUp']> => {
       const result = await runSignUpMutation({
+        context: { fetchOptions: { signal } },
         variables: { input },
       });
 

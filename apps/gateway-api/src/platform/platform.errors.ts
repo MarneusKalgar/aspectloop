@@ -1,3 +1,5 @@
+import type { BrowserSessionAuthErrorCode } from '@aspectloop/contracts/platform';
+
 import {
   BadGatewayException,
   BadRequestException,
@@ -10,6 +12,19 @@ import {
   PLATFORM_REQUEST_FAILED,
   PLATFORM_UNAVAILABLE,
 } from './platform.constants';
+
+/** Preserves one validated target-session error without retaining upstream bodies. */
+export class PlatformBrowserSessionRejectedException extends HttpException {
+  /** Carries only the strict code, safe message and optional bounded retry. */
+  constructor(
+    readonly code: BrowserSessionAuthErrorCode,
+    message: string,
+    statusCode: number,
+    readonly retryAfterMs?: number,
+  ) {
+    super({ code, message, ...(retryAfterMs === undefined ? {} : { retryAfterMs }) }, statusCode);
+  }
+}
 
 export class PlatformInvalidRequestException extends BadRequestException {
   /** Rejects a gateway-to-Platform command that violates the shared contract. */

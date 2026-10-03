@@ -4,7 +4,6 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { RequestId, Roles, Scopes } from '../auth/decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { GqlJwtAuthGuard } from '../auth/guards/gql-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ScopesGuard } from '../auth/guards/scopes.guard';
 import { AuthUser } from '../auth/types/auth-user';
@@ -15,7 +14,7 @@ import { CorrectionsService } from './corrections.service';
 @Resolver()
 @Roles(PLATFORM_AUTH_ROLE.CORRECTOR)
 @Scopes(PLATFORM_AUTH_SCOPE.CORRECTIONS_WRITE)
-@UseGuards(GqlJwtAuthGuard, RolesGuard, ScopesGuard)
+@UseGuards(RolesGuard, ScopesGuard)
 export class CorrectionsResolver {
   constructor(private readonly correctionsService: CorrectionsService) {}
 

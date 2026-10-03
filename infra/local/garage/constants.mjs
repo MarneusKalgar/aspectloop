@@ -8,15 +8,6 @@ import { fileURLToPath } from 'node:url';
 export const ENV_FILE = fileURLToPath(new URL('../.env.local', import.meta.url));
 
 /**
- * Absolute path to the ignored gateway local environment file.
- *
- * @type {string}
- */
-export const GATEWAY_ENV_FILE = fileURLToPath(
-  new URL('../../../apps/gateway-api/.env.local', import.meta.url),
-);
-
-/**
  * Absolute path to the ignored Platform local environment file.
  *
  * @type {string}

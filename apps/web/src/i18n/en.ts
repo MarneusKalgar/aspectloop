@@ -2,6 +2,10 @@ export const enResources = {
   'app.name': 'AspectLoop',
   'app.runtime.live': 'Live backend',
   'app.runtime.mock': 'Mock contract',
+  'auth.session.logoutUnconfirmed':
+    'You are signed out locally, but server revocation could not be confirmed.',
+  'auth.session.retry': 'Retry',
+  'auth.session.unavailable': 'Authentication is temporarily unavailable. Please retry.',
   'auth.shared.email': 'Email',
   'auth.shared.password': 'Password',
   'auth.signIn.cta.primary': 'Sign in',

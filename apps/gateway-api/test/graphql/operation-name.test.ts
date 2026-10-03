@@ -1,4 +1,4 @@
-import { getBoundedOperationName } from '@gateway/graphql/utils/createGraphqlLoggingPlugin';
+import { getBoundedOperationName } from '@gateway/graphql/logging/graphql-logging.plugin';
 import { parse } from 'graphql';
 import { expect, test } from 'vitest';
 

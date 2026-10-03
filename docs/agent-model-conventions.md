@@ -1,7 +1,7 @@
 # Agent, Planning, And Model Conventions
 
 Status: Active  
-Last updated: 2026-09-19
+Last updated: 2026-09-29
 
 ## 1. Purpose
 
@@ -138,14 +138,16 @@ proposed -> approved -> in-progress -> completed
    or ask for a decision rather than silently broadening scope.
 6. Implement production behavior before test code; do not use TDD.
 7. Add or update test code after implementation only when the approved scope
-   requires it. The human owns test execution.
+   requires it. The human owns independent test execution; configured Git hooks
+   have the limited exception described in section 10.
 8. Add JSDoc immediately above every function or method an agent adds or
    materially changes, including private helpers and callback methods. State the
    behavior, meaningful parameters, return value, and material side effects or
    failure policy; do not add empty restatements of the function name.
-9. Do not run formatting, lint, type checks, tests, builds, migration commands,
-   or local smoke checks. Provide the human with exact commands, scope, and
-   expected signals instead.
+9. Do not independently run formatting, lint, type checks, tests, builds,
+   migration commands, or local smoke checks. Provide the human with exact
+   commands, scope, and expected signals instead. Configured hooks invoked by
+   an explicitly requested commit/push are the bounded exception in section 10.
 10. Do not generate or hand-author database migrations. Implement the schema or
     entity change, then identify the service-specific command a human must use
     to generate the migration. Review a generated migration only when asked.
@@ -153,6 +155,9 @@ proposed -> approved -> in-progress -> completed
     Mark agent-unexecuted checks explicitly; never report them as passing.
 12. Do not stage, commit, push, create a PR, deploy, or perform destructive Git
     operations unless explicitly requested.
+    A direct invocation of `aspectloop-commit-compose` without a narrower action
+    explicitly requests staging, committing, and pushing the scoped changes;
+    automatic skill selection during implementation does not.
 
 ## 6. Main Task Versus Subagents
 
@@ -284,9 +289,38 @@ agent supplies a proportional checklist containing:
 - expected success signals and any environment prerequisites;
 - manual behavior checks that cannot be expressed as a command.
 
-The agent does not execute those checks. CI may execute deterministic quality
-gates automatically; that does not transfer local verification ownership to the
-agent.
+The agent does not independently execute those checks. CI may execute
+deterministic quality gates automatically; that does not transfer local
+verification ownership to the agent.
+
+### Explicit Git operations and their hooks
+
+An explicit request to commit or push authorizes the configured hooks for that
+operation, including their npm checks and scoped formatting. This does not
+authorize separately launching verification scripts, changing hooks, fixing
+failures, or automatically committing/pushing at the end of implementation.
+Direct invocation of `aspectloop-commit-compose` counts as such a request only
+for its scoped stage, commit, and push workflow unless the user asks for a
+narrower action or a draft.
+Never use `--no-verify`, `HUSKY=0`, or equivalent bypasses to complete the request.
+On hook failure, stop and report the failure and remaining workspace state.
+
+Before each authorized commit/push, select the required Node/npm environment
+in the same shell invocation as the Git command. Read `.nvmrc` and the
+`package.json` `engines`/`packageManager` declarations; check `node --version`
+and `npm --version` against them. With nvm, explicitly load `nvm.sh` if needed
+and use `nvm use` from the repository root, or a documented machine-local alias
+that satisfies the same requirements. Do not assume the user's interactive
+terminal or a previous tool call configured the current shell. Stop if the
+runtime is missing or incompatible; do not install or upgrade it implicitly.
+Keep machine-local aliases and paths in `AGENTS.override.md`.
+
+Inspect the actual committed patch and remaining index/working tree after hooks
+run. Expected formatting within the authorized scope is permitted, but unrelated
+or unexpected changes require a stop before further Git actions. Do not silently
+stage hook-generated files outside the selected scope. Report hook-observed
+results separately from human/CI verification; a successful commit or push is
+not proof that every check ran, passed, or establishes milestone completion.
 
 A milestone is complete only after the human confirms that:
 

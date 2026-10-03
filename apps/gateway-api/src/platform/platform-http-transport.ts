@@ -1,13 +1,15 @@
-import { platformErrorResponseSchema } from '@aspectloop/contracts/platform';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import {
+  DEFAULT_PLATFORM_RESPONSE_POLICY,
+  type PlatformResponsePolicy,
+  type RejectedResponseBody,
+} from './platform-response-policy';
 import { MAX_PLATFORM_RESPONSE_BYTES, REQUEST_ID_PATTERN } from './platform.constants';
 import {
   PlatformInvalidRequestException,
   PlatformInvalidResponseException,
-  PlatformRejectedRequestException,
-  PlatformRequestFailedException,
   PlatformUnavailableException,
 } from './platform.errors';
 
@@ -16,6 +18,7 @@ export interface PlatformGetEndpoint<TOutput> {
   /** Fixed route template; never include caller-supplied path segments. */
   logRoute: string;
   path: string;
+  responsePolicy?: PlatformResponsePolicy;
   responseSchema: RuntimeSchema<TOutput>;
 }
 
@@ -34,8 +37,6 @@ type PlatformRequestMethod = 'GET' | 'POST';
 interface RuntimeSchema<T> {
   safeParse(value: unknown): { data: T; success: true } | { success: false };
 }
-
-const FORWARDABLE_PLATFORM_STATUSES = new Set([400, 401, 403, 404, 409]);
 
 /**
  * Enforces the internal Platform HTTP boundary for the gateway.
@@ -90,29 +91,6 @@ export class PlatformHttpTransport {
     return headers;
   }
 
-  /** Maps only validated expected Platform failures through the public boundary. */
-  private async mapRejectedResponse(response: Response): Promise<Error> {
-    if (!FORWARDABLE_PLATFORM_STATUSES.has(response.status)) {
-      return new PlatformRequestFailedException(response.status);
-    }
-
-    try {
-      const parsed = platformErrorResponseSchema.safeParse(await this.readBoundedJson(response));
-
-      if (!parsed.success || parsed.data.statusCode !== response.status) {
-        return new PlatformRequestFailedException(response.status);
-      }
-
-      const message = Array.isArray(parsed.data.message)
-        ? parsed.data.message.join(', ')
-        : parsed.data.message;
-
-      return new PlatformRejectedRequestException(message, response.status);
-    } catch {
-      return new PlatformRequestFailedException(response.status);
-    }
-  }
-
   /** Reads and parses a response body while enforcing the internal payload limit. */
   private async readBoundedJson(response: Response): Promise<unknown> {
     const contentLength = Number(response.headers.get('content-length'));
@@ -150,6 +128,19 @@ export class PlatformHttpTransport {
     }
   }
 
+  /** Classifies a rejected body after at most one bounded read. */
+  private async readRejectedBody(response: Response): Promise<RejectedResponseBody> {
+    try {
+      return { readable: true, value: await this.readBoundedJson(response) };
+    } catch (error) {
+      if (error instanceof PlatformInvalidResponseException) {
+        return { readable: false };
+      }
+
+      throw error;
+    }
+  }
+
   /** Performs a bounded request and logs only the endpoint's fixed route template. */
   private async request<TOutput>(
     method: PlatformRequestMethod,
@@ -158,6 +149,7 @@ export class PlatformHttpTransport {
     body?: unknown,
   ): Promise<TOutput> {
     let response: Response;
+    const responsePolicy = endpoint.responsePolicy ?? DEFAULT_PLATFORM_RESPONSE_POLICY;
 
     try {
       const headers = this.getHeaders(context);
@@ -189,10 +181,24 @@ export class PlatformHttpTransport {
         reason: 'upstream_status',
         upstreamStatus: response.status,
       });
-      throw await this.mapRejectedResponse(response);
+      const body = responsePolicy.readsRejectedBody(response.status)
+        ? await this.readRejectedBody(response)
+        : { readable: false as const };
+      throw responsePolicy.mapRejectedResponse(response.status, body);
     }
 
-    const payload = await this.readBoundedJson(response);
+    let payload: unknown;
+
+    try {
+      payload = await this.readBoundedJson(response);
+    } catch (error) {
+      if (error instanceof PlatformInvalidResponseException) {
+        throw responsePolicy.invalidSuccessResponse();
+      }
+
+      throw error;
+    }
+
     const parsed = endpoint.responseSchema.safeParse(payload);
 
     if (!parsed.success) {
@@ -201,7 +207,7 @@ export class PlatformHttpTransport {
         outcome: 'failure',
         path: endpoint.logRoute,
       });
-      throw new PlatformInvalidResponseException();
+      throw responsePolicy.invalidSuccessResponse();
     }
 
     return parsed.data;

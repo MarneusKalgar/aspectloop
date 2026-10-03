@@ -1,5 +1,6 @@
 import type { PlatformClient } from '@gateway/platform/platform-client';
 
+import { GATEWAY_SERVICE_NAME } from '@gateway/core/service-name';
 import { expect, test, vi } from 'vitest';
 
 import { HealthController } from '../../src/health/health.controller';
@@ -45,3 +46,10 @@ async function testReadinessFailure(): Promise<void> {
 test('reports process liveness without probing Platform', testHealth);
 test('reports readiness after Platform is ready', testReadiness);
 test('rejects readiness when Platform is unavailable', testReadinessFailure);
+
+/** Pins the literal health wire value independently of the shared constant. */
+function testGatewayServiceWireName(): void {
+  expect(GATEWAY_SERVICE_NAME).toBe('gateway-api');
+}
+
+test('keeps the Gateway wire service name literal', testGatewayServiceWireName);

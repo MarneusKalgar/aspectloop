@@ -4,17 +4,35 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Prints the intentionally narrow M04.2-B verification surface.
+# Prints the intentionally narrow M04.2 session verification surface.
 usage() {
-  echo "Usage: $0 --sessions [--build]"
+  echo "Usage: $0 (--sessions | --http | --fixture-create | --fixture-cleanup UUID) [--build]"
 }
 
-SESSIONS=false
+MODE=""
+FIXTURE_ID=""
 BUILD=false
-for argument in "$@"; do
+while [[ "$#" -gt 0 ]]; do
+  argument="$1"
   case "$argument" in
     --sessions)
-      SESSIONS=true
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      MODE="sessions"
+      ;;
+    --http)
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      MODE="http"
+      ;;
+    --fixture-create)
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      MODE="fixture-create"
+      ;;
+    --fixture-cleanup)
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      if [[ "$#" -lt 2 ]]; then usage >&2; exit 2; fi
+      MODE="fixture-cleanup"
+      shift
+      FIXTURE_ID="$1"
       ;;
     --build)
       BUILD=true
@@ -28,9 +46,15 @@ for argument in "$@"; do
       exit 2
       ;;
   esac
+  shift
 done
 
-if [[ "$SESSIONS" != "true" ]]; then
+if [[ -z "$MODE" ]]; then
+  usage >&2
+  exit 2
+fi
+
+if [[ "$MODE" == "fixture-cleanup" && ! "$FIXTURE_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]; then
   usage >&2
   exit 2
 fi
@@ -44,4 +68,17 @@ if [[ "$BUILD" == "true" ]]; then
   RUN_ARGS=(run --rm --no-deps --build)
 fi
 
-"${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify
+case "$MODE" in
+  sessions)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify
+    ;;
+  http)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --http
+    ;;
+  fixture-create)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --fixture-create
+    ;;
+  fixture-cleanup)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --fixture-cleanup "$FIXTURE_ID"
+    ;;
+esac

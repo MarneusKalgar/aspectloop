@@ -330,7 +330,7 @@ fi
 
 required_tables=(
   users document document_object document_object_reservation
-  auth_session auth_refresh_token email_verification_token
+  auth_session email_verification_token
   correction_session correction_edit correction_event_outbox migrations
 )
 for table_name in "${required_tables[@]}"; do
@@ -341,12 +341,17 @@ for table_name in "${required_tables[@]}"; do
   fi
 done
 
+retired_auth_state="$(admin_scalar "$PLATFORM_DATABASE_NAME" "SELECT to_regclass('public.auth_refresh_token') IS NULL AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'auth_session' AND column_name = 'last_refreshed_at')")"
+if [[ "$retired_auth_state" != "t" ]]; then
+  echo "Obsolete Platform refresh table or session column remains; apply the reviewed retirement migration." >&2
+  exit 1
+fi
+
 assert_table_privileges "$PLATFORM_RUNTIME_USER" users "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object "t,t,f,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" document_object_reservation "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" auth_session "t,t,t,f,f,f,f,f"
-assert_table_privileges "$PLATFORM_RUNTIME_USER" auth_refresh_token "t,t,t,f,f,f,f,f"
 assert_table_privileges "$PLATFORM_RUNTIME_USER" email_verification_token "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_session "t,t,t,f,f,f,f,f"
 assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" correction_edit "t,t,t,f,f,f,f,f"
@@ -357,7 +362,7 @@ for table_name in correction_session correction_edit correction_event_outbox mig
 done
 for table_name in \
   users document document_object document_object_reservation \
-  auth_session auth_refresh_token email_verification_token migrations; do
+  auth_session email_verification_token migrations; do
   assert_table_privileges "$GATEWAY_CORRECTION_RUNTIME_USER" "$table_name" "f,f,f,f,f,f,f,f"
 done
 

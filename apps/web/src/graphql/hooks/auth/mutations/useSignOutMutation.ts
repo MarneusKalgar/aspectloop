@@ -31,8 +31,10 @@ export function useSignOutMutation(): GraphqlMutationStateWithoutVariables<
      *
      * @returns The sign-out payload when the mutation succeeds.
      */
-    execute: async (): Promise<null | SignOutMutation['signOut']> => {
-      const result = await runSignOutMutation();
+    execute: async (signal?: AbortSignal): Promise<null | SignOutMutation['signOut']> => {
+      const result = await runSignOutMutation({
+        context: signal ? { fetchOptions: { signal } } : undefined,
+      });
 
       return result.data?.signOut ?? null;
     },

@@ -28,7 +28,7 @@ export class EnvironmentVariables {
   CORRECTION_OUTBOX_FLUSH_INTERVAL_MS?: number = 5000;
 
   @IsString()
-  CORS_ALLOWED_ORIGINS = 'http://localhost:5173';
+  CORS_ALLOWED_ORIGINS = 'http://localhost:5173,http://localhost:8080';
 
   @IsNotEmpty()
   @IsString()
@@ -46,9 +46,6 @@ export class EnvironmentVariables {
   @Min(0)
   @Type(() => Number)
   DB_SLOW_QUERY_THRESHOLD_MS = 1000;
-
-  @IsString()
-  JWT_ACCESS_SECRET!: string;
 
   @IsNodeEnvironment()
   NODE_ENV: NodeEnvironment = 'development';

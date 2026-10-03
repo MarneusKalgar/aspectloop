@@ -115,15 +115,25 @@
 - Do not run broad formatting/fix commands on unrelated files.
 - Do not stage, commit, push, create a PR, deploy, or run destructive Git
   operations unless explicitly requested.
+- Direct invocation of `aspectloop-commit-compose` without a narrower action is
+  an explicit request to stage, commit, and push the scoped changes. An ordinary
+  implementation request or an automatically selected skill is not.
 - Never expose secrets or copy proprietary code/data from reference projects.
 
 ## Verification
 
 - Agents do not use TDD. Implement behavior first; add or update test code
   afterward only when it is in scope.
-- Agents do not run formatting, lint, type checks, tests, builds, migrations,
-  or local smoke checks. These commands and their interpretation are human
-  work.
+- Agents do not independently run formatting, lint, type checks, tests, builds,
+  migrations, or local smoke checks. These remain human-owned, with one bounded
+  exception: an explicit commit/push request authorizes its configured Git
+  hooks, including their checks and scoped formatting. Never bypass hooks; stop
+  on failure and report observed results without claiming full verification.
+- Before an authorized commit/push, initialize the repository's Node/npm runtime
+  in the same shell invocation as Git. Use `.nvmrc`, `package.json` runtime
+  requirements, and any machine-local setup in `AGENTS.override.md`; verify
+  versions before proceeding. Do not assume another terminal or prior tool
+  call selected the runtime. Stop if it is unavailable or incompatible.
 - Agents do not generate or hand-author database migrations. A human generates
   migrations through the repository's service-specific commands.
 - Agents provide a proportional human verification checklist with exact

@@ -103,12 +103,8 @@ function testBrowserSessionErrorVocabulary(): void {
     AUTH_ERROR_CODE.RATE_LIMITED,
     AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE,
   ]);
-  expect(browserSessionAuthErrorCodeSchema.safeParse(AUTH_ERROR_CODE.ACCESS_INVALID).success).toBe(
-    false,
-  );
-  expect(
-    browserSessionAuthErrorCodeSchema.safeParse(AUTH_ERROR_CODE.REFRESH_CONFLICT).success,
-  ).toBe(false);
+  expect(browserSessionAuthErrorCodeSchema.safeParse('AUTH_ACCESS_INVALID').success).toBe(false);
+  expect(browserSessionAuthErrorCodeSchema.safeParse('AUTH_REFRESH_CONFLICT').success).toBe(false);
 }
 
 /** Verifies commands require bounded credentials and server-owned activity intent. */
@@ -204,10 +200,11 @@ function testPrivateSessionValidationResponse(): void {
   ).toBe(false);
 }
 
-/** Verifies the additive route constant does not alter existing auth paths. */
+/** Verifies browser validation survives while obsolete private route constants are retired. */
 function testSessionValidationRoute(): void {
   expect(PLATFORM_INTERNAL_ROUTES.auth.validateSession).toBe('/internal/v1/auth/session/validate');
-  expect(PLATFORM_INTERNAL_ROUTES.auth.refreshSession).toBe('/internal/v1/auth/refresh');
+  expect(PLATFORM_INTERNAL_ROUTES.auth).not.toHaveProperty('refreshSession');
+  expect(PLATFORM_INTERNAL_ROUTES.auth).not.toHaveProperty('me');
 }
 
 test(
