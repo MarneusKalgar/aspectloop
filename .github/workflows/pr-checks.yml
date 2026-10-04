@@ -78,6 +78,9 @@ jobs:
         id: install_scripts
         run: npm run deps:scripts:pending
 
+      - name: Test dependency audit exception policy
+        run: npm run deps:audit:policy:test
+
       - name: Audit high and critical vulnerabilities
         id: dependency_audit
         run: npm run deps:audit

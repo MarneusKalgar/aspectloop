@@ -31,7 +31,8 @@
     "graphql:generate": "npm run graphql:generate:gateway && npm run graphql:generate:web",
     "graphql:check": "node scripts/graphql/check-generated.mjs",
     "deps:policy": "node scripts/dependencies/check-policy.mjs",
-    "deps:audit": "npm audit --audit-level=high",
+    "deps:audit": "node scripts/dependencies/audit.mjs",
+    "deps:audit:policy:test": "node --test scripts/dependencies/audit-policy.test.mjs",
     "deps:signatures": "npm audit signatures",
     "deps:scripts:pending": "npm install-scripts ls",
     "docker:policy": "bash scripts/docker/check-policy.sh",
@@ -110,6 +111,6 @@
     "fsevents@2.3.3": true
   },
   "overrides": {
-    "multer": "2.3.0"
+    "multer": "2.4.0"
   }
 }

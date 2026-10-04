@@ -1,7 +1,7 @@
 # Dependency Security
 
 Status: Active
-Last updated: 2026-08-27
+Last updated: 2026-10-03
 
 ## Toolchain Contract
 
@@ -141,10 +141,10 @@ enables unrestricted lifecycle scripts, non-registry dependency sources, force,
 legacy peer resolution, or ignored scripts. It never reads or prints registry
 credentials and does not execute dependency code or mutate files.
 
-`deps:audit` reports vulnerabilities and exits unsuccessfully for high or
-critical findings. M03-A closed with no known vulnerabilities. A future
-remaining moderate/low finding requires an exposure assessment, owner, and
-expiry.
+`deps:audit` runs npm's full audit and exits unsuccessfully for high or
+critical findings, except for the exact temporary development-only exception
+below. M03-A closed with no known vulnerabilities. A future remaining
+moderate/low finding requires an exposure assessment, owner, and expiry.
 
 `deps:signatures` uses `npm audit signatures` to inspect registry signatures
 and supported provenance attestations. Coverage depends on package and registry
@@ -163,6 +163,29 @@ Never use:
 For audit remediation, inspect `npm audit fix --dry-run --json`, prefer explicit
 npm uninstall/install commands for direct dependency changes, and review all
 manifest and lockfile churn before a clean `npm ci`.
+
+## Temporary Audit Exception
+
+| Advisory                                                                   | Scope                                                                             | Owner    | Expires              | Removal condition                                                                                                           |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| [`GHSA-vfj7-8cjw-p6xm`](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces@3.0.3` and its reviewed GraphQL codegen development-only dependency chain | Platform | 2026-10-17 00:00 UTC | Remove the exception when a patched compatible dependency path is available, the chain disappears, or the expiry is reached |
+
+The affected `braces` version is reached through GraphQL code generation,
+which processes repository-controlled files during development and CI. It is
+not part of the application runtime dependency path. This limits exposure but
+does not make the advisory harmless: a maliciously crafted file passed to the
+generator could still trigger excessive resource use. Do not run codegen on
+untrusted files while this exception is active.
+
+The exception lives in `scripts/dependencies/audit-policy.mjs`. It permits
+only the named advisory at the exact installed version and path, checks that
+every affected package is marked development-only in the lockfile, and rejects
+new or mixed high/critical findings. It also fails on a changed dependency
+chain, an incomplete audit result, removal of the advisory, or expiry. The raw
+`npm audit --audit-level=high` command is expected to exit unsuccessfully
+until upstream remediation; `npm run deps:audit` is the CI gate and must report
+the exception explicitly. A human must review and remove or renew this
+exception before the expiry; renewal requires a fresh exposure assessment.
 
 ## Temporary Compatibility Dependencies
 
