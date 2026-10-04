@@ -1,144 +1,166 @@
 import { graphql, HttpResponse } from 'msw';
 
+import { BROWSER_SESSION_ERROR_CODE } from '../../auth/session-error';
 import {
-  createMockToken,
+  clearMockSessionUser,
   createMockUser,
   findMockUserByEmail,
-  findMockUserByToken,
   getMockSession,
+  getMockSessionUser,
   listMockSessions,
+  setMockSessionUser,
+  toMockPublicUser,
 } from '../data';
 
-function getAuthorizationToken(request: Request): null | string {
-  const authorization = request.headers.get('authorization');
-
-  if (!authorization?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  return authorization.replace('Bearer ', '').trim();
-}
-
 export const graphqlHandlers = [
-  graphql.mutation('SignUp', ({ variables }) => {
-    const input = variables.input as {
-      displayName: string;
-      email: string;
-      password: string;
-    };
+  graphql.mutation(
+    'SignUp',
+    /** Creates a public-only mock user. */ ({ variables }) => {
+      const input = variables.input as {
+        displayName: string;
+        email: string;
+        password: string;
+      };
 
-    const existingUser = findMockUserByEmail(input.email);
+      const existingUser = findMockUserByEmail(input.email);
 
-    if (existingUser) {
+      if (existingUser) {
+        return HttpResponse.json({
+          errors: [{ message: 'User with this email already exists' }],
+        });
+      }
+
+      const user = createMockUser(input);
+
       return HttpResponse.json({
-        errors: [{ message: 'User with this email already exists' }],
-      });
-    }
-
-    const user = createMockUser(input);
-
-    return HttpResponse.json({
-      data: {
-        signUp: {
-          success: true,
-          user,
+        data: {
+          signUp: {
+            success: true,
+            user: toMockPublicUser(user),
+          },
         },
-      },
-    });
-  }),
-  graphql.mutation('SignIn', ({ variables }) => {
-    const input = variables.input as {
-      email: string;
-      password: string;
-    };
-    const user = findMockUserByEmail(input.email);
-
-    if (user?.password !== input.password) {
-      return HttpResponse.json({
-        errors: [{ message: 'Invalid email or password' }],
       });
-    }
+    },
+  ),
+  graphql.mutation(
+    'SignIn',
+    /** Starts a session for valid credentials. */ ({ variables }) => {
+      const input = variables.input as {
+        email: string;
+        password: string;
+      };
+      const user = findMockUserByEmail(input.email);
 
-    return HttpResponse.json({
-      data: {
-        signIn: {
-          accessToken: createMockToken(user),
-          user,
+      if (user?.password !== input.password) {
+        return HttpResponse.json({
+          errors: [
+            {
+              extensions: { code: BROWSER_SESSION_ERROR_CODE.INVALID_CREDENTIALS },
+              message: 'Invalid email or password',
+            },
+          ],
+        });
+      }
+
+      setMockSessionUser(user.id);
+
+      return HttpResponse.json({
+        data: {
+          signIn: {
+            user: toMockPublicUser(user),
+          },
         },
-      },
-    });
-  }),
-  graphql.mutation('SignOut', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
-
-    if (!user) {
-      return HttpResponse.json({
-        errors: [{ message: 'Unauthenticated' }],
       });
-    }
+    },
+  ),
+  graphql.mutation(
+    'SignOut',
+    /** Ends the in-memory session. */ () => {
+      clearMockSessionUser();
 
-    return HttpResponse.json({
-      data: {
-        signOut: {
-          success: true,
+      return HttpResponse.json({
+        data: {
+          signOut: {
+            success: true,
+          },
         },
-      },
-    });
-  }),
-  graphql.query('Me', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
-
-    return HttpResponse.json({
-      data: {
-        me: user,
-      },
-    });
-  }),
-  graphql.query('CorrectionSessions', ({ request }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
-
-    if (!user) {
-      return HttpResponse.json({
-        errors: [{ message: 'Unauthenticated' }],
       });
-    }
+    },
+  ),
+  graphql.query(
+    'Me',
+    /** Returns the session's public user. */ () => {
+      const user = getMockSessionUser();
 
-    return HttpResponse.json({
-      data: {
-        correctionSessions: listMockSessions(),
-      },
-    });
-  }),
-  graphql.query('CorrectionSession', ({ request, variables }) => {
-    const user = findMockUserByToken(getAuthorizationToken(request));
-    const session = getMockSession(String(variables.sessionId));
+      if (!user) {
+        return HttpResponse.json({
+          errors: [
+            {
+              extensions: { code: BROWSER_SESSION_ERROR_CODE.SESSION_INVALID },
+              message: 'Browser session is invalid',
+            },
+          ],
+        });
+      }
 
-    if (!user) {
       return HttpResponse.json({
-        errors: [{ message: 'Unauthenticated' }],
+        data: {
+          me: user,
+        },
       });
-    }
+    },
+  ),
+  graphql.query(
+    'CorrectionSessions',
+    /** Requires an active session. */ () => {
+      const user = getMockSessionUser();
 
-    if (!session) {
+      if (!user) {
+        return HttpResponse.json({
+          errors: [{ message: 'Unauthenticated' }],
+        });
+      }
+
       return HttpResponse.json({
-        errors: [{ message: 'Correction session not found' }],
+        data: {
+          correctionSessions: listMockSessions(),
+        },
       });
-    }
+    },
+  ),
+  graphql.query(
+    'CorrectionSession',
+    /** Requires an active session. */ ({ variables }) => {
+      const user = getMockSessionUser();
+      const session = getMockSession(String(variables.sessionId));
 
-    return HttpResponse.json({
-      data: {
-        correctionSession: {
-          ...session,
-          createdAt: session.updatedAt,
-          draftPayload: {
-            header: {
-              invoiceDate: '2026-05-01',
-              invoiceNumber: 'INV-2026-001',
-              supplierName: 'Acme Supplies',
+      if (!user) {
+        return HttpResponse.json({
+          errors: [{ message: 'Unauthenticated' }],
+        });
+      }
+
+      if (!session) {
+        return HttpResponse.json({
+          errors: [{ message: 'Correction session not found' }],
+        });
+      }
+
+      return HttpResponse.json({
+        data: {
+          correctionSession: {
+            ...session,
+            createdAt: session.updatedAt,
+            draftPayload: {
+              header: {
+                invoiceDate: '2026-05-01',
+                invoiceNumber: 'INV-2026-001',
+                supplierName: 'Acme Supplies',
+              },
             },
           },
         },
-      },
-    });
-  }),
+      });
+    },
+  ),
 ];

@@ -112,9 +112,9 @@ async function testRejectCorruptRead(): Promise<void> {
 
   client.corrupt(Buffer.from('corrupt fixture'));
 
-  await expect(storage.getObject(metadata)).rejects.toMatchObject<Partial<ArtifactStorageError>>({
+  await expect(storage.getObject(metadata)).rejects.toMatchObject({
     code: 'integrity_mismatch',
-  });
+  } satisfies Pick<ArtifactStorageError, 'code'>);
 }
 
 /** Verifies application checksum metadata, readback, and accidental overwrite rejection. */
@@ -140,7 +140,7 @@ async function testWriteReadAndRejectOverwrite(): Promise<void> {
   ).resolves.toMatchObject(metadata);
   await expect(
     storage.writeObject({ body, contentType: 'text/plain', key: OBJECT_KEY, objectId: OBJECT_ID }),
-  ).rejects.toMatchObject<Partial<ArtifactStorageError>>({ code: 'already_exists' });
+  ).rejects.toMatchObject({ code: 'already_exists' } satisfies Pick<ArtifactStorageError, 'code'>);
 }
 
 test('writes, verifies, and rejects object reuse', testWriteReadAndRejectOverwrite);

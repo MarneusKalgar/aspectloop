@@ -1,7 +1,6 @@
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 
 import {
-  platformAuthErrorResponseSchema,
   platformBrowserSessionAuthErrorResponseSchema,
   platformErrorResponseSchema,
 } from '@aspectloop/contracts/platform';
@@ -76,12 +75,6 @@ function toSafeHttpFailure(exception: unknown): SafeHttpFailure {
 
   const statusCode = exception.getStatus();
   const response = exception.getResponse();
-  const authResponse = platformAuthErrorResponseSchema.safeParse(response);
-
-  if (authResponse.success && authResponse.data.statusCode === statusCode) {
-    return { body: authResponse.data, category: 'expected_http', statusCode };
-  }
-
   const browserSessionResponse = platformBrowserSessionAuthErrorResponseSchema.safeParse(response);
 
   if (browserSessionResponse.success && browserSessionResponse.data.statusCode === statusCode) {

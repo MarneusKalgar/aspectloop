@@ -1,9 +1,9 @@
 export interface GraphqlMutationState<TData, TVariables> extends GraphqlOperationState<TData> {
-  execute: (variables: TVariables) => Promise<null | TData>;
+  execute: (variables: TVariables, signal?: AbortSignal) => Promise<null | TData>;
 }
 
 export interface GraphqlMutationStateWithoutVariables<TData> extends GraphqlOperationState<TData> {
-  execute: () => Promise<null | TData>;
+  execute: (signal?: AbortSignal) => Promise<null | TData>;
 }
 
 export interface GraphqlOperationState<TData> {

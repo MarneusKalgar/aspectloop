@@ -90,9 +90,15 @@ export function CorrectionsInboxPage() {
         isMockRuntime={env.mockGraphqlRuntime}
         liveRuntimeLabel={t('app.runtime.live')}
         mockRuntimeLabel={t('app.runtime.mock')}
-        onSignOut={() => {
-          void signOut();
-        }}
+        onSignOut={
+          /** Starts logout while AuthProvider owns and displays an unconfirmed failure. */
+          () => {
+            /** Consumes rejection because the provider has already published failure state. */
+            void signOut().catch(() => {
+              // AuthProvider displays the unconfirmed revocation state.
+            });
+          }
+        }
         pageLabel={t('corrections.inbox.heading')}
         signOutLabel={t('auth.signOut.trigger')}
         userEmail={user?.email ?? ''}

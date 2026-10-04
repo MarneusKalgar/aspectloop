@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; implementation pending
+Status: Accepted design; C2b cutover and C3 retirement locally accepted, remaining M04.2 work pending
 
 Date: 2026-09-20
 
@@ -35,6 +35,13 @@ inactivity expiry without exceeding that bound. Expired sessions require login.
 Session fixation is prevented by never accepting a supplied credential as the
 identity of a newly issued session. Regeneration for future privilege elevation
 or account recovery must be designed with those future features.
+
+Gateway classifies session activity from executable product root fields of the
+selected GraphQL operation, honoring `@skip` and `@include` on fields, inline
+fragments, and fragment spreads with request variables and operation defaults.
+`me` alone or combined with skipped product fields validates once without
+recording activity. Pre-execution mutation isolation continues to inspect
+declared roots, so skipping a product field does not relax sole-root restrictions.
 
 The cookie is host-only `aspectloop_session`, scoped to `/graphql`, HttpOnly,
 SameSite=Lax, and Secure in stage/production. Local HTTP is the explicit Secure
@@ -81,7 +88,7 @@ would require explicit durability, expiry, eviction, and failure semantics.
   is made without representative measurements.
 - Session expiry, revocation, multi-login isolation, verification state, role
   boundaries, and digest primitives from B remain useful. Refresh rotation and
-  JWT-specific contracts/tests must be retired or replaced during cutover.
+  JWT-specific runtime contracts/tests were retired or replaced in C3.
 - Applied migrations are immutable. Schema adaptation uses new human-generated
   migrations; existing refresh credentials must not authenticate as sessions.
 
@@ -95,5 +102,22 @@ would require explicit durability, expiry, eviction, and failure semantics.
   additional operational boundary; not selected for the initial implementation.
 
 This decision revises the M04.2 authentication mechanism in ADR 0004 without
-changing Platform domain ownership or Gateway's BFF responsibilities. It does
-not claim the running implementation has already changed.
+changing Platform domain ownership or Gateway's BFF responsibilities. The
+basic Platform/Gateway/Web browser-session cutover was human-verified on
+2026-09-27. C3 retirement was accepted by the human on 2026-10-03 after source,
+contract, test/build, existing-schema migration, role, session/HTTP, and manual
+browser verification. Disconnected JWT/refresh runtime code, contracts,
+configuration, direct dependencies, and refresh persistence are removed.
+Historical applied migrations and negative compatibility coverage remain.
+
+`RetireRefreshTokenState1791037176093` atomically replaces the session expiry
+CHECK and removes `last_refreshed_at` and `auth_refresh_token`. It requires an
+active migration transaction and is forward-only: rollback cannot reconstruct
+retired timestamps or credentials. Existing users and opaque-session state are
+not intentionally rewritten. Empty-schema replay and direct before/after proof
+of pre-retirement session preservation were not supplied for C3 acceptance;
+fresh-stack rehearsal remains an F gate. This is local task acceptance, not a
+production migration authorization or completion of SESSION-16.
+
+E1 still owns legacy-cookie clearing and advanced browser resilience. Email
+confirmation and final integrated acceptance remain separate M04.2 work.

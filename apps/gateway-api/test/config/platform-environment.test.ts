@@ -3,10 +3,9 @@ import { expect, test } from 'vitest';
 
 const VALID_ENVIRONMENT = {
   API_PORT: '8080',
-  CORS_ALLOWED_ORIGINS: 'http://localhost:5173',
+  CORS_ALLOWED_ORIGINS: 'http://localhost:5173,http://localhost:8080',
   DATABASE_URL:
     'postgresql://gateway_correction_runtime:gateway_correction_runtime@postgres:5432/platform_db',
-  JWT_ACCESS_SECRET: 'test-only-secret',
   NODE_ENV: 'test',
   PERSISTENCE_BASE_URL: 'http://persistence-mock:8090',
   PLATFORM_BASE_URL: 'http://platform-service:8083',
@@ -29,3 +28,12 @@ function testInvalidPlatformClientEnvironment(): void {
 }
 
 test('rejects invalid Platform client configuration', testInvalidPlatformClientEnvironment);
+
+/** Ensures invalid browser origin lists fail at configuration validation. */
+function testInvalidCorsEnvironment(): void {
+  expect(() => validateEnv({ ...VALID_ENVIRONMENT, CORS_ALLOWED_ORIGINS: '*' })).toThrow(
+    'CORS_ALLOWED_ORIGINS must contain exact HTTP(S) origins',
+  );
+}
+
+test('rejects wildcard browser origin configuration', testInvalidCorsEnvironment);

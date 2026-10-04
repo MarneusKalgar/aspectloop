@@ -6,9 +6,6 @@ export interface AuthUser {
   sub: string;
 }
 
-/* eslint-disable-next-line */
-export interface JwtPayload extends AuthUser {}
-
 export interface RequestWithUser {
   log?: { setBindings?: (bindings: Record<string, unknown>) => void };
   user?: AuthUser;

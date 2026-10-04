@@ -3,6 +3,8 @@ import type { Params } from 'nestjs-pino';
 
 import { createServiceLoggerConfig } from '@aspectloop/backend-platform/logging';
 
+import { GATEWAY_SERVICE_NAME } from '#app/core/service-name';
+
 /**
  * Builds gateway logging from validated application configuration.
  *
@@ -13,6 +15,6 @@ export function getPinoLoggerConfig(configService: ConfigService): Params {
   return createServiceLoggerConfig({
     logLevel: configService.get<string>('APP_LOG_LEVEL'),
     nodeEnv: configService.get<string>('NODE_ENV') ?? 'development',
-    service: 'gateway-api',
+    service: GATEWAY_SERVICE_NAME,
   });
 }

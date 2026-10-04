@@ -6,22 +6,17 @@ import { validateEnv } from '#app/config/env.validation';
 import { User } from '#app/users/user.entity';
 
 import {
+  verifyBoundedLockWait,
+  verifyIssuanceRollback,
+  verifyLogoutSemantics,
+  verifyRetiredSchema,
+} from './auth-sessions/browser-session-retirement.scenarios';
+import {
   verifyBrowserSessionActivity,
   verifyBrowserSessionIssuance,
   verifyBrowserSessionLogoutOrderings,
   verifyBrowserSessionRejection,
 } from './auth-sessions/browser-session.scenarios';
-import {
-  verifyBoundedLockWait,
-  verifyDeletedUser,
-  verifyExpiryBoundaries,
-  verifyIndependentFamilies,
-  verifyIssuancePersistence,
-  verifyLogoutSemantics,
-  verifyRefreshLogoutRace,
-  verifyRotationAndReplay,
-  verifyRotationRollback,
-} from './auth-sessions/legacy-refresh.scenarios';
 import {
   assertLocalVerificationTarget,
   createVerificationClient,
@@ -57,22 +52,14 @@ async function main(): Promise<void> {
       cleanup.initialize(),
     ]);
     await insertVerifiedUser(first.dataSource, userId);
-    await verifyIssuancePersistence(first, environment, userId);
-    reportScenario('AUTH-B01', 'digest-only issuance and configured TTL bounds');
-    await verifyRotationAndReplay(first, second, cleanup, userId, environment);
-    reportScenario('AUTH-B02', 'single rotation winner and durable replay revocation');
-    await verifyIndependentFamilies(first, second, userId);
-    reportScenario('AUTH-B03', 'independent session families');
-    await verifyLogoutSemantics(first, cleanup, userId);
-    reportScenario('AUTH-B04', 'current, historical, expired, and invalid logout secrets');
-    await verifyRefreshLogoutRace(first, second, userId);
-    reportScenario('AUTH-B05', 'refresh/logout serialization and peer-family isolation');
-    await verifyExpiryBoundaries(first, cleanup, userId);
-    reportScenario('AUTH-B06', 'inactivity and absolute expiry boundaries');
+    await verifyRetiredSchema(cleanup);
+    reportScenario('C3-DB01', 'obsolete refresh table and column are absent');
     await verifyBoundedLockWait(first, cleanup, userId);
-    reportScenario('AUTH-B07', 'bounded lock wait maps to dependency unavailable');
-    await verifyRotationRollback(first, faultInjectingTokens, userId);
-    reportScenario('AUTH-B08', 'integrity failure rolls back without transient-error remapping');
+    reportScenario('C3-DB02', 'bounded issuance lock wait maps to dependency unavailable');
+    await verifyIssuanceRollback(first, faultInjectingTokens, userId);
+    reportScenario('C3-DB03', 'issuance integrity failure rolls back without remapping');
+    await verifyLogoutSemantics(first, cleanup, userId);
+    reportScenario('C3-DB04', 'idempotent expired logout preserves independent sessions');
     await verifyBrowserSessionIssuance(first, second, userId, environment);
     reportScenario('SESSION-01', 'opaque browser issuance, digest storage, and independent logins');
     await verifyBrowserSessionRejection(first, cleanup, userId, environment);
@@ -81,10 +68,8 @@ async function main(): Promise<void> {
     reportScenario('SESSION-03', 'database-clock expiry, throttled activity, and no resurrection');
     await verifyBrowserSessionLogoutOrderings(first, second, cleanup, userId);
     reportScenario('SESSION-04', 'contending activity and logout writes in both orderings');
-    await verifyDeletedUser(first, cleanup, userId);
-    reportScenario('AUTH-B09', 'deleted-user cascade and fail-closed refresh');
     console.log(
-      'Platform auth-session verification passed: legacy refresh compatibility plus opaque browser issuance, validation, activity, expiry, and logout.',
+      'Platform auth-session verification passed: opaque browser issuance, validation, activity, expiry, and logout.',
     );
   } finally {
     try {

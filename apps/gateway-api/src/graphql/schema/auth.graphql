@@ -16,13 +16,8 @@ type User {
   updatedAt: DateTime!
 }
 
-"""
-The secret-free public session result. Refresh credentials are written only to
-the scoped HttpOnly cookie and are never exposed through GraphQL.
-"""
+"""The secret-free public result of a successful browser sign-in."""
 type AuthPayload {
-  """Short-lived bearer token held in browser memory only."""
-  accessToken: String!
   """Authoritative user projection for the issued session."""
   user: User!
 }
@@ -33,14 +28,14 @@ type SignOutPayload {
   success: Boolean!
 }
 
-"""Generic sign-up acknowledgement that does not disclose account existence."""
+"""Current sign-up result retained until the D3 confirmation cutover."""
 type SignUpPayload {
-  """True when the request was accepted for processing."""
+  """True when the account-creation request succeeded."""
   success: Boolean!
-  """Always null for the email-confirmation flow."""
+  """Current user projection; D3 will replace this with a generic response."""
   user: User
     @deprecated(
-      reason: "Sign-up no longer returns account details before email confirmation."
+      reason: "D3 will remove identity details from the sign-up response."
     )
 }
 
@@ -87,29 +82,24 @@ input ResendEmailConfirmationInput {
 }
 
 extend type Query {
-  """Returns the Platform-validated user for the current bearer session."""
+  """Returns the Platform-validated user for the current browser session."""
   me: User
 }
 
 extend type Mutation {
   """Confirms an email address without signing the user in."""
   confirmEmail(input: ConfirmEmailInput!): EmailConfirmationPayload!
-  """Rotates the scoped refresh cookie and returns a new public session."""
-  refreshSession: AuthPayload!
   """Requests another confirmation email without revealing account existence."""
   resendEmailConfirmation(
     input: ResendEmailConfirmationInput!
   ): EmailConfirmationRequestPayload!
-  """Clears the scoped refresh cookie and requests family revocation."""
+  """Clears the browser-session cookie and requests session revocation."""
   signOut: SignOutPayload!
   """
-  Creates a browser session and writes its refresh credential to an HttpOnly
+  Creates a browser session and writes its opaque credential to an HttpOnly
   cookie.
   """
   signIn(input: SignInInput!): AuthPayload!
-  """
-  Accepts account creation and confirmation delivery without returning
-  identity details.
-  """
+  """Creates an unverified account; D3 adds generic confirmation delivery."""
   signUp(input: SignUpInput!): SignUpPayload!
 }
