@@ -2,7 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
-Last updated: M04.1 local-verification closeout, 2026-09-17
+Last updated: M04.2 session-activity review follow-up, 2026-10-04
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -459,6 +459,16 @@ supplied. The human accepted C3 without further repetition; these limitations
 are not passes. E1 retains advanced browser verification and F retains fresh-stack
 and integrated acceptance. Private fixture cleanup was not confirmed for C3.
 No agent-run verification is implied by this record.
+
+The session-activity directive follow-up was human-verified on 2026-10-04 with
+`test:backend:run`, `verify`, and `build:gateway`. Classification and real
+Nest/Express/Yoga coverage honor `@skip` and `@include` on fields, inline
+fragments, and fragment spreads, including variables and operation defaults.
+`me` with skipped product fields performs exactly one Platform validation without
+recording activity; included product fields retain activity recording. Separate
+protection coverage ensures skipped product fields do not relax auth-mutation
+sole-root restrictions. This bounded correction does not close the remaining
+M04.2 acceptance gates.
 
 ### 8.1 Dedicated local E2E stack
 

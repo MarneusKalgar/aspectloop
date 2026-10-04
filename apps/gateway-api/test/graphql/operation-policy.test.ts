@@ -11,6 +11,7 @@ import {
 } from '@gateway/graphql/operation-policy/correction-operation.policy';
 import { getOperationPolicy } from '@gateway/graphql/operation-policy/operation-policy';
 import {
+  inspectExecutedRootFields,
   inspectMutationRoots,
   inspectSelectedRootFields,
 } from '@gateway/graphql/operations/root-field-inspection';
@@ -23,6 +24,23 @@ function testCyclicAndMissingFragments(): void {
     inspectMutationRoots('mutation { ...Loop } fragment Loop on Mutation { signOut ...Loop }'),
   ).toEqual(['signOut']);
   expect(inspectMutationRoots('mutation { ...Missing signIn }')).toEqual(['signIn']);
+}
+
+/** Activity honors directives while sole-root protections continue inspecting declared roots. */
+function testDeclaredAndExecutedRootPolicies(): void {
+  const query = `mutation Selected($skip: Boolean! = true) {
+    signOut
+    ...Product @skip(if: $skip)
+    ...Product @include(if: false)
+  }
+  fragment Product on Mutation { submitCorrections }`;
+
+  expect(inspectMutationRoots(query, 'Selected')).toEqual(['signOut', 'submitCorrections']);
+  expect(inspectExecutedRootFields(query, 'Selected')?.roots).toEqual(['signOut']);
+  expect(inspectExecutedRootFields(query, 'Selected', { skip: false })?.roots).toEqual([
+    'signOut',
+    'submitCorrections',
+  ]);
 }
 
 /** Keeps operation-specific protections declarative and unknown roots unconfigured. */
@@ -120,6 +138,10 @@ function testSharedFragmentTraversal(): void {
 }
 
 test('inspects selected mutation roots through aliases and fragments', testSelectedMutationRoots);
+test(
+  'keeps declared-root protection separate from executable-root activity',
+  testDeclaredAndExecutedRootPolicies,
+);
 test(
   'bounds shared-fragment traversal while preserving aliases and operation selection',
   testSharedFragmentTraversal,

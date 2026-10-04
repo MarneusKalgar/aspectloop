@@ -68,6 +68,98 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Skipped fields and fragments cannot turn bootstrap requests into session activity. */
+function testActivityExecutionDirectives(): void {
+  const literalCases = [
+    { activity: false, query: 'query { me c: correctionSessions @skip(if: true) }' },
+    { activity: false, query: 'query { me correctionSessions @include(if: false) }' },
+    { activity: true, query: 'query { me correctionSessions @skip(if: false) }' },
+    { activity: true, query: 'query { me correctionSessions @include(if: true) }' },
+    {
+      activity: false,
+      query: 'query { me correctionSessions @skip(if: true) @include(if: true) }',
+    },
+    {
+      activity: false,
+      query: `query { me ...Product @skip(if: true) }
+        fragment Product on Query { correctionSessions }`,
+    },
+    {
+      activity: false,
+      query: `query { me ...Product @include(if: false) }
+        fragment Product on Query { correctionSessions }`,
+    },
+    {
+      activity: false,
+      query: 'query { me ... on Query @skip(if: true) { correctionSessions } }',
+    },
+    {
+      activity: false,
+      query: 'query { me ... on Query @include(if: false) { correctionSessions } }',
+    },
+    {
+      activity: true,
+      query: `query { me ...Product @skip(if: true) ...Product }
+        fragment Product on Query { correctionSessions }`,
+    },
+    {
+      activity: false,
+      query: `query { me ...Outer }
+        fragment Outer on Query { ... on Query @include(if: false) { ...Product } }
+        fragment Product on Query { correctionSessions }`,
+    },
+    { activity: false, query: 'mutation { saveCorrectionSessionDraft @skip(if: true) }' },
+  ];
+
+  for (const { activity, query } of literalCases) {
+    expect(recordsSessionActivity(query), query).toBe(activity);
+  }
+
+  const query = `query Selected($skip: Boolean! = true, $include: Boolean! = false) {
+    me
+    correctionSessions @skip(if: $skip) @include(if: $include)
+  }`;
+  expect(recordsSessionActivity(query, 'Selected')).toBe(false);
+  expect(recordsSessionActivity(query, 'Selected', { skip: false })).toBe(false);
+  expect(recordsSessionActivity(query, 'Selected', { include: true })).toBe(false);
+  expect(recordsSessionActivity(query, 'Selected', { include: true, skip: false })).toBe(true);
+  const selectedDefaults = `query Bootstrap($include: Boolean! = false) {
+    me correctionSessions @include(if: $include)
+  }
+  query Product($include: Boolean! = true) {
+    me correctionSessions @include(if: $include)
+  }`;
+  expect(recordsSessionActivity(selectedDefaults, 'Bootstrap')).toBe(false);
+  expect(recordsSessionActivity(selectedDefaults, 'Product')).toBe(true);
+
+  const includedByDefault = `query ($include: Boolean! = true) {
+    me ... on Query @include(if: $include) { correctionSessions }
+  }`;
+  expect(recordsSessionActivity(includedByDefault)).toBe(true);
+  expect(recordsSessionActivity(includedByDefault, undefined, { include: false })).toBe(false);
+  expect(recordsSessionActivity(includedByDefault, undefined, { include: null })).toBe(false);
+  expect(recordsSessionActivity(includedByDefault, undefined, { include: undefined })).toBe(false);
+  expect(recordsSessionActivity(includedByDefault, undefined, { include: 'true' })).toBe(false);
+  expect(recordsSessionActivity(includedByDefault, undefined, [])).toBe(false);
+  expect(
+    recordsSessionActivity(
+      'query ($include: Boolean!) { me correctionSessions @include(if: $include) }',
+    ),
+  ).toBe(false);
+
+  const request: BrowserSessionRequest = {
+    headers: { cookie: `aspectloop_session=${CREDENTIAL}` },
+  };
+  const variables = { include: false };
+  const context = createBrowserSessionGraphqlContext({
+    params: { query: includedByDefault, variables },
+    req: request,
+    res: new Headers(),
+  });
+  expect(context.browserSession.recordActivity).toBe(false);
+  expect(variables).toEqual({ include: false });
+}
+
 /** The selected operation, including aliases/fragments, owns activity metadata. */
 function testActivityPolicy(): void {
   expect(recordsSessionActivity('query { me }')).toBe(false);
@@ -400,6 +492,10 @@ async function testStrictTargetResponsePolicy(): Promise<void> {
 
 test('C2a cookie HTTP boundary and outage clear', testCookieHttpBoundary);
 test('C2a server-owned activity classification', testActivityPolicy);
+test(
+  'session activity honors field and fragment directives with variable defaults',
+  testActivityExecutionDirectives,
+);
 test('C2a isolated HTTP validation deduplication', testIsolatedHttpValidation);
 test('C2a fail-closed invalid sessions', testInvalidSession);
 test('C2a default guard and authoritative permissions', testGuardAndPermissions);

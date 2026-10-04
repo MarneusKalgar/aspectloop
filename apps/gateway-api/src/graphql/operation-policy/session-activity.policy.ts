@@ -1,10 +1,14 @@
-import { inspectSelectedRootFields } from '../operations/root-field-inspection';
+import { inspectExecutedRootFields } from '../operations/root-field-inspection';
 import { getOperationPolicy } from './operation-policy';
 
-/** Classifies all roots of the selected operation using server-owned metadata. */
-export function recordsSessionActivity(query: string, operationName?: null | string): boolean {
+/** Classifies executable roots using server-owned metadata and request directive values. */
+export function recordsSessionActivity(
+  query: string,
+  operationName?: null | string,
+  variables?: unknown,
+): boolean {
   try {
-    const selected = inspectSelectedRootFields(query, operationName);
+    const selected = inspectExecutedRootFields(query, operationName, variables);
 
     if (!selected) {
       return false;

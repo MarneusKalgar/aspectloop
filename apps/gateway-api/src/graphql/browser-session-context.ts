@@ -21,6 +21,7 @@ export interface BrowserSessionGraphqlContext {
 export interface SelectedOperationParameters {
   operationName?: unknown;
   query?: unknown;
+  variables?: unknown;
 }
 
 /** Derives request activity from Yoga's selected operation, never public flags. */
@@ -33,7 +34,9 @@ export function createBrowserSessionGraphqlContext({
   const operationName = typeof params.operationName === 'string' ? params.operationName : undefined;
 
   return {
-    browserSession: Object.freeze({ recordActivity: recordsSessionActivity(query, operationName) }),
+    browserSession: Object.freeze({
+      recordActivity: recordsSessionActivity(query, operationName, params.variables),
+    }),
     req,
     res,
   };

@@ -111,12 +111,16 @@ async function testBatchAndRootIsolation(): Promise<void> {
       fragment First on Mutation { first: ${AUTH_OPERATION_NAME.SIGN_OUT} }
       fragment Second on Mutation { second: ${AUTH_OPERATION_NAME.SIGN_OUT} ...First }`,
   });
+  const skippedProduct = await post(yoga, {
+    query: `mutation { ${AUTH_OPERATION_NAME.SIGN_OUT} submitCorrections @skip(if: true) }`,
+  });
 
   expect(batch.status).toBe(400);
   expect(aliased.status).toBe(400);
   expect(repeated.status).toBe(400);
   expect(sharedMixed.status).toBe(400);
   expect(sharedAliases.status).toBe(400);
+  expect(skippedProduct.status).toBe(400);
   expect(domainCall).not.toHaveBeenCalled();
 
   const singleRoot = await post(yoga, {

@@ -108,14 +108,15 @@ function json(value: unknown): Response {
   });
 }
 
-/** Posts GraphQL through the real Nest/Express listener. */
+/** Posts GraphQL and optional directive variables through the real Nest/Express listener. */
 async function post(
   baseUrl: string,
   query: string,
   cookie?: string,
+  variables?: Record<string, unknown>,
 ): Promise<{ body: TestGraphqlBody; response: Response }> {
   const response = await fetch(`${baseUrl}/graphql`, {
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
     headers: {
       'content-type': 'application/json',
       origin: ORIGIN,
@@ -224,6 +225,68 @@ async function testNestSessionComposition(): Promise<void> {
     const reversed = await post(baseUrl, 'query { correctionSessions { id } me { id } }', cookie);
     expect(readPath(reversed.body, 'me', 'id')).toBe(USER.id);
     expect(upstreamCalls.filter((call) => call.path.endsWith('/session/validate'))).toHaveLength(2);
+
+    const directiveCases: {
+      activity: boolean;
+      query: string;
+      variables?: Record<string, unknown>;
+    }[] = [
+      {
+        activity: false,
+        query: 'query { me { id } correctionSessions @skip(if: true) { id } }',
+      },
+      {
+        activity: false,
+        query: `query ($skip: Boolean! = true) {
+          me { id } correctionSessions @skip(if: $skip) { id }
+        }`,
+      },
+      {
+        activity: false,
+        query: `query ($include: Boolean!) { me { id } ...Product @include(if: $include) }
+          fragment Product on Query { correctionSessions { id } }`,
+        variables: { include: false },
+      },
+      {
+        activity: false,
+        query: `query ($skip: Boolean!) {
+          ... on Query @skip(if: $skip) { correctionSessions { id } } me { id }
+        }`,
+        variables: { skip: true },
+      },
+      {
+        activity: true,
+        query: `query ($skip: Boolean! = true) {
+          me { id } correctionSessions @skip(if: $skip) { id }
+        }`,
+        variables: { skip: false },
+      },
+      {
+        activity: true,
+        query: `query ($include: Boolean!) { me { id } ...Product @include(if: $include) }
+          fragment Product on Query { correctionSessions { id } }`,
+        variables: { include: true },
+      },
+      {
+        activity: true,
+        query: `query { me { id } ...Product @skip(if: true) ...Product }
+          fragment Product on Query { correctionSessions { id } }`,
+      },
+    ];
+
+    for (const { activity, query, variables } of directiveCases) {
+      const beforeRequest = upstreamCalls.length;
+      const result = await post(baseUrl, query, cookie, variables);
+      expect(result.body.errors, query).toBeUndefined();
+      expect(readPath(result.body, 'me', 'id'), query).toBe(USER.id);
+      expect(readPath(result.body, 'correctionSessions'), query).toEqual(activity ? [] : undefined);
+      const requestCalls = upstreamCalls.slice(beforeRequest);
+      expect(requestCalls, query).toHaveLength(1);
+      expect(requestCalls[0], query).toMatchObject({
+        body: { recordActivity: activity },
+        path: '/internal/v1/auth/session/validate',
+      });
+    }
 
     failValidation = true;
     const outage = await post(baseUrl, 'query { me { id } }', cookie);

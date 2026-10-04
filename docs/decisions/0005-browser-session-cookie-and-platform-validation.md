@@ -36,6 +36,13 @@ Session fixation is prevented by never accepting a supplied credential as the
 identity of a newly issued session. Regeneration for future privilege elevation
 or account recovery must be designed with those future features.
 
+Gateway classifies session activity from executable product root fields of the
+selected GraphQL operation, honoring `@skip` and `@include` on fields, inline
+fragments, and fragment spreads with request variables and operation defaults.
+`me` alone or combined with skipped product fields validates once without
+recording activity. Pre-execution mutation isolation continues to inspect
+declared roots, so skipping a product field does not relax sole-root restrictions.
+
 The cookie is host-only `aspectloop_session`, scoped to `/graphql`, HttpOnly,
 SameSite=Lax, and Secure in stage/production. Local HTTP is the explicit Secure
 exception. Cookie expiry is the absolute session deadline; Platform enforces
