@@ -41,7 +41,13 @@ if (!parsedCodegenEnv.success) {
 }
 
 const config: CodegenConfig = {
-  documents: ['src/**/*.{ts,tsx}'],
+  // Synthetic test operations are not production documents or public-schema contracts.
+  documents: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.{test,spec}.{ts,tsx}',
+    '!src/**/__tests__/**',
+    '!src/test/**',
+  ],
   generates: {
     [generatedOutputPath]: {
       config: {

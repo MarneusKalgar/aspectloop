@@ -100,6 +100,11 @@
 - In JavaScript and TypeScript, always wrap control-flow bodies in braces and
   place the body on separate lines, including single-statement `if`, `else`,
   loop, `try`, and `catch` bodies.
+- Separate adjacent logical code blocks with a blank line. Treat `try/catch/finally`
+  groups, loops, and standalone function or method invocations (including calls
+  with callback bodies) as blocks when separating them from surrounding work.
+  Keep paired constructs such as `try/catch/finally` and `if/else` together, and
+  keep tightly related statements or assertions grouped within one logical block.
 - When an environment variable is added or changed in an `.env.example`, apply
   the same key and structural change to the relevant local `.env` file in the
   same task. Preserve existing machine-specific values and secrets; never copy

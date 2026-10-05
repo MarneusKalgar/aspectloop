@@ -209,6 +209,10 @@ async function testNestSessionComposition(): Promise<void> {
     const cookie = signIn.response.headers.get('set-cookie')?.split(';', 1)[0];
     expect(cookie).toContain('aspectloop_session=');
     expect(signIn.response.headers.get('set-cookie')).toContain('HttpOnly');
+    expect(signIn.response.headers.getSetCookie()).toHaveLength(2);
+    expect(signIn.response.headers.getSetCookie()[1]).toContain(
+      'aspectloop_access_token=; Path=/;',
+    );
 
     const mixed = await post(
       baseUrl,
@@ -301,6 +305,10 @@ async function testNestSessionComposition(): Promise<void> {
     const signOut = await post(baseUrl, 'mutation { signOut { success } }', cookie);
     expect(readPath(signOut.body, 'signOut', 'success')).toBe(true);
     expect(signOut.response.headers.get('set-cookie')).toContain('Max-Age=0');
+    expect(signOut.response.headers.getSetCookie()).toHaveLength(2);
+    expect(signOut.response.headers.getSetCookie()[1]).toContain(
+      'aspectloop_access_token=; Path=/;',
+    );
   } finally {
     await app.close();
   }

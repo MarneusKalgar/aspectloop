@@ -21,8 +21,9 @@ interface SignInLocationState {
   successMessage?: string;
 }
 
+/** Disables unsupported cookie-changing login while preserving ordinary form validation. */
 export function SignInPage() {
-  const { signIn } = useAuth();
+  const { accountActionsAvailable, signIn } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -49,6 +50,7 @@ export function SignInPage() {
 
     try {
       await signIn(values);
+
       void navigate('/corrections', { replace: true });
     } catch (error) {
       setError('root', {
@@ -138,7 +140,12 @@ export function SignInPage() {
             }}
           />
 
-          <Button disabled={isSubmitting} size="large" type="submit" variant="contained">
+          <Button
+            disabled={isSubmitting || accountActionsAvailable === false}
+            size="large"
+            type="submit"
+            variant="contained"
+          >
             {t('auth.signIn.cta.primary')}
           </Button>
         </Stack>
