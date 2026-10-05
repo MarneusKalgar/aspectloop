@@ -91,10 +91,12 @@ export default [
       'apps/web/src/test/**/*.{ts,tsx}',
       'apps/web/test/integration/**/*.{ts,tsx}',
       'apps/web/test/e2e/**/*.{ts,tsx}',
+      'apps/web/test/e2e-live/**/*.{ts,tsx}',
       'apps/web/vitest.config.ts',
       'apps/web/vitest.unit.config.ts',
       'apps/web/vitest.integration.config.ts',
       'apps/web/playwright.config.ts',
+      'apps/web/playwright.live.config.ts',
     ],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {

@@ -135,6 +135,44 @@ async function testEventLifecycle(): Promise<void> {
   expect(shared.listeners.size).toBe(0);
 }
 
+/** Rereading a valid marker after failed logout persistence never reopens this tab or permits dispatch. */
+async function testFailedLogoutWriteRecovery(): Promise<void> {
+  const shared = createSharedSessionEnvironment();
+  const coordinator = new SessionCoordinator(shared.environment());
+
+  await coordinator.signIn(vi.fn().mockResolvedValue(undefined));
+
+  const original = shared.raw;
+  const request = vi.fn().mockResolvedValue(undefined);
+  const cleanup = vi.fn().mockResolvedValue(undefined);
+  shared.writeFails = true;
+
+  await expect(coordinator.signOut(request, cleanup)).rejects.toThrow(/storage/);
+
+  expect(coordinator.getSnapshot()).toMatchObject({ localLogout: true, marker: null });
+  expect(cleanup).toHaveBeenCalledTimes(1);
+  expect(shared.raw).toBe(original);
+
+  // Bootstrap rereads the unchanged record; this restores marker validity, not local access.
+  coordinator.refresh();
+
+  expect(coordinator.getSnapshot()).toMatchObject({
+    localLogout: true,
+    marker: parseSessionMarker(original),
+  });
+  expect(coordinator.canRead()).toBe(false);
+  expect(coordinator.canRegister()).toBe(false);
+  expect(new SessionCoordinator(shared.environment()).canRead()).toBe(true);
+
+  await expect(coordinator.signIn(request)).rejects.toBeInstanceOf(SessionOperationCancelledError);
+  await expect(coordinator.signOut(request, cleanup)).rejects.toThrow(/storage/);
+
+  expect(cleanup).toHaveBeenCalledTimes(2);
+  expect(request).not.toHaveBeenCalled();
+  expect(shared.raw).toBe(original);
+  expect(coordinator.getSnapshot().localLogout).toBe(true);
+}
+
 /** Even a transport ignoring abort cannot clear uncertainty after the request deadline. */
 async function testIgnoredAbort(): Promise<void> {
   vi.useFakeTimers();
@@ -329,6 +367,10 @@ describe('browser session coordination' /** Covers cross-tab ordering, bounded u
   it('recovers completed revocation failures only by explicit action', testCompletedRecovery);
   it('does not mutate cookies without native Locks', testUnsupportedLocks);
   it('blocks account dispatch when storage fails', testStorageFailure);
+  it(
+    'keeps failed logout writes locally suppressed after a valid reread',
+    testFailedLogoutWriteRecovery,
+  );
   it('still revokes when cache retirement fails', testCacheFailure);
   it('preserves deferred error causes and rejects falsy failures', testDeferredErrorCauses);
   it('does not dispatch a delayed old logout against a newer login', testDelayedOldLogout);

@@ -18,13 +18,13 @@ export interface OwnedAuthFixture {
   id: string;
 }
 
-/** Creates an isolated, verified HTTP user using the production password hasher. */
+/** Creates a verified HTTP user with production hashing; a private runner may pre-register its owned UUID for cleanup. */
 export async function createOwnedAuthFixture(
   runtime: DataSource,
   environment: EnvironmentVariables,
   password: string,
+  id: string = randomUUID(),
 ): Promise<OwnedAuthFixture> {
-  const id = randomUUID();
   const email = `auth-http-${id}@example.test`;
   const passwordHash = await new PasswordService(new ConfigService(environment)).hash(password);
 

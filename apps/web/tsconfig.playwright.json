@@ -1,9 +1,15 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["node", "@playwright/test"]
   },
   "exclude": [],
-  "include": ["test/e2e/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "test/e2e/**/*.ts",
+    "test/e2e-live/**/*.ts",
+    "playwright.config.ts",
+    "playwright.live.config.ts"
+  ]
 }

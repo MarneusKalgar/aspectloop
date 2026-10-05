@@ -28,6 +28,9 @@ correction draft/save/submit browser path is recorded as a manual verification
 limitation. M04.2 then stabilizes identity and browser sessions. The durable
 boundary is recorded in
 [`ADR 0004`](docs/decisions/0004-thin-gateway-and-platform-service.md).
+M04.2's browser-session cutover, C3 retirement and E1 resilience are locally
+accepted; email delivery/confirmation and final integrated acceptance remain
+pending. See [browser session behavior and recovery](docs/browser-session.md).
 
 ## Application Boundaries
 
@@ -244,7 +247,24 @@ owner-ordered migrations and seeds twice before application startup, then runs
 the integration checks. It derives the host-side TypeORM URL from the running
 Platform container and never prints credentials.
 
-In a second terminal, start the web app in live-backend mode:
+For automated E1 browser verification, keep the prepared backend stack running
+and stop the normal Web dev server on `localhost:5173`. Reserve an exclusive local
+window with no other account traffic, then run:
+
+```bash
+npm run test:e2e:live:tools
+npm run test:e2e:live -- --allow-platform-outage
+```
+
+The flag explicitly permits stopping/restoring only the local Platform service.
+The runner owns its Web process and exact private fixtures; it does not install,
+build, migrate or reset the stack. Expect twenty passed, zero pending and
+successful exact cleanup. This suite is separate from mock E2E, `verify` and CI;
+see the [live suite runbook](apps/web/test/e2e-live/README.md) for prerequisites,
+privacy rules and interrupted-run recovery.
+
+For an optional manual smoke check, start the web app in a second terminal in
+live-backend mode:
 
 ```bash
 npm run dev:web

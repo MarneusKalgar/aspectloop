@@ -1,6 +1,6 @@
 # Data Authority And Recovery
 
-Status: Accepted authority and recovery boundary (updated 2026-10-03 for M04.2 C3)
+Status: Accepted authority and recovery boundary (updated 2026-10-05 for M04.2 E1)
 
 This is the M04 authoritative-state contract, not a claim that backup/restore
 is implemented. M04-B completed the boundary and disposable S3 compatibility
@@ -42,8 +42,8 @@ browser-session behavior.
 Platform owns `auth_session` and `email_verification_token` state with narrow
 runtime `SELECT`/`INSERT`/`UPDATE` allowlists. Opaque browser credentials and
 confirmation secrets are represented by domain-separated HMAC digests, and
-deleting a user cascades its auth state. The C2b browser-session cutover and C3
-retirement are locally accepted under
+deleting a user cascades its auth state. The C2b browser-session cutover, C3
+retirement and E1 browser resilience are locally accepted under
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md).
 Platform/PostgreSQL validates each protected request; Redis is not part of the
 initial authority. Platform disables TypeORM query/error logging because SQL
@@ -63,7 +63,17 @@ session/HTTP behavior were human-verified and accepted on 2026-10-03. Empty-sche
 replay and direct pre-retirement session-preservation evidence were not supplied;
 fresh-stack rehearsal remains with F. Local acceptance does not authorize a
 deployed/non-disposable migration or establish backup/restore readiness. Email
-confirmation delivery/UI and advanced browser resilience remain later work.
+confirmation delivery/UI remains later work.
+
+E1 browser resilience was locally accepted on 2026-10-05. The bounded browser
+marker coordinates work but never grants authentication or replaces Platform
+state. Unknown/orphaned cookie actions require closing all app tabs and clearing
+site cookies/storage at both actual app/API hosts; browser reset is not proof of
+server revocation. Failed logout-intent persistence preserves current-tab local
+suppression, with no guaranteed peer/reload propagation. See
+[browser session recovery](browser-session.md) for the explicit Retry versus
+Retry sign out versus reset-required rules. These browser rules do not introduce
+database recovery, credential reconstruction or migration rollback guarantees.
 
 | Current state                                          | Authority and recovery consequence                                                                                                                                          |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

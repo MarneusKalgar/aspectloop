@@ -85,6 +85,13 @@ const cases: ViewCase[] = [
   },
   {
     actions: false,
+    name: 'valid marker reread retains failed-write local suppression',
+    notice: { messageKey: 'auth.session.logoutUnconfirmed', recovery: 'retry-sign-out' },
+    snapshot: { localLogout: true, marker: INITIAL_SESSION_MARKER },
+    status: 'unavailable',
+  },
+  {
+    actions: false,
     name: 'completed unconfirmed revocation',
     notice: { messageKey: 'auth.session.logoutUnconfirmed', recovery: 'retry-sign-out' },
     snapshot: { marker: unconfirmed },

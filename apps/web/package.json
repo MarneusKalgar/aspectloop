@@ -19,6 +19,7 @@
     "test:e2e:browser:ensure": "playwright install --only-shell chromium",
     "pretest:e2e:mock": "npm run test:e2e:browser:ensure",
     "test:e2e:mock": "playwright test",
+    "test:e2e:live": "node ../../scripts/e2e/run-live.mjs",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build"
   },

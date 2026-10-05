@@ -68,6 +68,8 @@
     "test:backend:run": "vitest run --config vitest.backend.config.mjs",
     "test:typeorm:run": "vitest run --config vitest.typeorm.config.mjs",
     "test:e2e:mock": "npm run test:e2e:mock --workspace @aspectloop/web",
+    "test:e2e:live": "npm run test:e2e:live --workspace @aspectloop/web --",
+    "test:e2e:live:tools": "node --test scripts/e2e/local-tool.test.mjs",
     "type-check": "npm run build:shared && npm run type-check --workspace @aspectloop/web && tsc -p apps/gateway-api/tsconfig.json --noEmit && tsc -p apps/platform-service/tsconfig.json --noEmit && tsc -p apps/extraction-service/tsconfig.json --noEmit && tsc -p apps/correction-service/tsconfig.json --noEmit && tsc -p packages/contracts/tsconfig.json --noEmit && npm run type-check:tests",
     "type-check:tests": "tsc -p apps/gateway-api/test/tsconfig.json --noEmit && tsc -p apps/platform-service/test/tsconfig.json --noEmit && tsc -p apps/extraction-service/test/tsconfig.json --noEmit && tsc -p apps/correction-service/test/tsconfig.json --noEmit && tsc -p packages/backend-platform/test/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.vitest.json --noEmit && tsc -p apps/web/tsconfig.playwright.json --noEmit",
     "verify": "npm run format:check && npm run lint:ci && npm run type-check && npm run graphql:check && npm run test:unit:run && npm run test:integration:run",
