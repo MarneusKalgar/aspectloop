@@ -3,7 +3,7 @@ import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import type { SessionActionKind } from './session-marker';
 
 import { isExpectedSignInRejection } from '../session-error';
-import { AUTH_REQUEST_DEADLINE_MS } from './session-marker';
+import { AUTH_REQUEST_DEADLINE_MS, SESSION_ACTION_KIND } from './session-marker';
 
 export interface CookieActionFailure {
   completed: boolean;
@@ -15,7 +15,9 @@ export function classifyCookieActionFailure(
   error: unknown,
   kind: SessionActionKind,
 ): CookieActionFailure {
-  const expectedRejection = kind === 'sign-in' && isExpectedSignInRejection(error);
+  const expectedRejection =
+    kind === SESSION_ACTION_KIND.SIGN_IN && isExpectedSignInRejection(error);
+
   return { completed: expectedRejection || CombinedGraphQLErrors.is(error), expectedRejection };
 }
 

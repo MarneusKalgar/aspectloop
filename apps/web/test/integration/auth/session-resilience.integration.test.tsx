@@ -12,7 +12,7 @@ import { deferred } from '@app/test/session-environment';
 import { server } from '@app/test/setup';
 import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { graphql, HttpResponse } from 'msw';
+import { graphql, type GraphQLResponseBody, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 
 /** A cache retirement failure blocks rendering until explicit retirement/Me Retry succeeds. */
@@ -34,33 +34,108 @@ async function testCacheRetirementRetry(): Promise<void> {
   }
 }
 
-/** Expected login rejection survives provider retirement without exposing the rejected identity. */
-async function testExpectedRejection(): Promise<void> {
+/** A real provider logout receiving parsed failure enters reset-required, not cookie-less retry. */
+async function testDispatchedLogoutFailure(): Promise<void> {
+  const record = findMockUserByEmail(defaultMockReviewerCredentials.email)!;
+  const me = vi.fn(
+    /** Supplies current identity while counting forbidden post-failure bootstrap. */
+    () => HttpResponse.json<{ data: MeQuery }>({ data: { me: toMockPublicUser(record) } }),
+  );
+  const signOut = vi.fn(
+    /** Types the parsed upstream failure as an error-only SignOut response, not transport uncertainty. */
+    () =>
+      HttpResponse.json<NonNullable<GraphQLResponseBody<SignOutMutation>>>({
+        errors: [{ extensions: { code: 'AUTH_DEPENDENCY_UNAVAILABLE' }, message: 'Unavailable' }],
+      }),
+  );
+
+  server.use(graphql.query('Me', me), graphql.mutation('SignOut', signOut));
+
+  const view = renderAppAtRoute('/corrections');
   const user = userEvent.setup();
-  renderAppAtRoute('/signin');
+
+  await user.click(await screen.findByRole('button', { name: /CT|Correction Tester/ }));
+  await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+
+  expect(await screen.findByText(/An account action is unresolved/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Retry sign out' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+
+  const reads = me.mock.calls.length;
+
+  view.unmount();
+
+  renderAppAtRoute('/corrections');
+
+  expect(await screen.findByText(/An account action is unresolved/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Retry sign out' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+  expect(signOut).toHaveBeenCalledTimes(1);
+  expect(me).toHaveBeenCalledTimes(reads);
+}
+
+/** Expected rejection preserves feedback and corrected-login permission with or without prior logout. */
+async function testExpectedRejection(afterLogout: boolean): Promise<void> {
+  const user = userEvent.setup();
+
+  if (afterLogout) {
+    const record = findMockUserByEmail(defaultMockReviewerCredentials.email)!;
+
+    setMockSessionUser(record.id);
+
+    renderAppAtRoute('/corrections');
+
+    await user.click(await screen.findByRole('button', { name: /CT|Correction Tester/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+  } else {
+    renderAppAtRoute('/signin');
+  }
+
   await user.type(
     await screen.findByRole('textbox', { name: 'Email' }),
     defaultMockReviewerCredentials.email,
   );
   await user.type(screen.getByLabelText(/^password/i, { selector: 'input' }), 'wrong-password');
   await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
   expect(
     await screen.findByText('Could not sign you in. Check your email and password and try again.'),
   ).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Correction inbox' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+
+  // Pending account actions retire the old form; refill whichever current form is rendered.
+  const email = await screen.findByRole('textbox', { name: 'Email' });
+
+  await user.clear(email);
+  await user.type(email, defaultMockReviewerCredentials.email);
+  await user.clear(screen.getByLabelText(/^password/i, { selector: 'input' }));
+  await user.type(
+    screen.getByLabelText(/^password/i, { selector: 'input' }),
+    defaultMockReviewerCredentials.password,
+  );
+  await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'Correction inbox' }),
+  ).toBeInTheDocument();
 }
 
-/** Typed completed outcomes retain suppression until explicit revocation, not Me Retry. */
+/** Proven pre-dispatch intent permits the first explicit revocation request, not Me Retry. */
 async function testExplicitRevocationRecovery(): Promise<void> {
+  const id = crypto.randomUUID();
+
   window.localStorage.setItem(
     SESSION_MARKER_KEY,
     JSON.stringify({
       ...INITIAL_SESSION_MARKER,
-      epoch: crypto.randomUUID(),
+      action: { id, kind: 'sign-out', status: 'ready' },
+      epoch: id,
       logoutIntent: true,
       revocation: 'unconfirmed',
     }),
   );
+
   const me = vi.fn(
     /** A typed Me response counts any forbidden bootstrap during logout recovery. */
     () => HttpResponse.json<{ data: MeQuery }>({ data: { me: null } }),
@@ -69,11 +144,15 @@ async function testExplicitRevocationRecovery(): Promise<void> {
     /** Keeps the mock payload while typing its selected fields against the generated operation. */
     () => {
       const data = { signOut: { __typename: 'SignOutPayload', success: true } };
+
       return HttpResponse.json<{ data: SignOutMutation }>({ data });
     },
   );
+
   server.use(graphql.query('Me', me), graphql.mutation('SignOut', signOut));
+
   renderAppAtRoute('/corrections');
+
   await userEvent.setup().click(await screen.findByRole('button', { name: 'Retry sign out' }));
   expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
   expect(me).not.toHaveBeenCalled();
@@ -124,14 +203,15 @@ async function testLateBootstrap(): Promise<void> {
   expect(screen.queryByRole('heading', { name: 'Correction inbox' })).not.toBeInTheDocument();
 }
 
-/** Unknown durable writes suppress a typed Me handler after reload and offer no blind retry. */
-async function testSuppressedReload(): Promise<void> {
+/** Failed, unknown and legacy ambiguous logout records block all bootstrap and account requests. */
+async function testSuppressedReload(status: 'failed' | 'unknown' | null): Promise<void> {
   const id = crypto.randomUUID();
+
   window.localStorage.setItem(
     SESSION_MARKER_KEY,
     JSON.stringify({
       ...INITIAL_SESSION_MARKER,
-      action: { id, kind: 'sign-out', status: 'unknown' },
+      action: status ? { id, kind: 'sign-out', status } : null,
       epoch: id,
       logoutIntent: true,
       revocation: 'unconfirmed',
@@ -141,13 +221,21 @@ async function testSuppressedReload(): Promise<void> {
     /** Counts unexpected authentication with the generated GraphQL response shape. */
     () => HttpResponse.json<{ data: MeQuery }>({ data: { me: null } }),
   );
-  server.use(graphql.query('Me', me));
+  const signOut = vi.fn(
+    /** Even an otherwise successful cookie-less response must never be requested. */
+    () => HttpResponse.json<{ data: SignOutMutation }>({ data: { signOut: { success: true } } }),
+  );
+
+  server.use(graphql.query('Me', me), graphql.mutation('SignOut', signOut));
+
   renderAppAtRoute('/corrections');
+
   expect(await screen.findByText(/An account action is unresolved/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Retry sign out' })).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Correction inbox' })).not.toBeInTheDocument();
   expect(me).not.toHaveBeenCalled();
+  expect(signOut).not.toHaveBeenCalled();
 }
 
 /** Unsupported browsers can view valid sessions but never dispatch the typed sign-out handler. */
@@ -176,13 +264,23 @@ async function testUnsupportedLocalLogout(): Promise<void> {
 }
 
 describe('session resilience integration' /** Covers React/provider/transport behavior; shared HttpOnly-cookie ordering remains live acceptance. */, () => {
-  it('suppresses bootstrap after unresolved logout and reload', testSuppressedReload);
+  it.each(['unknown', 'failed', null] as const)(
+    'suppresses bootstrap and logout retry for persisted status %s',
+    testSuppressedReload,
+  );
   it(
-    'offers explicit revocation recovery only for completed outcomes',
+    'offers explicit revocation only for proven pre-dispatch intent',
     testExplicitRevocationRecovery,
+  );
+  it(
+    'requires reset after parsed dispatched logout failure and reload',
+    testDispatchedLogoutFailure,
   );
   it('keeps no-Locks logout local and durable', testUnsupportedLocalLogout);
   it('drops a delayed bootstrap after durable peer logout', testLateBootstrap);
-  it('preserves expected login rejection feedback', testExpectedRejection);
+  it.each([false, true])(
+    'preserves rejection feedback and login retry (prior confirmed logout: %s)',
+    testExpectedRejection,
+  );
   it('keeps content blocked when cache retirement fails', testCacheRetirementRetry);
 });

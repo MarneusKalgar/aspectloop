@@ -17,6 +17,7 @@ import {
   unchangedRequests,
 } from './support/browser-assertions';
 import { test } from './support/live-fixtures';
+import { originalSessionState } from './support/original-session-probe';
 
 test('E1-LIVE-01' /** Proves real-cookie bootstrap and independent current identity validation in two pages. */, async ({
   context,
@@ -62,12 +63,17 @@ test('E1-LIVE-02' /** Proves exactly one logout and independent A-to-B identity 
   await peer.goto('/signin');
   await signIn(page, a);
   await identityVisible(peer, a);
+
+  const original = await cookieValue(context);
+
   await signOut(page);
   await confirmedLogout(page);
   await confirmedLogout(peer);
 
   expect(live.gate.count('SignOut') - before).toBe(1);
   expect((await cookieValue(context)) === null).toBe(true);
+
+  expect((await originalSessionState(original, a.id)) === 'invalid').toBe(true);
 
   await signIn(peer, b);
   await identityVisible(page, b);

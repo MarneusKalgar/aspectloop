@@ -180,7 +180,7 @@ export function observeMe(page: Page): { ids: string[] } {
   return state;
 }
 
-/** Proves unknown/orphaned actions cannot be recovered by an automatic request or new login. */
+/** Proves failed, unknown, orphaned or ambiguous actions offer neither replay nor new login. */
 export async function resetRequired(page: Page): Promise<void> {
   await expect(page.getByText(/An account action is unresolved/)).toBeVisible();
   await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toHaveCount(0);

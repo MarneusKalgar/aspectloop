@@ -2,11 +2,16 @@ import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createSharedSessionEnvironment, deferred } from '../../test/session-environment';
-import { SessionCoordinator, SessionOperationCancelledError } from './session-coordinator';
+import {
+  SessionCoordinator,
+  SessionOperationCancelledError,
+  SessionSignInRejectedError,
+} from './session-coordinator';
 import {
   AUTH_REQUEST_DEADLINE_MS,
   INITIAL_SESSION_MARKER,
   parseSessionMarker,
+  SESSION_COOKIE_LOCK,
 } from './session-marker';
 
 /** Cache failure keeps its Error identity without preventing revocation or reopening old data. */
@@ -23,30 +28,42 @@ async function testCacheFailure(): Promise<void> {
   expect(coordinator.canRead()).toBe(false);
 }
 
-/** A parsed completed outage permits explicit revocation recovery, then an explicit new login only. */
-async function testCompletedRecovery(): Promise<void> {
+/** A dispatched completed logout failure stays blocked even when a cookie-less retry would succeed. */
+async function testCompletedFailure(): Promise<void> {
   const shared = createSharedSessionEnvironment();
   const coordinator = new SessionCoordinator(shared.environment());
   const completed = new CombinedGraphQLErrors({
     errors: [{ extensions: { code: 'AUTH_DEPENDENCY_UNAVAILABLE' }, message: 'Unavailable' }],
   });
+
   await expect(
     coordinator.signOut(vi.fn().mockRejectedValue(completed), vi.fn().mockResolvedValue(undefined)),
   ).rejects.toBe(completed);
+
   expect(parseSessionMarker(shared.raw)).toMatchObject({
-    action: null,
+    action: { kind: 'sign-out', status: 'failed' },
     logoutIntent: true,
     revocation: 'unconfirmed',
   });
+
   const reopened = new SessionCoordinator(shared.environment());
+  const retry = vi.fn().mockResolvedValue(undefined);
+  const login = vi.fn().mockResolvedValue(undefined);
+  const cleanup = vi.fn().mockResolvedValue(undefined);
+  const blocked = shared.raw;
+
   expect(reopened.canRead()).toBe(false);
-  await reopened.signOut(
-    vi.fn().mockResolvedValue(undefined),
-    vi.fn().mockResolvedValue(undefined),
-  );
+  expect(reopened.canRegister()).toBe(false);
+
+  await reopened.inspectPending();
+  await expect(reopened.signOut(retry, cleanup)).rejects.toThrow(/unresolved/);
+  await expect(reopened.signIn(login)).rejects.toThrow(/confirmed/);
+
+  expect(retry).not.toHaveBeenCalled();
+  expect(login).not.toHaveBeenCalled();
+  expect(cleanup).toHaveBeenCalledTimes(1);
+  expect(shared.raw).toBe(blocked);
   expect(reopened.canRead()).toBe(false);
-  await reopened.signIn(vi.fn().mockResolvedValue(undefined));
-  expect(reopened.canRead()).toBe(true);
 }
 
 /** Non-Error failures retain causes, including falsy values, without bypassing logout safety. */
@@ -135,7 +152,7 @@ async function testEventLifecycle(): Promise<void> {
   expect(shared.listeners.size).toBe(0);
 }
 
-/** Rereading a valid marker after failed logout persistence never reopens this tab or permits dispatch. */
+/** Failed persistence keeps local suppression; restoring writes permits the first, not a replayed, logout. */
 async function testFailedLogoutWriteRecovery(): Promise<void> {
   const shared = createSharedSessionEnvironment();
   const coordinator = new SessionCoordinator(shared.environment());
@@ -171,6 +188,14 @@ async function testFailedLogoutWriteRecovery(): Promise<void> {
   expect(request).not.toHaveBeenCalled();
   expect(shared.raw).toBe(original);
   expect(coordinator.getSnapshot().localLogout).toBe(true);
+
+  shared.writeFails = false;
+
+  await coordinator.signOut(request, cleanup);
+
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(parseSessionMarker(shared.raw).revocation).toBe('confirmed');
+  expect(coordinator.canRead()).toBe(false);
 }
 
 /** Even a transport ignoring abort cannot clear uncertainty after the request deadline. */
@@ -201,6 +226,32 @@ async function testIgnoredAbort(): Promise<void> {
   } finally {
     vi.useRealTimers();
   }
+}
+
+/** Legacy action-null intent cannot be rewritten into permission to retry a credential-losing logout. */
+async function testLegacyLogoutFailure(): Promise<void> {
+  const shared = createSharedSessionEnvironment();
+
+  shared.raw = JSON.stringify({
+    ...INITIAL_SESSION_MARKER,
+    epoch: crypto.randomUUID(),
+    logoutIntent: true,
+    revocation: 'unconfirmed',
+  });
+
+  const blocked = shared.raw;
+  const coordinator = new SessionCoordinator(shared.environment());
+  const request = vi.fn().mockResolvedValue(undefined);
+  const cleanup = vi.fn().mockResolvedValue(undefined);
+
+  await expect(coordinator.signOut(request, cleanup)).rejects.toThrow(/unresolved/);
+  await expect(coordinator.signIn(request)).rejects.toThrow(/confirmed/);
+
+  expect(shared.raw).toBe(blocked);
+  expect(request).not.toHaveBeenCalled();
+  expect(cleanup).toHaveBeenCalledTimes(1);
+  expect(coordinator.canRead()).toBe(false);
+  expect(coordinator.canRegister()).toBe(false);
 }
 
 /** Logout publishes intent during a delayed login and orders explicit revocation after its response. */
@@ -281,6 +332,45 @@ async function testOrphan(): Promise<void> {
   expect(shared.raw).toBe(unknown);
 }
 
+/** A failed cookie-lock acquisition leaves provable pre-dispatch intent retryable after reload. */
+async function testPreDispatchRecovery(): Promise<void> {
+  const shared = createSharedSessionEnvironment();
+  const environment = shared.environment();
+  const coordinator = new SessionCoordinator({
+    ...environment,
+    /** Fails only account-action acquisition; marker persistence remains real in the test adapter. */
+    withLock(name, work) {
+      if (name === SESSION_COOKIE_LOCK) {
+        return Promise.reject(new Error('Cookie lock acquisition failed'));
+      }
+
+      return environment.withLock!(name, work);
+    },
+  });
+  const request = vi.fn().mockResolvedValue(undefined);
+  const cleanup = vi.fn().mockResolvedValue(undefined);
+
+  await expect(coordinator.signOut(request, cleanup)).rejects.toThrow(/acquisition/);
+
+  expect(request).not.toHaveBeenCalled();
+  expect(parseSessionMarker(shared.raw)).toMatchObject({
+    action: { kind: 'sign-out', status: 'ready' },
+    logoutIntent: true,
+    revocation: 'unconfirmed',
+  });
+
+  const reopened = new SessionCoordinator(shared.environment());
+
+  await reopened.signOut(request, cleanup);
+
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(parseSessionMarker(shared.raw).revocation).toBe('confirmed');
+
+  await reopened.signIn(vi.fn().mockResolvedValue(undefined));
+
+  expect(reopened.canRead()).toBe(true);
+}
+
 /** A queued second login must not overwrite the identity established by the first tab. */
 async function testQueuedLogin(): Promise<void> {
   const shared = createSharedSessionEnvironment();
@@ -304,6 +394,36 @@ async function testQueuedLogin(): Promise<void> {
   await rejection;
   expect(secondRequest).not.toHaveBeenCalled();
   expect(parseSessionMarker(shared.raw).logoutIntent).toBe(false);
+}
+
+/** Wrong credentials after a confirmed logout retain normal retry permission through reload. */
+async function testRejectedLoginAfterLogout(): Promise<void> {
+  const shared = createSharedSessionEnvironment();
+  const coordinator = new SessionCoordinator(shared.environment());
+  const signOut = vi.fn().mockResolvedValue(undefined);
+  const rejected = new CombinedGraphQLErrors({
+    errors: [{ extensions: { code: 'AUTH_INVALID_CREDENTIALS' }, message: 'Rejected' }],
+  });
+
+  await coordinator.signOut(signOut, vi.fn().mockResolvedValue(undefined));
+  await expect(coordinator.signIn(vi.fn().mockRejectedValue(rejected))).rejects.toBeInstanceOf(
+    SessionSignInRejectedError,
+  );
+
+  expect(parseSessionMarker(shared.raw)).toMatchObject({
+    action: null,
+    logoutIntent: true,
+    revocation: 'confirmed',
+  });
+
+  const reopened = new SessionCoordinator(shared.environment());
+
+  expect(reopened.canRegister()).toBe(true);
+
+  await reopened.signIn(vi.fn().mockResolvedValue(undefined));
+
+  expect(reopened.canRead()).toBe(true);
+  expect(signOut).toHaveBeenCalledTimes(1);
 }
 
 /** Storage denial prevents dispatch; local logout still hides access and attempts cleanup. */
@@ -364,7 +484,13 @@ describe('browser session coordination' /** Covers cross-tab ordering, bounded u
   it('preserves unknown outcomes through reload', testUnknownOutcome);
   it('does not accept late completion after timeout', testIgnoredAbort);
   it('marks orphaned actions unknown without repeated writes', testOrphan);
-  it('recovers completed revocation failures only by explicit action', testCompletedRecovery);
+  it('requires reset after a completed dispatched logout failure', testCompletedFailure);
+  it('blocks retry of legacy ambiguous logout intent', testLegacyLogoutFailure);
+  it('permits retry after failure before cookie dispatch', testPreDispatchRecovery);
+  it(
+    'permits login retry after confirmed logout and expected rejection',
+    testRejectedLoginAfterLogout,
+  );
   it('does not mutate cookies without native Locks', testUnsupportedLocks);
   it('blocks account dispatch when storage fails', testStorageFailure);
   it(

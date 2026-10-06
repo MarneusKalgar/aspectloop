@@ -4,7 +4,13 @@ import {
   type CookieActionFailure,
   requestCookieAction,
 } from './cookie-action-request';
-import { SESSION_COOKIE_LOCK, type SessionMarker } from './session-marker';
+import {
+  SESSION_ACTION_KIND,
+  SESSION_ACTION_STATUS,
+  SESSION_COOKIE_LOCK,
+  SESSION_REVOCATION,
+  type SessionMarker,
+} from './session-marker';
 import { SessionMarkerStore } from './session-marker-store';
 import {
   acknowledgeSignIn,
@@ -67,7 +73,7 @@ export class SessionCoordinator {
       !!marker &&
       !localLogout &&
       !marker.action &&
-      (!marker.logoutIntent || marker.revocation === 'confirmed')
+      (!marker.logoutIntent || marker.revocation === SESSION_REVOCATION.CONFIRMED)
     );
   }
 
@@ -85,7 +91,10 @@ export class SessionCoordinator {
   async inspectPending(): Promise<void> {
     this.refresh();
 
-    if (this.snapshot.marker?.action?.status !== 'pending' || !this.environment.withLock) {
+    if (
+      this.snapshot.marker?.action?.status !== SESSION_ACTION_STATUS.PENDING ||
+      !this.environment.withLock
+    ) {
       return;
     }
 
@@ -147,7 +156,7 @@ export class SessionCoordinator {
         try {
           value = await requestCookieAction(execute);
         } catch (error) {
-          const failure = classifyCookieActionFailure(error, 'sign-in');
+          const failure = classifyCookieActionFailure(error, SESSION_ACTION_KIND.SIGN_IN);
           this.refresh();
 
           const superseded = this.snapshot.marker?.epoch !== id;
@@ -234,7 +243,11 @@ export class SessionCoordinator {
           try {
             await requestCookieAction(execute);
           } catch (error) {
-            await this.finishFailure(id, classifyCookieActionFailure(error, 'sign-out'));
+            await this.finishFailure(
+              id,
+              classifyCookieActionFailure(error, SESSION_ACTION_KIND.SIGN_OUT),
+            );
+
             throw error;
           }
 

@@ -9,10 +9,129 @@ import {
   liveRunnerEnvironment,
   toolArguments,
 } from '../../apps/web/test/e2e-live/support/local-tool.mjs';
+import { originalSessionState } from '../../apps/web/test/e2e-live/support/original-session-probe.ts';
 import { ResponseGate } from '../../apps/web/test/e2e-live/support/response-gate.ts';
 import SafeReporter from '../../apps/web/test/e2e-live/support/safe-reporter.ts';
 
 const id = 'd41be59c-d8eb-4e8c-a5e1-99aab7197f04';
+
+test('original-session probe uses fixed Me without a browser jar or cookie mutation' /**
+ * Checks transient synthetic credentials and the fixed gate boundary without any network request.
+ * @param {import('node:test').TestContext} context Scoped fetch mock ownership.
+ * @returns {Promise<void>}
+ */, async (context) => {
+  let calls = 0;
+
+  context.mock.method(
+    globalThis,
+    'fetch',
+    /**
+     * Returns only synthetic selected identity after checking the closed request shape.
+     * @param {string} url Fixed gate URL.
+     * @param {RequestInit} options In-memory request options.
+     * @returns {Promise<Response>} Synthetic current-session response.
+     */
+    (url, options) => {
+      calls += 1;
+      assert.equal(url, LIVE_TOPOLOGY.gate.graphqlUrl);
+      assert.equal(options.method, 'POST');
+      assert.equal(options.redirect, 'error');
+      assert.equal(options.headers.origin, LIVE_TOPOLOGY.web.origin);
+      assert.equal(options.headers.cookie === 'aspectloop_session=synthetic-credential', true);
+      assert.equal(options.signal instanceof AbortSignal, true);
+      assert.deepEqual(JSON.parse(options.body), {
+        operationName: 'Me',
+        query: 'query Me { me { id } }',
+      });
+
+      return Promise.resolve(Response.json({ data: { me: { id } } }));
+    },
+  );
+
+  assert.equal(await originalSessionState('synthetic-credential', id), 'active');
+  assert.equal(calls, 1);
+});
+
+test('original-session probe distinguishes invalid session from outage and malformed results' /**
+ * A failed transport or auth dependency must never become evidence of successful revocation.
+ * @param {import('node:test').TestContext} context Scoped fetch mock ownership.
+ * @returns {Promise<void>}
+ */, async (context) => {
+  let response = Response.json({
+    data: null,
+    errors: [{ extensions: { code: 'AUTH_SESSION_INVALID' } }],
+  });
+
+  context.mock.method(
+    globalThis,
+    'fetch',
+    /**
+     * Returns one test-owned response without forwarding any credential.
+     * @returns {Promise<Response>} Current synthetic response.
+     */
+    () => Promise.resolve(response),
+  );
+
+  assert.equal(await originalSessionState('synthetic-credential', id), 'invalid');
+
+  for (const rejected of [
+    Response.json({
+      data: null,
+      errors: [{ extensions: { code: 'AUTH_DEPENDENCY_UNAVAILABLE' } }],
+    }),
+    Response.json({ data: { me: { id: 'unexpected-identity' } } }),
+    Response.json({ data: { me: { id } } }, { headers: { 'set-cookie': 'synthetic-tombstone' } }),
+    new Response('synthetic-private-parse-failure'),
+    new Response('x'.repeat(4097)),
+    new Response('', { status: 503 }),
+  ]) {
+    response = rejected;
+
+    await assert.rejects(
+      originalSessionState('synthetic-credential', id),
+      /**
+       * Checks only safe fixed failure fields, never body, header or native error bytes.
+       * @param {Error} error Sanitized probe error.
+       * @returns {boolean} Whether raw causes and private diagnostics were discarded.
+       */
+      (error) =>
+        error.message === 'E1 original-session probe failed; details omitted.' &&
+        error.cause === undefined,
+    );
+  }
+});
+
+test('original-session probe strips transport diagnostics and never sends a missing credential' /**
+ * Prevents secret-bearing native failures from crossing the reporting boundary.
+ * @param {import('node:test').TestContext} context Scoped fetch mock ownership.
+ * @returns {Promise<void>}
+ */, async (context) => {
+  const fetchMock = context.mock.method(
+    globalThis,
+    'fetch',
+    /**
+     * Rejects with synthetic private diagnostics that must not become a retained cause.
+     * @returns {Promise<never>} Controlled transport rejection.
+     */
+    () => Promise.reject(new Error('synthetic-private-transport')),
+  );
+
+  await assert.rejects(originalSessionState(null, id), /credential missing; details omitted/);
+
+  assert.equal(fetchMock.mock.callCount(), 0);
+
+  await assert.rejects(
+    originalSessionState('synthetic-credential', id),
+    /**
+     * Checks only the fixed public error, not the discarded transport error.
+     * @param {Error} error Sanitized failure.
+     * @returns {boolean} Whether the private cause was removed.
+     */
+    (error) =>
+      error.message === 'E1 original-session probe failed; details omitted.' &&
+      error.cause === undefined,
+  );
+});
 
 test('closed command surface rejects arbitrary actions/IDs and permits exact fixture jobs' /**
  * Checks the closed tool policy without spawning Docker.

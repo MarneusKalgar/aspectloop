@@ -20,6 +20,10 @@ const confirmed: SessionMarker = {
   revocation: 'confirmed',
 };
 const unconfirmed: SessionMarker = { ...confirmed, revocation: 'unconfirmed' };
+const ready: SessionMarker = {
+  ...unconfirmed,
+  action: { id: actionId, kind: 'sign-out', status: 'ready' },
+};
 const pending: SessionMarker = {
   ...INITIAL_SESSION_MARKER,
   action: { id: actionId, kind: 'sign-in', status: 'pending' },
@@ -92,9 +96,24 @@ const cases: ViewCase[] = [
   },
   {
     actions: false,
-    name: 'completed unconfirmed revocation',
+    name: 'pre-dispatch intent permits explicit logout',
     notice: { messageKey: 'auth.session.logoutUnconfirmed', recovery: 'retry-sign-out' },
+    snapshot: { marker: ready },
+    status: 'unavailable',
+  },
+  {
+    actions: false,
+    name: 'legacy ambiguous unconfirmed intent requires reset',
+    notice: { messageKey: 'auth.session.resetRequired', recovery: 'none' },
     snapshot: { marker: unconfirmed },
+    status: 'unavailable',
+  },
+  {
+    actions: false,
+    name: 'completed failed logout requires reset even during cache failure',
+    notice: { messageKey: 'auth.session.resetRequired', recovery: 'none' },
+    resolution: cacheFailed,
+    snapshot: { marker: { ...ready, action: { ...ready.action!, status: 'failed' } } },
     status: 'unavailable',
   },
   {
@@ -126,7 +145,7 @@ const cases: ViewCase[] = [
     name: 'cache failure retries retirement, not revocation',
     notice: { messageKey: 'auth.session.logoutUnconfirmed', recovery: 'retry-bootstrap' },
     resolution: cacheFailed,
-    snapshot: { marker: unconfirmed },
+    snapshot: { marker: ready },
     status: 'unavailable',
   },
   { actions: true, name: 'invalid session', snapshot: { failure: 'invalid' }, status: 'anonymous' },
@@ -148,7 +167,7 @@ const cases: ViewCase[] = [
     actions: false,
     name: 'unsupported logout cannot retry cookie mutation',
     notice: { messageKey: 'auth.session.logoutUnconfirmed', recovery: 'none' },
-    snapshot: { marker: unconfirmed },
+    snapshot: { marker: ready },
     status: 'unavailable',
     supported: false,
     unsupported: true,

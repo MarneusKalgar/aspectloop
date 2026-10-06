@@ -36,7 +36,7 @@ export function useSessionActions(
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [rejection, setRejection] = useState<null | SignInRejection>(null);
 
-  /** Starts only a still-current anonymous login; subsequent Me publishes its identity. */
+  /** Starts current anonymous login and retains expected feedback only while account retry is allowed. */
   async function signIn(input: SignInInput): Promise<void> {
     if (
       actionInProgress.current ||
@@ -74,18 +74,19 @@ export function useSessionActions(
       }
     } catch (error) {
       const current = coordinator.getSnapshot().marker;
+
       if (
         error instanceof SessionSignInRejectedError &&
         isExpectedSignInRejection(error) &&
         current?.epoch === error.epoch &&
-        !current.logoutIntent &&
-        !current.action
+        coordinator.canRegister()
       ) {
         setRejection({
           epoch: current.epoch,
           message: t(getSignInRejectionMessageKey(getSessionErrorCode(error))),
         });
       }
+
       throw error;
     } finally {
       actionInProgress.current = false;

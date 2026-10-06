@@ -120,7 +120,7 @@ function createFencedObservable(
             cancel();
           }
         },
-        /** Sanitizes obsolete errors before classification or consumer delivery. */
+        /** Fences obsolete errors; only uncoded bootstrap errors retire an otherwise current session. */
         error(error: unknown) {
           if (!current()) {
             cancel();
@@ -128,7 +128,8 @@ function createFencedObservable(
           }
 
           classifySessionFailure(coordinator, revision, error);
-          if (current() && kind !== 'registration' && !getSessionErrorCode(error)) {
+
+          if (current() && kind === 'bootstrap' && !getSessionErrorCode(error)) {
             coordinator.fail('unavailable', revision);
           }
 

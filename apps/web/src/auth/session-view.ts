@@ -1,6 +1,11 @@
 import type { CoordinationSnapshot } from './session-coordination/session-coordinator';
 import type { SessionState } from './session.types';
 
+import {
+  requiresSessionReset,
+  SESSION_ACTION_STATUS,
+  SESSION_REVOCATION,
+} from './session-coordination/session-marker';
 import { BROWSER_SESSION_ERROR_CODE } from './session-error';
 import { BROWSER_AUTH_STATUS } from './session.types';
 
@@ -88,12 +93,16 @@ function inspectConditions(
   resolution: SessionResolution,
 ): SessionConditions {
   const { marker, revision } = snapshot;
+
   return {
     cacheFault: resolution.revision === revision && resolution.kind === 'cache-failed',
-    confirmedLogout: !!marker?.logoutIntent && marker.revocation === 'confirmed' && !marker.action,
-    pending: marker?.action?.status === 'pending',
+    confirmedLogout:
+      !!marker?.logoutIntent &&
+      marker.revocation === SESSION_REVOCATION.CONFIRMED &&
+      !marker.action,
+    pending: marker?.action?.status === SESSION_ACTION_STATUS.PENDING,
     suppressed: snapshot.localLogout || !!marker?.logoutIntent,
-    unresolved: !marker || marker.action?.status === 'unknown',
+    unresolved: requiresSessionReset(marker),
   };
 }
 

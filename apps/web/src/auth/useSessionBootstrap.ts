@@ -9,7 +9,10 @@ import type {
 } from './session-coordination/session-coordinator';
 
 import { useMeQuery } from '../graphql/hooks/auth';
-import { AUTH_REQUEST_DEADLINE_MS } from './session-coordination/session-marker';
+import {
+  AUTH_REQUEST_DEADLINE_MS,
+  SESSION_ACTION_STATUS,
+} from './session-coordination/session-marker';
 import { isInvalidSessionError } from './session-error';
 import { ANONYMOUS_SESSION, type SessionResolution } from './session-view';
 import { BROWSER_AUTH_STATUS } from './session.types';
@@ -36,7 +39,7 @@ export function useSessionBootstrap(
     revision: -1,
   });
   const { failure, revision } = snapshot;
-  const pending = snapshot.marker?.action?.status === 'pending';
+  const pending = snapshot.marker?.action?.status === SESSION_ACTION_STATUS.PENDING;
 
   useEffect(
     /** Starts work only after surviving StrictMode's initial effect cleanup. */

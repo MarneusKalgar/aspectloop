@@ -1,4 +1,5 @@
 import { ApolloClient, ApolloLink, gql, InMemoryCache, Observable } from '@apollo/client/core';
+import { CombinedGraphQLErrors } from '@apollo/client/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -21,6 +22,42 @@ interface TransportObserver {
   complete: () => void;
   error: (error: unknown) => void;
   next: (result: ApolloLink.Result) => void;
+}
+
+/** An uncoded bootstrap failure still retires access until explicit session recovery. */
+async function testBootstrapTransportFailure(): Promise<void> {
+  const shared = createSharedSessionEnvironment();
+  const coordinator = new SessionCoordinator(shared.environment());
+  const harness = transportHarness(coordinator);
+  const result = harness.client.query({
+    fetchPolicy: 'network-only',
+    query: gql`
+      query Me {
+        me {
+          id
+        }
+      }
+    `,
+  });
+  const cancelled = expect(result).rejects.toBeInstanceOf(SessionOperationCancelledError);
+
+  await vi.waitFor(
+    /** Confirms bootstrap dispatch before simulating the unavailable transport. */
+    () => expect(harness.observers).toHaveLength(1),
+  );
+
+  const revision = coordinator.getSnapshot().revision;
+
+  harness.observers[0].error(new TypeError('Controlled bootstrap transport failure'));
+
+  await cancelled;
+
+  expect(coordinator.getSnapshot().failure).toBe('unavailable');
+  expect(coordinator.getSnapshot().revision).toBeGreaterThan(revision);
+  expect(harness.signals[0].aborted).toBe(true);
+  expect(shared.raw).toBeNull();
+
+  harness.client.stop();
 }
 
 /** Cookie action results stay uncached and locked even while logout retires ordinary Apollo work. */
@@ -96,29 +133,42 @@ async function testCookieActionBarrier(): Promise<void> {
   harness.client.stop();
 }
 
-/** Stable current session failures invalidate identity before their payload reaches cache. */
+/** Stable current session failures invalidate identity through both result and error delivery. */
 async function testCurrentSessionFailures(): Promise<void> {
   for (const [code, failure] of [
     ['AUTH_SESSION_INVALID', 'invalid'],
     ['AUTH_DEPENDENCY_UNAVAILABLE', 'unavailable'],
   ] as const) {
-    const shared = createSharedSessionEnvironment();
-    const coordinator = new SessionCoordinator(shared.environment());
-    const harness = transportHarness(coordinator);
-    const result = harness.client.query({ fetchPolicy: 'network-only', query: accountQuery });
-    const cancelled = expect(result).rejects.toBeInstanceOf(SessionOperationCancelledError);
-    await vi.waitFor(
-      /** Observes current transport before supplying the controlled session error. */
-      () => expect(harness.observers).toHaveLength(1),
-    );
-    harness.observers[0].next?.({
-      data: null,
-      errors: [{ extensions: { code }, message: 'Safe session failure' }],
-    });
-    await cancelled;
-    expect(coordinator.getSnapshot().failure).toBe(failure);
-    expect(shared.raw).toBeNull();
-    harness.client.stop();
+    for (const delivery of ['result', 'error'] as const) {
+      const shared = createSharedSessionEnvironment();
+      const coordinator = new SessionCoordinator(shared.environment());
+      const harness = transportHarness(coordinator);
+      const result = harness.client.query({ fetchPolicy: 'network-only', query: accountQuery });
+      const cancelled = expect(result).rejects.toBeInstanceOf(SessionOperationCancelledError);
+
+      await vi.waitFor(
+        /** Observes current transport before supplying the controlled session error. */
+        () => expect(harness.observers).toHaveLength(1),
+      );
+
+      const response = {
+        data: null,
+        errors: [{ extensions: { code }, message: 'Safe session failure' }],
+      };
+
+      if (delivery === 'result') {
+        harness.observers[0].next(response);
+      } else {
+        harness.observers[0].error(new CombinedGraphQLErrors(response));
+      }
+
+      await cancelled;
+
+      expect(coordinator.getSnapshot().failure).toBe(failure);
+      expect(shared.raw).toBeNull();
+
+      harness.client.stop();
+    }
   }
 }
 
@@ -192,6 +242,76 @@ async function testNoCrossEpochDeduplication(): Promise<void> {
   harness.client.stop();
 }
 
+/** Uncoded product errors stay local without retiring cache, sibling work or session state. */
+async function testProductTransportFailure(): Promise<void> {
+  for (const kind of ['query', 'mutation'] as const) {
+    const shared = createSharedSessionEnvironment();
+    const coordinator = new SessionCoordinator(shared.environment());
+    const harness = transportHarness(coordinator);
+
+    harness.client.writeQuery({
+      data: { account: { __typename: 'Account', id: 'retained', label: 'Existing account' } },
+      query: accountQuery,
+    });
+
+    const result =
+      kind === 'query'
+        ? harness.client.query({ fetchPolicy: 'network-only', query: accountQuery })
+        : harness.client.mutate({
+            mutation: gql`
+              mutation ProductEdit {
+                edit {
+                  id
+                  label
+                }
+              }
+            `,
+          });
+    const error = new TypeError('Controlled product transport failure');
+    const rejected = expect(result).rejects.toBe(error);
+
+    await vi.waitFor(
+      /** Dispatches the failing operation first so transport handles are deterministic. */
+      () => expect(harness.observers).toHaveLength(1),
+    );
+
+    const sibling = harness.client.query({ fetchPolicy: 'network-only', query: accountQuery });
+
+    await vi.waitFor(
+      /** Keeps a second ordinary operation in flight to detect global cancellation. */
+      () => expect(harness.observers).toHaveLength(2),
+    );
+
+    const snapshot = coordinator.getSnapshot();
+    const cache = harness.client.cache.extract();
+    const marker = shared.raw;
+
+    harness.observers[0].error(error);
+
+    await rejected;
+
+    expect(coordinator.getSnapshot()).toBe(snapshot);
+    expect(coordinator.getSnapshot().failure).toBeNull();
+    expect(coordinator.canRead()).toBe(true);
+    expect(shared.raw).toBe(marker);
+    expect(harness.client.cache.extract()).toEqual(cache);
+    expect(harness.signals[1].aborted).toBe(false);
+    expect(harness.unsubscribed).toHaveBeenCalledTimes(1);
+    expect(harness.observers).toHaveLength(2);
+
+    harness.observers[1].next({
+      data: { account: { __typename: 'Account', id: 'current', label: 'Current account' } },
+    });
+
+    harness.observers[1].complete();
+
+    expect((await sibling).data).toMatchObject({ account: { id: 'current' } });
+    expect(harness.observers).toHaveLength(2);
+
+    harness.client.stop();
+  }
+}
+
 /** Neither late data nor late errors can reach the old query promise or normalized cache. */
 async function testRetiredQuery(): Promise<void> {
   const shared = createSharedSessionEnvironment();
@@ -251,5 +371,10 @@ describe('Apollo session fence' /** Exercises pre-cache cancellation and deliver
   it('fences mutation completion even without a notification', testMissedNotificationMutation);
   it('does not deduplicate queries across auth epochs', testNoCrossEpochDeduplication);
   it('invalidates current session failures without cookie writes', testCurrentSessionFailures);
+  it(
+    'keeps uncoded product errors local without cancelling sibling work',
+    testProductTransportFailure,
+  );
+  it('blocks access on an uncoded bootstrap transport failure', testBootstrapTransportFailure);
   it('retains cookie ordering through Apollo cache retirement', testCookieActionBarrier);
 });

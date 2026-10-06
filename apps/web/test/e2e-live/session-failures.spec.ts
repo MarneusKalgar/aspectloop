@@ -16,6 +16,7 @@ import {
 } from './support/browser-assertions';
 import { test } from './support/live-fixtures';
 import { LIVE_TOPOLOGY } from './support/live-topology';
+import { originalSessionState } from './support/original-session-probe';
 
 /** Aborts only a selected browser-to-Gateway operation; no payload or Set-Cookie is fabricated. */
 async function abortSignOut(route: Route): Promise<void> {
@@ -94,12 +95,12 @@ test('E1-LIVE-06-READ' /** Ordinary browser read failure supports explicit Retry
   expect((await cookieValue(context)) === original).toBe(true);
 });
 
-test('E1-LIVE-07' /** Actual Platform stop proves ordinary cookie preservation and completed failed logout recovery. */, async ({
+test('E1-LIVE-07' /** Actual Platform stop proves local reset-required suppression, not original-session revocation. */, async ({
   context,
   live,
   page,
 }) => {
-  const [a, b] = live.accounts;
+  const [a] = live.accounts;
   const peer = await context.newPage();
 
   await page.goto('/signin');
@@ -133,26 +134,35 @@ test('E1-LIVE-07' /** Actual Platform stop proves ordinary cookie preservation a
   await live.stopPlatform();
   const signOuts = live.gate.count('SignOut');
   await signOut(page);
-  await expect(page.getByRole('button', { exact: true, name: 'Retry sign out' })).toBeVisible();
-  await expect(peer.getByRole('button', { exact: true, name: 'Retry sign out' })).toBeVisible();
+  await resetRequired(page);
+  await resetRequired(peer);
 
   expect(live.gate.count('SignOut') - signOuts).toBe(1);
   expect((await cookieValue(context)) === null).toBe(true);
   expect(
-    (await marker(peer)).action === null && (await marker(peer)).revocation === 'unconfirmed',
+    (await marker(peer)).action?.status === 'failed' &&
+      (await marker(peer)).revocation === 'unconfirmed',
   ).toBe(true);
 
   await live.restorePlatform();
+
   const count = live.gate.observations.length;
+
+  await Promise.all([page.reload(), peer.reload()]);
+  await resetRequired(page);
+  await resetRequired(peer);
   await unchangedRequests(live.gate, count);
-  await page.getByRole('button', { exact: true, name: 'Retry sign out' }).click();
-  await confirmedLogout(page);
-  await confirmedLogout(peer);
 
-  expect(live.gate.count('SignOut') - signOuts).toBe(2);
+  // This private Node probe has no browser-shared jar and intentionally adds exactly one Me.
+  expect((await originalSessionState(original, a.id)) === 'active').toBe(true);
 
-  await signIn(peer, b);
-  await identityVisible(page, b);
+  expect(live.gate.observations.length - count).toBe(1);
+  expect(live.gate.count('SignOut') - signOuts).toBe(1);
+  expect((await cookieValue(context)) === null).toBe(true);
+
+  await resetRequired(page);
+  await resetRequired(peer);
+  await unchangedRequests(live.gate, count + 1);
 });
 
 test('E1-LIVE-08-LOCK' /** Holds a native cookie lock until the unchanged ten-second acquisition bound rejects login. */, async ({
