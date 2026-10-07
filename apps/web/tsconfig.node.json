@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["codegen.ts", "vite.config.ts"]
+  "include": ["codegen.ts", "vite.config.ts", "playwright.config.ts", "playwright.live.config.ts"]
 }

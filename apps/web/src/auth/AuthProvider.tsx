@@ -1,248 +1,70 @@
-import type { SignInInput, SignUpInput } from '@app/graphql/generated/graphql';
+import { createContext, type PropsWithChildren, useContext, useSyncExternalStore } from 'react';
 
-import { useApolloClient } from '@apollo/client/react';
-import { Alert, Box, Button, CircularProgress } from '@mui/material';
-import {
-  createContext,
-  type PropsWithChildren,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
+import type { AuthContextValue } from './session.types';
 
-import {
-  useMeQuery,
-  useSignInMutation,
-  useSignOutMutation,
-  useSignUpMutation,
-} from '../graphql/hooks/auth';
-import { isExpectedSignInRejection, isInvalidSessionError } from './session-error';
-import { type AuthContextValue, BROWSER_AUTH_STATUS, type SessionState } from './session.types';
+import { useSessionCoordinator } from './session-coordination/SessionCoordinatorProvider';
+import { selectSessionView } from './session-view';
+import { SessionBoundary } from './SessionBoundary';
+import { useSessionActions } from './useSessionActions';
+import { useSessionBootstrap } from './useSessionBootstrap';
 
 export type { AuthContextValue } from './session.types';
-
 const AuthContext = createContext<AuthContextValue | null>(null);
-const AUTH_REQUEST_DEADLINE_MS = 10_000;
 
-/** Coordinates one tab's in-memory identity with authoritative browser-session requests. */
+/** Composes coordination, bootstrap, account actions, and presentation without owning their policy. */
 export function AuthProvider({ children }: PropsWithChildren) {
-  const client = useApolloClient();
-  const { t } = useTranslation();
-  const loadMe = useMeQuery();
-  const signInMutation = useSignInMutation();
-  const signOutMutation = useSignOutMutation();
-  const signUpMutation = useSignUpMutation();
-  const [session, setSession] = useState<SessionState>({
-    status: BROWSER_AUTH_STATUS.LOADING,
-    user: null,
-  });
-  const generation = useRef(0);
-  const actionInProgress = useRef(false);
-  const logoutUnconfirmed = useRef(false);
-
-  /** Resolves only a current bootstrap result into one of the four UI states. */
-  const bootstrap = useCallback(
-    async (signal: AbortSignal): Promise<void> => {
-      const selectedGeneration = ++generation.current;
-      setSession({ status: BROWSER_AUTH_STATUS.LOADING, user: null });
-
-      try {
-        const user = await loadMe(signal);
-
-        if (!signal.aborted && selectedGeneration === generation.current) {
-          setSession(
-            user
-              ? { status: BROWSER_AUTH_STATUS.AUTHENTICATED, user }
-              : { status: BROWSER_AUTH_STATUS.UNAVAILABLE, user: null },
-          );
-        }
-      } catch (error) {
-        if (selectedGeneration === generation.current) {
-          setSession({
-            status: isInvalidSessionError(error)
-              ? BROWSER_AUTH_STATUS.ANONYMOUS
-              : BROWSER_AUTH_STATUS.UNAVAILABLE,
-            user: null,
-          });
-        }
-      }
-    },
-    [loadMe],
+  const coordinator = useSessionCoordinator();
+  const snapshot = useSyncExternalStore(coordinator.subscribe, coordinator.getSnapshot);
+  const resolution = useSessionBootstrap(coordinator, snapshot);
+  const view = selectSessionView(snapshot, resolution, coordinator.supportsAccountActions());
+  const { logoutBusy, rejection, signIn, signOut, signUp } = useSessionActions(
+    coordinator,
+    snapshot.revision,
+    view,
   );
+  const rejectionMessage =
+    rejection?.epoch === snapshot.marker?.epoch ? (rejection?.message ?? null) : null;
 
-  useEffect(
-    /** Starts an abortable bootstrap and invalidates its result when this provider unmounts. */
-    () => {
-      const controller = new AbortController();
-      /** Defers the request until the effect is committed and still mounted. */
-      queueMicrotask(() => {
-        if (!controller.signal.aborted) {
-          void bootstrap(
-            AbortSignal.any([controller.signal, AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS)]),
-          );
-        }
-      });
-
-      /** Prevents an obsolete bootstrap response from changing session state. */
-      return () => {
-        generation.current += 1;
-        controller.abort();
-      };
-    },
-    [bootstrap],
-  );
-
-  /** Rechecks the cookie explicitly after an ordinary dependency failure. */
+  /** Retries ordinary reads/cache retirement, never uncertain cookie writes. */
   function retryBootstrap(): void {
-    if (!logoutUnconfirmed.current && !actionInProgress.current) {
-      void bootstrap(AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS));
-    }
+    coordinator.retryRead();
   }
 
-  /** Publishes a new identity only after the cookie is set and old cache is gone. */
-  async function signIn(input: SignInInput): Promise<void> {
-    if (
-      actionInProgress.current ||
-      logoutUnconfirmed.current ||
-      session.status !== BROWSER_AUTH_STATUS.ANONYMOUS
-    ) {
-      throw new Error('Authentication action is unavailable');
-    }
-
-    actionInProgress.current = true;
-    generation.current += 1;
-    const signal = AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS);
-
-    try {
-      const result = await signInMutation.execute(input, signal);
-
-      if (signal.aborted || !result?.user) {
-        throw new Error('Sign-in result is unavailable');
-      }
-
-      await client.clearStore();
-      if (signal.aborted) {
-        throw new Error('Sign-in result exceeded the request deadline');
-      }
-      setSession({ status: BROWSER_AUTH_STATUS.AUTHENTICATED, user: result.user });
-    } catch (error) {
-      if (!isExpectedSignInRejection(error)) {
-        setSession({ status: BROWSER_AUTH_STATUS.UNAVAILABLE, user: null });
-      }
-
-      throw error;
-    } finally {
-      actionInProgress.current = false;
-    }
-  }
-
-  /** Drops local access immediately and reports any unconfirmed revocation. */
-  async function signOut(): Promise<void> {
-    if (actionInProgress.current || logoutUnconfirmed.current) {
-      throw new Error('Authentication action is unavailable');
-    }
-
-    actionInProgress.current = true;
-    generation.current += 1;
-    const signal = AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS);
-    setSession({ status: BROWSER_AUTH_STATUS.LOADING, user: null });
-
-    try {
-      await client.clearStore();
-      const result = await signOutMutation.execute(signal);
-
-      if (signal.aborted || result?.success !== true) {
-        throw new Error('Sign-out revocation was not confirmed');
-      }
-
-      setSession({ status: BROWSER_AUTH_STATUS.ANONYMOUS, user: null });
-    } catch (error) {
-      logoutUnconfirmed.current = true;
-      setSession({ status: BROWSER_AUTH_STATUS.UNAVAILABLE, user: null });
-      throw error;
-    } finally {
-      actionInProgress.current = false;
-    }
-  }
-
-  /** Keeps the existing signup contract until confirmation HTTP activation. */
-  async function signUp(input: SignUpInput): Promise<void> {
-    if (
-      actionInProgress.current ||
-      logoutUnconfirmed.current ||
-      session.status !== BROWSER_AUTH_STATUS.ANONYMOUS
-    ) {
-      throw new Error('Authentication action is unavailable');
-    }
-
-    actionInProgress.current = true;
-    const signal = AbortSignal.timeout(AUTH_REQUEST_DEADLINE_MS);
-
-    try {
-      const result = await signUpMutation.execute(input, signal);
-
-      if (signal.aborted || !result?.success) {
-        throw new Error('Sign-up result is unavailable');
-      }
-    } finally {
-      actionInProgress.current = false;
-    }
+  /** Presents explicit revocation recovery without creating an unhandled rejection. */
+  function recoverSignOut(): void {
+    void signOut().catch(
+      /** Shared revocation state, not a discarded error, determines the rendered outcome. */
+      () => undefined,
+    );
   }
 
   return (
     <AuthContext.Provider
       value={{
+        accountActionsAvailable: view.accountActionsAvailable,
         retryBootstrap,
         signIn,
         signOut,
         signUp,
-        ...session,
+        ...view.session,
       }}
     >
-      {session.status === BROWSER_AUTH_STATUS.LOADING ? (
-        <Box
-          aria-label={t('router.loading')}
-          role="status"
-          sx={{ display: 'grid', minHeight: '100vh', placeItems: 'center' }}
-        >
-          <CircularProgress />
-        </Box>
-      ) : null}
-      {session.status === BROWSER_AUTH_STATUS.UNAVAILABLE ? (
-        <Box sx={{ maxWidth: 560, mx: 'auto', p: 4 }}>
-          <Alert
-            action={
-              logoutUnconfirmed.current ? undefined : (
-                <Button color="inherit" onClick={retryBootstrap} size="small">
-                  {t('auth.session.retry')}
-                </Button>
-              )
-            }
-            severity="warning"
-          >
-            {t(
-              logoutUnconfirmed.current
-                ? 'auth.session.logoutUnconfirmed'
-                : 'auth.session.unavailable',
-            )}
-          </Alert>
-        </Box>
-      ) : null}
-      {session.status === BROWSER_AUTH_STATUS.ANONYMOUS ||
-      session.status === BROWSER_AUTH_STATUS.AUTHENTICATED
-        ? children
-        : null}
+      <SessionBoundary
+        logoutBusy={logoutBusy}
+        onRecoverSignOut={recoverSignOut}
+        onRetryBootstrap={retryBootstrap}
+        rejectionMessage={rejectionMessage}
+        view={view}
+      >
+        {children}
+      </SessionBoundary>
     </AuthContext.Provider>
   );
 }
 
-/** Provides the current user and explicit session actions to routed screens. */
+/** Provides only the current generation's user and explicit session actions. */
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider');
   }

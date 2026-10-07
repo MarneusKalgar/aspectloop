@@ -2,7 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
-Last updated: M04.2 session-activity review follow-up, 2026-10-04
+Last updated: M04.2 E1 local acceptance, 2026-10-05
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -146,7 +146,13 @@ The tests are valid mocked frontend E2E tests. Their canonical command is
 `npm run test:e2e:mock` from the repository root, which makes that boundary
 explicit.
 
-The configuration defines only the Chromium project and defaults to headless
+A separate `apps/web/playwright.live.config.ts` exercises E1 browser-session
+behavior against the prepared real local stack. It is not the mocked CI suite
+and is not included in `verify` or `verify:full`. Its opt-in command, evidence and
+privacy boundary are documented in section 8.4 and the
+[live suite runbook](../apps/web/test/e2e-live/README.md).
+
+The mocked configuration defines only the Chromium project and defaults to headless
 execution. Before each mocked E2E run, the workspace `pretest` lifecycle asks
 Playwright to ensure that only the matching Chromium headless shell is present:
 
@@ -456,8 +462,9 @@ outage-logout warning followed by signed-out reload. Platform-only Retry recover
 and outage cookie non-rewrite/removal were not independently shown. Empty-schema
 replay and direct before/after pre-retirement session preservation were also not
 supplied. The human accepted C3 without further repetition; these limitations
-are not passes. E1 retains advanced browser verification and F retains fresh-stack
-and integrated acceptance. Private fixture cleanup was not confirmed for C3.
+are not passes. At C3 acceptance, E1 retained advanced browser verification and F
+retained fresh-stack and integrated acceptance. Private fixture cleanup was not
+confirmed for C3; subsequent E1 cleanup evidence is recorded separately below.
 No agent-run verification is implied by this record.
 
 The session-activity directive follow-up was human-verified on 2026-10-04 with
@@ -528,6 +535,55 @@ where practical. Environment adapters own:
 
 This avoids maintaining separate local and stage copies of the same workflow.
 
+### 8.4 Accepted E1 live browser verification
+
+E1 was locally accepted by the human on 2026-10-05 after the complete live matrix,
+exact fixture cleanup and recovery-wording acceptance. The latest `verify`
+included 54 Web unit tests and 11 integration tests; all eight live-tool/privacy
+tests and twenty live scenarios passed. These are human-run results, not
+agent-run verification or completion of the full M04.2 SESSION matrix.
+
+The separate local-only command is:
+
+```bash
+npm run test:e2e:live:tools
+npm run test:e2e:live -- --allow-platform-outage
+```
+
+The live runner uses the existing prepared developer stack, not a new disposable
+Compose project. Reserve exclusive local ownership, stop the normal Web dev
+server, and follow the [runbook](../apps/web/test/e2e-live/README.md). It owns its
+Vite process, loopback forwarding gate, browser contexts, two exact private
+fixtures and temporary artifacts. The explicit flag permits stopping/restoring
+only the exact local Platform service. CI and remote Docker contexts are refused;
+the runner does not install, build, migrate, broadly seed or reset infrastructure.
+
+One worker, zero retries and first-failure stop cover independent context cases
+for multi-tab account changes, real delayed Set-Cookie ordering, obsolete
+identity/product delivery, browser transport loss, Platform outage/recovery,
+native-lock/storage capability faults and proven legacy-cookie cleanup. The gate
+holds genuine response headers/body without a cookie jar; authentication payloads
+are not fabricated. Twenty passed, zero pending, summary passed and successful
+exact cleanup are the full acceptance signals; missing/unexecuted cases are not
+passes.
+
+Passwords stay in private worker/browser memory and stdin-only fixture setup.
+No traces, screenshots, video, HAR, storage state, raw errors or DOM snapshots
+are retained. Both reporter and parent output policies allow only fixed scenario
+status, bounded counts, exact cleanup metadata and closed cookie-case failure
+stages. The tool tests guard the installed Playwright privacy assumptions.
+Diagnostic capture requires separate review; generic failure-artifact guidance
+does not override this boundary.
+
+The empty inbox proves current identity and cancellation/retirement of product
+work, not deletion of distinguishable account-owned product records. Focused
+unit/integration fencing evidence complements live coverage. Failed marker
+persistence cannot guarantee peer/reload suppression; injected capabilities do
+not establish broad unsupported-browser compatibility. See
+[browser session recovery](browser-session.md) for those accepted limitations.
+Email delivery/confirmation remains D1-D3/E2; fresh-stack, stage/performance and
+integrated closeout remain F gates.
+
 ## 9. Reliability Rules
 
 - Fail automated mocked tests on unhandled network requests.
@@ -536,7 +592,8 @@ This avoids maintaining separate local and stage copies of the same workflow.
 - Keep tests independent of execution order.
 - Reset mutable local test state between suites or runs.
 - Do not use retries to conceal deterministic failures.
-- Retain traces, screenshots, request identifiers, and service logs on failure.
+- Retain approved, privacy-safe failure diagnostics. The E1 authentication suite
+  uses only fixed metadata; raw capture requires separate review as in section 8.4.
 - Keep blocking stage smoke small.
 - Run broader stage regression on a schedule or explicit request.
 - Test provider-independent release behavior with deterministic provider mocks.

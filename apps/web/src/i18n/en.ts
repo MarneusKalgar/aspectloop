@@ -2,10 +2,18 @@ export const enResources = {
   'app.name': 'AspectLoop',
   'app.runtime.live': 'Live backend',
   'app.runtime.mock': 'Mock contract',
+  'auth.session.emailRequired': 'Email confirmation is required',
+  'auth.session.localSignOut': 'Sign out locally',
   'auth.session.logoutUnconfirmed':
     'You are signed out locally, but server revocation could not be confirmed.',
+  'auth.session.rateLimited': 'Too many sign-in attempts. Please try again later.',
+  'auth.session.resetRequired':
+    'An account action is unresolved or session coordination is unavailable. Access stays blocked. Close all AspectLoop tabs, clear site cookies and site storage for both the app and API hosts, then reopen. This does not confirm server revocation.',
   'auth.session.retry': 'Retry',
+  'auth.session.retrySignOut': 'Retry sign out',
   'auth.session.unavailable': 'Authentication is temporarily unavailable. Please retry.',
+  'auth.session.unsupported':
+    'This browser cannot safely change accounts because Web Locks are unavailable. Existing sessions can be viewed; local sign-out remains available. Use a supported browser for sign-in or server revocation.',
   'auth.shared.email': 'Email',
   'auth.shared.password': 'Password',
   'auth.signIn.cta.primary': 'Sign in',

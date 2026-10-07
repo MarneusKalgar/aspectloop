@@ -242,6 +242,10 @@ async function testCookieHttpBoundary(): Promise<void> {
     'Expires=Sun, 27 Sep 2026 00:00:00 GMT',
   );
   expect(signInResponse.headers.get('set-cookie')).not.toContain('Domain=');
+  expect(signInResponse.headers.getSetCookie()).toHaveLength(2);
+  expect(signInResponse.headers.getSetCookie()[1]).toBe(
+    'aspectloop_access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax; Secure',
+  );
   expect(cookie.read(`other=value; aspectloop_session=${CREDENTIAL}`)).toBe(CREDENTIAL);
   expect(
     cookie.read(`aspectloop_session=${CREDENTIAL}; aspectloop_session=${CREDENTIAL}`),
@@ -260,6 +264,8 @@ async function testCookieHttpBoundary(): Promise<void> {
   expect(signOutHeaders.get('set-cookie')).toContain('Max-Age=0');
   expect(signOutHeaders.get('set-cookie')).toContain('Path=/graphql');
   expect(signOutHeaders.get('set-cookie')).toContain('Secure');
+  expect(signOutHeaders.getSetCookie()).toHaveLength(2);
+  expect(signOutHeaders.getSetCookie()[1]).toContain('aspectloop_access_token=; Path=/;');
   const calls = fetchMock.mock.calls as [string, RequestInit][];
   expect(calls.map(([url]) => url)).toEqual([
     'http://platform.test/internal/v1/auth/sign-in',

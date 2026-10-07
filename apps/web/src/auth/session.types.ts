@@ -8,11 +8,13 @@ export const BROWSER_AUTH_STATUS = Object.freeze({
 } as const);
 
 export interface AuthActions {
+  accountActionsAvailable: boolean;
   retryBootstrap: () => void;
   signIn: (input: SignInInput) => Promise<void>;
   signOut: () => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
 }
+
 export type AuthContextValue = AuthActions & SessionState;
 
 export type AuthenticatedUser = NonNullable<MeQuery['me']>;

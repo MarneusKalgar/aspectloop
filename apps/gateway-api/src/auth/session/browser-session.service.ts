@@ -26,7 +26,10 @@ export class BrowserSessionService {
   ): Promise<PlatformUserView> {
     try {
       const session = await this.platform.signIn(input, context);
+
       this.cookie.set(response, session.sessionCredential, session.sessionExpiresAt);
+      this.cookie.clearLegacy(response);
+
       return session.user;
     } catch (error) {
       throw mapBrowserSessionError(error);
@@ -49,6 +52,7 @@ export class BrowserSessionService {
       throw mapBrowserSessionError(error);
     } finally {
       this.cookie.clear(response);
+      this.cookie.clearLegacy(response);
     }
   }
 }

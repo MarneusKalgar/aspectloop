@@ -1,9 +1,8 @@
 import type { SignInInput, SignInMutation } from '@app/graphql/generated/graphql';
-import type { GraphqlMutationState } from '@app/graphql/hooks/types';
 
-import { useMutation } from '@apollo/client/react';
+import { useApolloClient } from '@apollo/client/react';
 import { graphql } from '@app/graphql/generated';
-import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
+import { useCallback } from 'react';
 
 const signInMutationDocument = graphql(`
   mutation SignIn($input: SignInInput!) {
@@ -21,34 +20,20 @@ const signInMutationDocument = graphql(`
   }
 `);
 
-/**
- * Executes the sign-in operation and exposes its UI-oriented mutation state.
- *
- * @returns The current sign-in result, error, loading state, and executor.
- */
-export function useSignInMutation(): GraphqlMutationState<SignInMutation['signIn'], SignInInput> {
-  const [runSignInMutation, { data, error, loading }] = useMutation(signInMutationDocument);
-
-  return {
-    data: data?.signIn ?? null,
-    error: getOperationErrorMessage(error),
-    /**
-     * Executes sign-in with the generated GraphQL input.
-     *
-     * @param input The credentials submitted by the user.
-     * @returns The authenticated payload when the mutation succeeds.
-     */
-    execute: async (
-      input: SignInInput,
-      signal?: AbortSignal,
-    ): Promise<null | SignInMutation['signIn']> => {
-      const result = await runSignInMutation({
-        context: signal ? { fetchOptions: { signal } } : undefined,
+/** Supplies an uncached executor; only the locked coordinator consumes cookie-action results. */
+export function useSignInMutation() {
+  const client = useApolloClient();
+  return useCallback(
+    /** Does not publish credential-action data into hook state or normalized cache. */
+    async (input: SignInInput, signal: AbortSignal): Promise<null | SignInMutation['signIn']> => {
+      const result = await client.mutate({
+        context: { fetchOptions: { signal }, sessionCookieAction: true },
+        fetchPolicy: 'no-cache',
+        mutation: signInMutationDocument,
         variables: { input },
       });
-
       return result.data?.signIn ?? null;
     },
-    loading,
-  };
+    [client],
+  );
 }

@@ -25,6 +25,14 @@ export class BrowserSessionCookieAdapter {
     );
   }
 
+  /** Expires only the proven host-only, root-path historical access cookie. */
+  clearLegacy(response: SessionCookieResponse): void {
+    response.append(
+      'Set-Cookie',
+      `aspectloop_access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; SameSite=Lax${this.secure ? '; Secure' : ''}`,
+    );
+  }
+
   /** Accepts exactly one canonical browser-session credential from Cookie. */
   read(cookieHeader: unknown): null | string {
     if (typeof cookieHeader !== 'string' || cookieHeader.length > MAX_COOKIE_HEADER_LENGTH) {

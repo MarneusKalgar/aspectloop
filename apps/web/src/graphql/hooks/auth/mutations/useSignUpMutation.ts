@@ -28,7 +28,9 @@ const signUpMutationDocument = graphql(`
  * @returns The current sign-up result, error, loading state, and executor.
  */
 export function useSignUpMutation(): GraphqlMutationState<SignUpMutation['signUp'], SignUpInput> {
-  const [runSignUpMutation, { data, error, loading }] = useMutation(signUpMutationDocument);
+  const [runSignUpMutation, { data, error, loading }] = useMutation(signUpMutationDocument, {
+    fetchPolicy: 'no-cache',
+  });
 
   return {
     data: data?.signUp ?? null,

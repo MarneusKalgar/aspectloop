@@ -14,6 +14,7 @@ import {
   readPrivateFixturePassword,
   removeOwnedAuthFixture,
 } from './auth-http/fixture';
+import { readPrivateFixtureInput } from './auth-http/private-fixture-input';
 import { verifyAuthHttpScenarios } from './auth-http/scenarios';
 import {
   assertLocalVerificationTarget,
@@ -37,12 +38,14 @@ async function main(): Promise<void> {
   const cleanupUrl = readCleanupDatabaseUrl();
   assertLocalVerificationTarget(environment.DATABASE_URL, cleanupUrl);
   assertLocalHttpDestinations();
+  const needsFixtureId = mode === '--fixture-cleanup' || mode === '--fixture-create-stdin';
 
   if (
-    (mode !== '--http' && mode !== '--fixture-create' && mode !== '--fixture-cleanup') ||
-    (mode === '--fixture-cleanup' && !UUID_PATTERN.test(process.argv[3] ?? ''))
+    (mode !== '--http' && mode !== '--fixture-create' && !needsFixtureId) ||
+    (needsFixtureId && !UUID_PATTERN.test(process.argv[3] ?? '')) ||
+    process.argv.length !== (needsFixtureId ? 4 : 3)
   ) {
-    throw new Error('Expected --http, --fixture-create, or --fixture-cleanup UUID');
+    throw new Error('Expected one explicit HTTP/private fixture mode');
   }
 
   const runtime = createVerificationDataSource(environment.DATABASE_URL, environment, 2);
@@ -58,10 +61,21 @@ async function main(): Promise<void> {
       return;
     }
 
-    const password =
-      mode === '--fixture-create'
-        ? await readPrivateFixturePassword()
-        : randomBytes(32).toString('base64url');
+    const privateInput = mode === '--fixture-create-stdin' ? await readPrivateFixtureInput() : null;
+
+    if (privateInput && privateInput.id !== process.argv[3]) {
+      throw new Error('Private fixture ownership mismatch');
+    }
+
+    let password: string;
+
+    if (privateInput) {
+      password = privateInput.password;
+    } else if (mode === '--fixture-create') {
+      password = await readPrivateFixturePassword();
+    } else {
+      password = randomBytes(32).toString('base64url');
+    }
 
     if (password.length < 12 || !platformSignInPasswordSchema.safeParse(password).success) {
       throw new Error(
@@ -69,7 +83,13 @@ async function main(): Promise<void> {
       );
     }
 
-    fixture = await createOwnedAuthFixture(runtime, environment, password);
+    fixture = await createOwnedAuthFixture(runtime, environment, password, privateInput?.id);
+
+    if (mode === '--fixture-create-stdin') {
+      console.log(`E1_FIXTURE ${JSON.stringify(fixture)}`);
+      fixture = null;
+      return;
+    }
 
     if (mode === '--fixture-create') {
       console.log(`Private browser fixture ID: ${fixture.id}`);

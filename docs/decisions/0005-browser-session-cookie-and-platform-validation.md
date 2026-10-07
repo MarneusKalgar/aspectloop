@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover and C3 retirement locally accepted, remaining M04.2 work pending
+Status: Accepted design; C2b cutover, C3 retirement and E1 resilience locally accepted; D1-D3/E2/F pending
 
 Date: 2026-09-20
 
@@ -59,11 +59,15 @@ the same Origin policy. Reject duplicate authentication cookies.
 Browser memory holds only user/UI state. `localStorage` may hold a bounded
 non-secret generation/logout-intent marker; no credential is placed in browser
 storage, URLs, public GraphQL bodies, logs, or Apollo cache. Bootstrap calls
-`me`. Logout clears UI/cache immediately and revokes Platform state; offline
-logout intent survives reload until an explicit successful sign-in. HttpOnly
-reduces direct credential theft by scripts but does not prevent XSS from acting
-through the browser. Baseline escaping, safe URL handling, and no unsafe HTML
-are required now; production CSP deployment remains part of M10.
+`me`. Logout immediately suppresses UI, attempts cache retirement and durable
+intent, then requests Platform revocation under native cookie-action ordering.
+Successfully persisted suppression survives reload until an explicit successful
+sign-in after confirmed revocation. Unknown/orphaned outcomes block replay and
+new login; manual browser reset is not proof of server revocation. A failed
+marker write retains current-tab suppression but cannot guarantee peer/reload
+propagation. HttpOnly reduces direct credential theft by scripts but does not
+prevent XSS from acting through the browser. Baseline escaping, safe URL handling,
+and no unsafe HTML are required now; production CSP deployment remains part of M10.
 
 ## PostgreSQL And Redis
 
@@ -119,5 +123,17 @@ of pre-retirement session preservation were not supplied for C3 acceptance;
 fresh-stack rehearsal remains an F gate. This is local task acceptance, not a
 production migration authorization or completion of SESSION-16.
 
-E1 still owns legacy-cookie clearing and advanced browser resilience. Email
-confirmation and final integrated acceptance remain separate M04.2 work.
+E1 browser resilience and proven legacy-cookie cleanup were locally accepted by
+the human on 2026-10-05. Separate marker/cookie Web Locks, revision-fenced
+bootstrap and pre-cache transport delivery, durable logout intent and explicit
+recovery preserve Platform authority without a new server protocol. Ordinary
+read failure permits Retry; completed revocation failure permits explicit Retry
+sign out; unknown/abandoned cookie actions require the approved manual reset.
+There is no weaker lock fallback or automatic cookie-action replay.
+
+[Browser session behavior and recovery](../browser-session.md) records the active
+ownership, recovery rules and limitations. Human evidence includes `verify`,
+eight live-tool checks and twenty live scenarios with successful exact cleanup.
+The empty-inbox/cache-evidence and failed-persistence limits remain explicit.
+This is E1 local acceptance, not full M04.2 or SESSION-16 completion; email
+delivery/confirmation and F integrated acceptance remain separate work.
