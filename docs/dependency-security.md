@@ -1,7 +1,7 @@
 # Dependency Security
 
 Status: Active
-Last updated: 2026-10-03
+Last updated: 2026-10-07
 
 ## Toolchain Contract
 
@@ -186,6 +186,48 @@ chain, an incomplete audit result, removal of the advisory, or expiry. The raw
 until upstream remediation; `npm run deps:audit` is the CI gate and must report
 the exception explicitly. A human must review and remove or renew this
 exception before the expiry; renewal requires a fresh exposure assessment.
+
+## Temporary GraphQL Security Override
+
+The root override `@graphql-tools/utils@<=12.0.0` resolves to `12.0.1` to
+repair [`GHSA-7mx3-vvmw-hjmv`](https://github.com/advisories/GHSA-7mx3-vvmw-hjmv)
+without migrating NestJS or GraphQL. It replaces both the old 11.x dependency
+path and Nest's exact 12.0.0 path; existing higher patched versions remain
+eligible. The paired delegate 12.2.0/executor 2.0.3 update accommodates the
+utils-12 API. This is a security repair, not an expanded audit exception.
+The npm security settings, install-script decisions, and exact braces exception
+remain unchanged.
+
+Platform/repository dependency maintainers own this override. Remove it through
+reviewed npm commands only when every parent resolves patched, compatible utils
+without it, then repeat dependency-policy and application verification.
+
+### Deferred Delegation Compatibility
+
+On 2026-10-07, the maintainer explicitly deferred an upstream delegate 12.2.0
+defect to unblock CI: a legal GraphQL-16 variable map containing both `coerced`
+and `sources` is mistaken for a GraphQL-17 wrapper. Current gateway execution
+is local schema-first without runtime delegation; codegen loads schema metadata.
+No application failure from this collision has been demonstrated. This does
+not establish full dependency compatibility or fix the upstream defect.
+
+The strict ordinary controls run with
+`node --test scripts/dependencies/graphql-compatibility.test.mjs`. The exact
+correct-result assertion remains in
+`scripts/dependencies/delegation-wrapper-collision.repro.mjs`; running it
+explicitly with `node` still fails on the selected version. It is not counted
+as passing or silently skipped. No existing CI check was disabled.
+
+Repository dependency maintainers must revisit the defect at the next delegate
+update or before introducing application runtime delegation, whichever occurs
+first. Require a corrected upstream release or separately approved backport to
+pass the reproducer, then restore the assertion to ordinary regression coverage.
+The upstream adapter is maintained in
+[`graphql-hive/gateway`](https://github.com/graphql-hive/gateway/blob/main/packages/delegate/src/getCoercedVariableValues.ts).
+
+Human verification on 2026-10-07 confirmed `npm run deps:audit`, all three
+ordinary compatibility controls, `npm run verify`, `npm run build`, and
+`npm run test:backend:run` passed locally. This is not a new GitHub CI result.
 
 ## Temporary Compatibility Dependencies
 
