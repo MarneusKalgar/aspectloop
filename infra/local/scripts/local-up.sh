@@ -25,7 +25,7 @@ if [[ "${1:-}" == "--build" ]]; then
 fi
 
 # Start and await infrastructure before any application can access Garage.
-"${COMPOSE[@]}" "${UP_ARGS[@]}" postgres rabbitmq persistence-mock garage
+"${COMPOSE[@]}" "${UP_ARGS[@]}" postgres rabbitmq persistence-mock garage mailpit
 node "$REPOSITORY_ROOT/infra/local/garage/bootstrap.mjs"
 
 # Start and await the complete default graph only after Garage bootstrap succeeds.

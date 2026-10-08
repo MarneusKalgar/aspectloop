@@ -5,8 +5,9 @@ Status: M04.2 E1 locally accepted by the human, 2026-10-05
 This documents the active first-party browser behavior under
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md).
 Platform/PostgreSQL remains the session authority; browser coordination only
-orders work and withholds unsafe UI access. Email delivery/confirmation and final
-M04.2 integrated acceptance remain separate tasks.
+orders work and withholds unsafe UI access. D1 local mail transport is separately
+accepted; registration confirmation and final M04.2 integrated acceptance remain
+separate tasks.
 
 ## Ownership And Ordering
 
@@ -100,7 +101,9 @@ prove deletion of distinguishable account-owned product records; focused
 unit/integration cache-fencing evidence complements it. Injected capability
 faults are not broad unsupported-browser compatibility certification. Fresh-stack
 rehearsal, stage/performance evidence and the complete SESSION matrix remain with
-F; email delivery/confirmation remains D1-D3/E2.
+F; registration confirmation remains D2-D3/E2. D1 local mail transport was
+accepted on 2026-10-08 with session/readiness independence from Mailpit outage;
+see [Platform mail transport](platform-mail.md) for its evidence and limitations.
 
 See [testing strategy](testing-strategy.md) for suite ownership and the
 [live suite runbook](../apps/web/test/e2e-live/README.md) for prerequisites,

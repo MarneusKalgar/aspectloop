@@ -13,6 +13,8 @@ services:
       DB_POOL_SIZE: ${PLATFORM_DB_POOL_SIZE:-5}
       PLATFORM_SERVICE_PORT: ${PLATFORM_SERVICE_PORT:-8083}
       S3_ENDPOINT: http://garage:3900
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     ports:
       # The private Platform boundary is host-visible only for local verification.
       - '127.0.0.1:${PLATFORM_SERVICE_PORT:-8083}:${PLATFORM_SERVICE_PORT:-8083}'
@@ -39,6 +41,31 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4@sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48
+    init: true
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 500
+      MP_DISABLE_VERSION_CHECK: 'true'
+    # No SMTP host publication, relay settings, or persistent mail volume.
+    ports:
+      - '127.0.0.1:8025:8025'
+    read_only: true
+    tmpfs:
+      - /data:rw,nosuid,noexec,size=64m,mode=0700
+      - /tmp:rw,nosuid,noexec,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   gateway-api:
     image: ${COMPOSE_PROJECT_NAME:-aspectloop_api_local}_gateway_api

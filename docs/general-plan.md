@@ -603,8 +603,11 @@ records this accepted 2026-09-20 target. A/B JWT/refresh implementation and
 passing rotation tests are historical foundations, not evidence for the new
 flow. C2b's basic browser-session cutover passed its human verification gate on
 2026-09-27; C3 retirement was locally accepted on 2026-10-03; E1 browser resilience
-and legacy-cookie cleanup were locally accepted on 2026-10-05. D1-D3 email and
-confirmation, E2 confirmation UI and F integrated acceptance remain pending.
+and legacy-cookie cleanup were locally accepted on 2026-10-05. D1 local mail
+transport was locally accepted on 2026-10-08. D2-D3 confirmation state/HTTP,
+E2 confirmation UI and F integrated acceptance remain pending.
+See [Platform mail transport](platform-mail.md) for bounded dispatch, private
+capture, outage verification and retained delivery limitations.
 [Browser session behavior and recovery](browser-session.md) records the active
 coordination, cache fencing and conservative recovery rules. The SPA
 and separately deployed GraphQL Gateway form a BFF arrangement; SSR or a
@@ -647,8 +650,11 @@ type-checking and relevant tests with its actual consumers. Breaking session
 contracts activate together with their callers in C2b; preparation retains
 explicitly temporary contracts until their consumers migrate. Historical A/B
 remains complete only under the old design. B1, B2, C1, C2a, and C2b have
-passed their task gates; C3 retirement and E1 resilience are locally accepted,
-with D1 next in the requested E1 -> D1 -> D2 -> D3 -> E2 order and F still pending.
+passed their task gates; C3 retirement, E1 resilience and D1 mail transport are
+locally accepted. D2 is next only when requested in the E1 -> D1 -> D2 -> D3 -> E2
+order, with F still pending. D1's human gate includes quality checks, the full
+backend suite, Platform build, local capture, explicit Mailpit outage/restoration,
+and session/HTTP regression. It activates no registration or confirmation flow.
 C3 acceptance uses the supplied human verification;
 fresh replay, direct pre-retirement session-preservation proof, and unshown outage
 cookie/retry details were not recorded as C3 passes. E1 supplies the subsequently
@@ -1600,7 +1606,7 @@ only at milestone granularity.
 | M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress            | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory                                                       |
 | M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed              | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred                                                          |
 | M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | In Progress (closeout) | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles; manual correction draft/submit setup remains unavailable |
-| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Browser-session cutover, C3 retirement and E1 resilience locally accepted; D1-D3/E2 confirmation and F integrated acceptance pending                               |
+| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Browser-session cutover, C3 retirement, E1 resilience and D1 mail transport locally accepted; D2-D3/E2 confirmation and F integrated acceptance pending            |
 | M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned                | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                                                                           |
 | M06   | Correction domain and service hardening        | BE             | P0       | Planned                | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                                                                      |
 | M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned                | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                                                                                |

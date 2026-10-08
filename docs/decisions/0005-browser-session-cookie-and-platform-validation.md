@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover, C3 retirement and E1 resilience locally accepted; D1-D3/E2/F pending
+Status: Accepted design; C2b cutover, C3 retirement, E1 resilience and D1 mail transport locally accepted; D2-D3/E2/F pending
 
 Date: 2026-09-20
 
@@ -135,5 +135,12 @@ There is no weaker lock fallback or automatic cookie-action replay.
 ownership, recovery rules and limitations. Human evidence includes `verify`,
 eight live-tool checks and twenty live scenarios with successful exact cleanup.
 The empty-inbox/cache-evidence and failed-persistence limits remain explicit.
-This is E1 local acceptance, not full M04.2 or SESSION-16 completion; email
-delivery/confirmation and F integrated acceptance remain separate work.
+This is E1 local acceptance, not full M04.2 or SESSION-16 completion.
+
+D1 local mail transport was locally accepted by the human on 2026-10-08.
+SMTP availability does not enter Platform auth readiness or session validation;
+explicit Mailpit outage evidence preserves the same session before/after failed
+dispatch. [Platform mail transport](../platform-mail.md) records ownership,
+bounded dispatch, private capture and delivery limitations. D2-D3 registration
+confirmation, E2 UI and F integrated acceptance remain separate work. D1 changes
+neither the session authority nor the active registration contract.

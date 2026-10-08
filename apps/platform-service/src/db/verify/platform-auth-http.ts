@@ -21,6 +21,7 @@ import {
   createVerificationDataSource,
   readCleanupDatabaseUrl,
 } from './auth-sessions/verification-support';
+import { verifyMailScenarios } from './mail/scenarios';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -31,7 +32,7 @@ function handleFailure(error: unknown): void {
   process.exitCode = 1;
 }
 
-/** Runs only the requested local HTTP or private-browser fixture action. */
+/** Runs only an explicit local HTTP, mail, or private-browser fixture action. */
 async function main(): Promise<void> {
   const mode = process.argv[2];
   const environment = validateEnv(process.env);
@@ -39,9 +40,10 @@ async function main(): Promise<void> {
   assertLocalVerificationTarget(environment.DATABASE_URL, cleanupUrl);
   assertLocalHttpDestinations();
   const needsFixtureId = mode === '--fixture-cleanup' || mode === '--fixture-create-stdin';
+  const mailMode = mode === '--mail' || mode === '--mail-outage';
 
   if (
-    (mode !== '--http' && mode !== '--fixture-create' && !needsFixtureId) ||
+    (mode !== '--http' && mode !== '--fixture-create' && !needsFixtureId && !mailMode) ||
     (needsFixtureId && !UUID_PATTERN.test(process.argv[3] ?? '')) ||
     process.argv.length !== (needsFixtureId ? 4 : 3)
   ) {
@@ -99,8 +101,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    await verifyAuthHttpScenarios(cleanup, fixture, password);
-    console.log('Default-stack browser-session HTTP verification passed.');
+    if (mailMode) {
+      await verifyMailScenarios(environment, fixture, password, mode === '--mail-outage');
+      console.log('D1 local mail verification completed.');
+    } else {
+      await verifyAuthHttpScenarios(cleanup, fixture, password);
+      console.log('Default-stack browser-session HTTP verification passed.');
+    }
   } finally {
     try {
       if (fixture && cleanup.isInitialized) {

@@ -28,9 +28,10 @@ correction draft/save/submit browser path is recorded as a manual verification
 limitation. M04.2 then stabilizes identity and browser sessions. The durable
 boundary is recorded in
 [`ADR 0004`](docs/decisions/0004-thin-gateway-and-platform-service.md).
-M04.2's browser-session cutover, C3 retirement and E1 resilience are locally
-accepted; email delivery/confirmation and final integrated acceptance remain
-pending. See [browser session behavior and recovery](docs/browser-session.md).
+M04.2's browser-session cutover, C3 retirement, E1 resilience and D1 local mail
+transport are locally accepted; D2-D3 confirmation, E2 UI and final integrated
+acceptance remain pending. See [browser session behavior and recovery](docs/browser-session.md)
+and [Platform mail transport](docs/platform-mail.md).
 
 ## Application Boundaries
 
@@ -239,7 +240,16 @@ npm run local:auth:verify -- --sessions
 
 # Prove the active browser-session HTTP cookie and GraphQL protection boundary.
 npm run local:auth:verify -- --http
+
+# Prove synthetic SMTP delivery, capture content, and owned-message cleanup.
+npm run local:auth:verify -- --mail
 ```
+
+The explicit `--mail-outage` mode requires Mailpit to be stopped separately and
+proves session/readiness independence from mail failure. Follow the stop,
+expected-failure, restoration and regression sequence in
+[Platform mail transport](docs/platform-mail.md); the verifier never stops or
+starts Mailpit implicitly. Registration/confirmation delivery is not yet active.
 
 `npm run local:verify -- --fresh` is the destructive end-to-end local matrix.
 It requires explicit typed confirmation, resets named local volumes, runs the
@@ -342,7 +352,10 @@ npm run local:up
 
 `local:up` waits for infrastructure, bootstraps and verifies Garage, and then
 starts and waits for the complete default graph. It returns successfully only
-when that graph is ready. The optional pgAdmin overlay uses non-failing Compose
+when that graph is ready. Mailpit SMTP is Compose-private; its capture UI is
+available only at `127.0.0.1:8025`, with ephemeral bounded storage. Platform auth
+readiness and session validation do not depend on SMTP availability.
+The optional pgAdmin overlay uses non-failing Compose
 defaults, so unset pgAdmin credentials do not break ordinary stack commands;
 `local:db:admin` still requires and validates them when explicitly requested.
 

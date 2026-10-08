@@ -4,9 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Prints the intentionally narrow M04.2 session verification surface.
+# Prints the intentionally narrow M04.2 session and mail verification surface.
 usage() {
-  echo "Usage: $0 (--sessions | --http | --fixture-create | --fixture-cleanup UUID) [--build]"
+  echo "Usage: $0 (--sessions | --http | --mail | --mail-outage | --fixture-create | --fixture-cleanup UUID) [--build]"
 }
 
 MODE=""
@@ -22,6 +22,10 @@ while [[ "$#" -gt 0 ]]; do
     --http)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
       MODE="http"
+      ;;
+    --mail | --mail-outage)
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      MODE="${argument#--}"
       ;;
     --fixture-create)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
@@ -74,6 +78,10 @@ case "$MODE" in
     ;;
   http)
     "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --http
+    ;;
+  mail | mail-outage)
+    # Capture absence fails --mail. This tool never starts or stops Mailpit implicitly.
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- "--$MODE"
     ;;
   fixture-create)
     "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --fixture-create

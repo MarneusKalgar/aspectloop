@@ -581,8 +581,43 @@ unit/integration fencing evidence complements live coverage. Failed marker
 persistence cannot guarantee peer/reload suppression; injected capabilities do
 not establish broad unsupported-browser compatibility. See
 [browser session recovery](browser-session.md) for those accepted limitations.
-Email delivery/confirmation remains D1-D3/E2; fresh-stack, stage/performance and
-integrated closeout remain F gates.
+D1 local mail transport is separately accepted as described below; registration
+confirmation remains D2-D3/E2. Fresh-stack, stage/performance and integrated
+closeout remain F gates.
+
+### 8.5 Accepted D1 Local Mail Verification
+
+D1 was locally accepted by the human on 2026-10-08. Supplied screenshots show
+the full backend suite passing 45 files/173 tests, Platform build completion,
+and successful `local:up` with the default graph healthy. The human separately
+confirmed formatting, lint and repository type-check passed. These are
+human-run results, not agent-run verification or a D1 CI/publication claim.
+
+Live evidence covers:
+
+- `local:auth:verify -- --mail`: synthetic SMTP delivery, sender/text capture
+  and owned cleanup, with `D1-MAIL-CAPTURE passed` before and after restoration.
+- Explicit Mailpit stop followed by `--mail-outage`:
+  `D1-MAIL-SESSION-12 passed`, retaining the same session's `me`, protected inbox
+  and Platform readiness before/after failed dispatch.
+- Ordinary `--mail` while Mailpit is stopped: fixed capture failure and nonzero
+  exit, as required; unavailable capture is never silently skipped.
+- Mailpit restoration followed by successful `--sessions` and `--http`
+  regression verification, including C3-DB01-04, SESSION-01-04 and the existing
+  HTTP-SESSION cases.
+
+Deterministic mail/config tests cover capacity, deadlines, snapshots, shutdown
+loss, owned-resource disposal and late errors, safe outcomes, TLS settings,
+configuration boundaries, and exact capture ownership/cleanup. Those test doubles
+do not establish external SMTP delivery or broad timing guarantees.
+
+The [mail runbook](platform-mail.md) gives the explicit commands and safe
+restoration sequence. The outage verifier establishes its session with Mailpit
+already stopped; it does not prove in-flight SMTP restart recovery. SMTP
+acknowledgement is not external mailbox delivery. Registration messages and
+confirmation commands/UI remain D2-D3/E2; fresh-stack, stage/performance and
+complete integrated SESSION reconciliation remain F. No public test endpoints,
+raw credentials, diagnostic payloads or delete-all capture cleanup are introduced.
 
 ## 9. Reliability Rules
 
