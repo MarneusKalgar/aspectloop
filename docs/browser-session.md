@@ -6,8 +6,8 @@ This documents the active first-party browser behavior under
 [ADR 0005](decisions/0005-browser-session-cookie-and-platform-validation.md).
 Platform/PostgreSQL remains the session authority; browser coordination only
 orders work and withholds unsafe UI access. D1 local mail transport is separately
-accepted; registration confirmation and final M04.2 integrated acceptance remain
-separate tasks.
+accepted. D3 registration/confirmation HTTP is locally accepted and cookie-neutral;
+E2 confirmation UX and final M04.2 integrated acceptance remain separate tasks.
 
 ## Ownership And Ordering
 
@@ -102,7 +102,10 @@ unit/integration cache-fencing evidence complements it. Injected capability
 faults are not broad unsupported-browser compatibility certification. Fresh-stack
 rehearsal, stage/performance evidence and the complete SESSION matrix remain with
 F. Prepared registration state and sign-in identity limits are locally verified
-by human report on 2026-10-10; HTTP activation and confirmation UI remain D3/E2.
+by human report on 2026-10-10. D3 HTTP activation and its real email/HTTP verifier
+are also locally accepted: registration, resend and confirmation successes and
+rejections preserve an unrelated existing session and never write cookie headers.
+Only explicit verified sign-in grants a new session. Confirmation UI remains E2.
 See [Platform registration](platform-registration.md) for scope and limits.
 D1 local mail transport was
 accepted on 2026-10-08 with session/readiness independence from Mailpit outage;

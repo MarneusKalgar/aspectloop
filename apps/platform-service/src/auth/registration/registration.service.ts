@@ -21,7 +21,7 @@ import {
   parseRegistrationSignUp,
 } from './registration.validation';
 
-/** Prepared registration commands; D3 owns HTTP activation, not this provider. */
+/** Registration commands shared by the live HTTP boundary and private provider verification. */
 @Injectable()
 export class RegistrationService {
   private readonly webBaseUrl: string;

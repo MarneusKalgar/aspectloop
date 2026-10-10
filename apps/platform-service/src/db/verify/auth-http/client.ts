@@ -1,3 +1,4 @@
+import { PLATFORM_INTERNAL_ROUTES } from '@aspectloop/contracts/platform';
 import assert from 'node:assert/strict';
 
 const GATEWAY_GRAPHQL_URL = 'http://gateway-api:8080/graphql';
@@ -5,10 +6,11 @@ const PLATFORM_URL = 'http://platform-service:8083';
 const ALLOWED_ORIGIN = 'http://localhost:5173';
 const REQUEST_TIMEOUT_MS = 10_000;
 const SESSION_COOKIE_NAME = 'aspectloop_session';
+const MAX_HTTP_RESPONSE_BYTES = 131_072;
 
 export interface AuthHttpResult {
   data?: Record<string, unknown>;
-  errors?: { extensions?: { code?: string }; message?: string }[];
+  errors?: { extensions?: { code?: string; retryAfterMs?: number }; message?: string }[];
   response: Response;
 }
 
@@ -63,9 +65,10 @@ export class AuthHttpClient {
       body: JSON.stringify({ query, variables }),
       headers,
       method: 'POST',
+      redirect: 'error',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    const parsed: unknown = await response.json();
+    const parsed = await readAuthHttpBody(response);
 
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new Error('Gateway returned a malformed GraphQL envelope');
@@ -76,20 +79,51 @@ export class AuthHttpClient {
 
   /** Posts a pre-execution rejection case without assuming a parsed result shape. */
   async postRaw(body: unknown): Promise<Response> {
+    const headers = new Headers({ 'content-type': 'application/json', origin: ALLOWED_ORIGIN });
+
+    if (this.cookie) {
+      headers.set('cookie', this.cookie);
+    }
+
     return fetch(GATEWAY_GRAPHQL_URL, {
       body: JSON.stringify(body),
-      headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+      headers,
       method: 'POST',
+      redirect: 'error',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   }
 
   /** Sends a rejected-origin request without assuming its body is GraphQL JSON. */
   async requestDeniedOrigin(query: string, variables: Record<string, unknown>): Promise<Response> {
+    const headers = new Headers({
+      'content-type': 'application/json',
+      origin: 'http://unauthorized.invalid',
+    });
+
+    if (this.cookie) {
+      headers.set('cookie', this.cookie);
+    }
+
     return fetch(GATEWAY_GRAPHQL_URL, {
       body: JSON.stringify({ query, variables }),
-      headers: { 'content-type': 'application/json', origin: 'http://unauthorized.invalid' },
+      headers,
       method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  }
+
+  /** Exercises only the three fixed private registration routes, never a caller-selected URL. */
+  async requestPrivateRegistration(
+    command: 'confirmEmail' | 'resendEmailConfirmation' | 'signUp',
+    body: unknown,
+  ): Promise<Response> {
+    return fetch(`${PLATFORM_URL}${PLATFORM_INTERNAL_ROUTES.auth[command]}`, {
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+      redirect: 'error',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   }
@@ -114,4 +148,42 @@ export function assertLocalHttpDestinations(): void {
   assert.equal(platform.hostname, 'platform-service');
   assert.equal(gateway.protocol, 'http:');
   assert.equal(platform.protocol, 'http:');
+}
+
+/** Reads only bounded private verifier JSON and replaces body/parser failures with a fixed category. */
+export async function readAuthHttpBody(response: Response): Promise<unknown> {
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    throw new Error('Auth HTTP response is unavailable');
+  }
+
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) {
+        break;
+      }
+
+      bytes += next.value.byteLength;
+      if (bytes > MAX_HTTP_RESPONSE_BYTES) {
+        throw new Error('Auth HTTP response exceeded its bound');
+      }
+      chunks.push(next.value);
+    }
+
+    return JSON.parse(Buffer.concat(chunks, bytes).toString('utf8')) as unknown;
+  } catch {
+    throw new Error('Auth HTTP response is malformed');
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // The response is already unusable; transport details must not enter tool output.
+    }
+    reader.releaseLock();
+  }
 }

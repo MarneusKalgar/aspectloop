@@ -8,6 +8,8 @@ import { MAIL_LIMITS } from '#app/mail/mail.port';
 const CAPTURE_ORIGIN = 'http://mailpit:8025';
 const REQUEST_TIMEOUT_MS = 2000;
 const MAX_RESPONSE_BYTES = 131_072;
+const CONFIRMATION_CAPTURE_POLL_MS = 100;
+const CONFIRMATION_CAPTURE_WAIT_MS = MAIL_LIMITS.DEADLINE_MS + MAIL_LIMITS.PHASE_TIMEOUT_MS;
 const OWNED_RECIPIENT = /^auth-http-[0-9a-f-]{36}@example\.test$/;
 const CAPTURE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -69,7 +71,7 @@ export class OwnedMailCapture {
     this.ownedIds.clear();
   }
 
-  /** Reads bounded confirmation links privately; never navigates a URL or exposes the token/body. */
+  /** Waits within the SMTP worker bound, then reads links privately without navigation or diagnostics. */
   async readConfirmationTokens(
     expectedCount: number,
     expectedFrom: string,
@@ -85,7 +87,8 @@ export class OwnedMailCapture {
       throw new Error('MAIL-CAPTURE confirmation request');
     }
 
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    const deadline = performance.now() + CONFIRMATION_CAPTURE_WAIT_MS;
+    while (performance.now() < deadline) {
       const ids = await this.search();
 
       if (ids.length === expectedCount) {
@@ -153,8 +156,8 @@ export class OwnedMailCapture {
         throw new Error('MAIL-CAPTURE duplicate');
       }
 
-      /** Allows only a bounded capture visibility delay after private delivery completion. */
-      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      /** Allows bounded asynchronous SMTP/capture visibility after the HTTP response, never a race guess. */
+      await new Promise<void>((resolve) => setTimeout(resolve, CONFIRMATION_CAPTURE_POLL_MS));
     }
 
     throw new Error('MAIL-CAPTURE missing');

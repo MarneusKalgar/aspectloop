@@ -29,9 +29,11 @@ limitation. M04.2 then stabilizes identity and browser sessions. The durable
 boundary is recorded in
 [`ADR 0004`](docs/decisions/0004-thin-gateway-and-platform-service.md).
 M04.2's browser-session cutover, C3 retirement, E1 resilience and D1 local mail
-transport are locally accepted; D2-D3 confirmation, E2 UI and final integrated
-acceptance remain pending. See [browser session behavior and recovery](docs/browser-session.md)
-and [Platform mail transport](docs/platform-mail.md).
+transport and D2/D3 registration state/HTTP are locally accepted; E2 confirmation
+UI and final integrated acceptance remain pending. See
+[browser session behavior and recovery](docs/browser-session.md),
+[Platform registration](docs/platform-registration.md) and
+[Platform mail transport](docs/platform-mail.md).
 
 ## Application Boundaries
 
@@ -243,13 +245,26 @@ npm run local:auth:verify -- --http
 
 # Prove synthetic SMTP delivery, capture content, and owned-message cleanup.
 npm run local:auth:verify -- --mail
+
+# Prove registration state against real PostgreSQL/providers (D2).
+npm run local:auth:verify -- --registration --build
 ```
+
+For active registration HTTP and owned confirmation-mail capture, use
+`npm run local:auth:verify -- --email --build`. With no mode,
+`npm run local:auth:verify -- --build` runs sessions -> HTTP -> email, failing
+on any requested group's failure. Both require healthy Mailpit and fresh
+process-local auth counters, with exclusive local auth traffic. Follow the
+[registration runbook](docs/platform-registration.md#local-verification-and-retained-limits)
+for the counter reset before each run; the email group exhausts IP windows.
+`--build` rebuilds the verifier image, not the running runtime containers.
 
 The explicit `--mail-outage` mode requires Mailpit to be stopped separately and
 proves session/readiness independence from mail failure. Follow the stop,
 expected-failure, restoration and regression sequence in
 [Platform mail transport](docs/platform-mail.md); the verifier never stops or
-starts Mailpit implicitly. Registration/confirmation delivery is not yet active.
+starts Mailpit implicitly. Registration mail and confirmation HTTP are active;
+browser confirmation UX remains E2.
 
 `npm run local:verify -- --fresh` is the destructive end-to-end local matrix.
 It requires explicit typed confirmation, resets named local volumes, runs the
@@ -284,8 +299,9 @@ Open `http://localhost:5173` and use a private verified fixture from
 `npm run local:auth:verify -- --fixture-create`. Confirm sign-in, reload, the empty
 correction inbox, and logout, then remove that fixture with
 `npm run local:auth:verify -- --fixture-cleanup <fixture-id>` using its printed ID.
-New sign-up accounts remain unverified; confirmation delivery/UI is later M04.2
-work, so registration alone does not permit sign-in. Never publish fixture
+New sign-up accounts remain unverified and receive best-effort confirmation mail;
+confirmation HTTP is active, but the browser confirmation route/UI remains E2.
+Registration alone does not permit sign-in. Never publish fixture
 credentials or cookie values. Stop the web process, then stop the backend stack
 while preserving its local data:
 

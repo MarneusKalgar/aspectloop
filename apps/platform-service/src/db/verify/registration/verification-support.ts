@@ -159,6 +159,19 @@ export class VerificationMail implements MailDispatcher {
   }
 }
 
+/** Refuses external or authenticated SMTP before any private registration fixture can send mail. */
+export function assertLocalRegistrationMail(environment: EnvironmentVariables): void {
+  if (
+    environment.SMTP_HOST !== 'mailpit' ||
+    environment.SMTP_PORT !== 1025 ||
+    environment.SMTP_SECURE !== 'false' ||
+    environment.SMTP_USER !== undefined ||
+    environment.SMTP_PASSWORD !== undefined
+  ) {
+    throw new Error('Registration verification requires private local Mailpit');
+  }
+}
+
 /** Reads captured tokens only after delivery; link contents stay entirely inside this process. */
 export async function capturedTokens(
   fixture: OwnedRegistrationFixture,
@@ -207,16 +220,7 @@ export function createRegistrationClient(
 
 /** Creates the accepted D1 dispatcher; SMTP is confined to private local Mailpit in this tool. */
 export function createVerificationMail(environment: EnvironmentVariables): VerificationMail {
-  if (
-    environment.SMTP_HOST !== 'mailpit' ||
-    environment.SMTP_PORT !== 1025 ||
-    environment.SMTP_SECURE !== 'false' ||
-    environment.SMTP_USER !== undefined ||
-    environment.SMTP_PASSWORD !== undefined
-  ) {
-    throw new Error('Registration verification requires private local Mailpit');
-  }
-
+  assertLocalRegistrationMail(environment);
   return new VerificationMail(createDispatcher(new ConfigService(environment)));
 }
 

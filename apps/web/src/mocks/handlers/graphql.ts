@@ -15,28 +15,22 @@ import {
 export const graphqlHandlers = [
   graphql.mutation(
     'SignUp',
-    /** Creates a public-only mock user. */ ({ variables }) => {
+    /** Acknowledges new/duplicate registration generically, retaining unverified state. */ ({
+      variables,
+    }) => {
       const input = variables.input as {
         displayName: string;
         email: string;
         password: string;
       };
 
-      const existingUser = findMockUserByEmail(input.email);
-
-      if (existingUser) {
-        return HttpResponse.json({
-          errors: [{ message: 'User with this email already exists' }],
-        });
-      }
-
-      const user = createMockUser(input);
+      createMockUser(input);
 
       return HttpResponse.json({
         data: {
           signUp: {
             success: true,
-            user: toMockPublicUser(user),
+            user: null,
           },
         },
       });
@@ -44,7 +38,9 @@ export const graphqlHandlers = [
   ),
   graphql.mutation(
     'SignIn',
-    /** Starts a session for valid credentials. */ ({ variables }) => {
+    /** Starts a session only for verified credentials; the default reviewer stays verified. */ ({
+      variables,
+    }) => {
       const input = variables.input as {
         email: string;
         password: string;
@@ -57,6 +53,17 @@ export const graphqlHandlers = [
             {
               extensions: { code: BROWSER_SESSION_ERROR_CODE.INVALID_CREDENTIALS },
               message: 'Invalid email or password',
+            },
+          ],
+        });
+      }
+
+      if (!user.emailVerified) {
+        return HttpResponse.json({
+          errors: [
+            {
+              extensions: { code: BROWSER_SESSION_ERROR_CODE.EMAIL_UNVERIFIED },
+              message: 'Email confirmation is required',
             },
           ],
         });

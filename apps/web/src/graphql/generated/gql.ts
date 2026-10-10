@@ -16,14 +16,14 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
 type Documents = {
     "\n  mutation SignIn($input: SignInInput!) {\n    signIn(input: $input) {\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": typeof types.SignInDocument,
     "\n  mutation SignOut {\n    signOut {\n      success\n    }\n  }\n": typeof types.SignOutDocument,
-    "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": typeof types.SignUpDocument,
+    "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n    }\n  }\n": typeof types.SignUpDocument,
     "\n  query Me {\n    me {\n      id\n      email\n      displayName\n      roles\n      scopes\n      createdAt\n      updatedAt\n    }\n  }\n": typeof types.MeDocument,
     "\n  query CorrectionSessions {\n    correctionSessions {\n      id\n      documentId\n      documentType\n      status\n      version\n      updatedAt\n    }\n  }\n": typeof types.CorrectionSessionsDocument,
 };
 const documents: Documents = {
     "\n  mutation SignIn($input: SignInInput!) {\n    signIn(input: $input) {\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": types.SignInDocument,
     "\n  mutation SignOut {\n    signOut {\n      success\n    }\n  }\n": types.SignOutDocument,
-    "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": types.SignUpDocument,
+    "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n    }\n  }\n": types.SignUpDocument,
     "\n  query Me {\n    me {\n      id\n      email\n      displayName\n      roles\n      scopes\n      createdAt\n      updatedAt\n    }\n  }\n": types.MeDocument,
     "\n  query CorrectionSessions {\n    correctionSessions {\n      id\n      documentId\n      documentType\n      status\n      version\n      updatedAt\n    }\n  }\n": types.CorrectionSessionsDocument,
 };
@@ -53,7 +53,7 @@ export function graphql(source: "\n  mutation SignOut {\n    signOut {\n      su
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n      user {\n        id\n        email\n        displayName\n        roles\n        scopes\n        createdAt\n        updatedAt\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n    }\n  }\n"): (typeof documents)["\n  mutation SignUp($input: SignUpInput!) {\n    signUp(input: $input) {\n      success\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

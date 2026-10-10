@@ -130,13 +130,16 @@ function fixture() {
   return { enqueue, passwords, service, store };
 }
 
-/** Proves shape errors and D1 mailbox disagreements are rejected before hash/SQL/admission. */
+/** Enforces D3's active signup mailbox bound before work while preserving sign-in compatibility. */
 async function inputBoundary(): Promise<void> {
   const context = fixture();
   const oversized = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(62)}`;
   const badSyntax = `${'a'.repeat(65)}@example.test`;
   expect(oversized.length).toBe(255);
-  expect(platformSignUpRequestSchema.safeParse({ ...INPUT, email: oversized }).success).toBe(true);
+  expect(platformSignUpRequestSchema.safeParse({ ...INPUT, email: oversized }).success).toBe(false);
+  expect(
+    platformSignUpRequestSchema.safeParse({ ...INPUT, email: oversized.slice(0, -1) }).success,
+  ).toBe(true);
   expect(
     platformSignInRequestSchema.safeParse({ email: oversized, password: INPUT.password }).success,
   ).toBe(true);
@@ -193,7 +196,10 @@ async function sharedAdmission(): Promise<void> {
 
 test('prepared signup normalizes identity and returns no private work', preparedSignup);
 test('mail starts after commit and is not awaited by the command', afterCommitOnly);
-test('prepared mailbox validation preserves legacy identity contracts', inputBoundary);
+test(
+  'active registration mailbox validation preserves existing sign-in compatibility',
+  inputBoundary,
+);
 test('confirmation separates invalid strings from structural validation', confirmationBoundary);
 test('signup/resend share count-before-work admission without refunds', sharedAdmission);
 test('mail failure does not change committed command acceptance', deliveryFailure);

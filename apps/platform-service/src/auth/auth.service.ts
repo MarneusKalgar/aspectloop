@@ -5,8 +5,6 @@ import type {
   PlatformBrowserSessionValidationRequest,
   PlatformBrowserSessionValidationResponse,
   PlatformSignInRequest,
-  PlatformSignUpRequest,
-  PlatformSignUpResponse,
 } from '@aspectloop/contracts/platform';
 
 import {
@@ -15,9 +13,8 @@ import {
   platformBrowserSessionSignOutResponseSchema,
   platformBrowserSessionValidationResponseSchema,
   platformSignInRequestSchema,
-  platformSignUpResponseSchema,
 } from '@aspectloop/contracts/platform';
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 import type { User } from '../users/user.entity';
 
@@ -72,30 +69,6 @@ export class AuthService {
     this.logger.log({ event: 'auth.browser_session.sign_out.completed', outcome: 'success' });
 
     return platformBrowserSessionSignOutResponseSchema.parse({ success: true });
-  }
-
-  /** Creates an unverified reviewer account without altering exact password bytes. */
-  async signUp(input: PlatformSignUpRequest): Promise<PlatformSignUpResponse> {
-    const { displayName, email, password } = input;
-
-    if (await this.usersService.findByEmail(email)) {
-      this.logger.warn({
-        event: 'auth.sign_up.failed',
-        outcome: 'failure',
-        reason: 'identity_conflict',
-      });
-      throw new ConflictException('User with this email already exists');
-    }
-
-    const passwordHash = await this.passwordService.hash(password);
-    const user = await this.usersService.createUser({ displayName, email, passwordHash });
-
-    this.logger.log({ event: 'auth.sign_up.succeeded', outcome: 'success', userId: user.id });
-
-    return platformSignUpResponseSchema.parse({
-      success: true,
-      user: toPlatformUserView(user),
-    });
   }
 
   /** Resolves current browser-session identity and optional server-owned activity. */

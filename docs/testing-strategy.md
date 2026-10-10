@@ -582,8 +582,8 @@ persistence cannot guarantee peer/reload suppression; injected capabilities do
 not establish broad unsupported-browser compatibility. See
 [browser session recovery](browser-session.md) for those accepted limitations.
 D1 local mail transport is separately accepted as described below; D2 prepared
-registration is locally verified by human report, while HTTP activation and
-confirmation UI remain D3/E2. Fresh-stack, stage/performance and integrated
+registration and D3 HTTP activation are locally accepted by human verification;
+confirmation UI remains E2. Fresh-stack, stage/performance and integrated
 closeout remain F gates.
 
 ### 8.5 Accepted D1 Local Mail Verification
@@ -616,7 +616,8 @@ The [mail runbook](platform-mail.md) gives the explicit commands and safe
 restoration sequence. The outage verifier establishes its session with Mailpit
 already stopped; it does not prove in-flight SMTP restart recovery. SMTP
 acknowledgement is not external mailbox delivery. D2 prepared registration
-evidence is recorded below; HTTP activation and confirmation UI remain D3/E2.
+evidence is recorded below, followed by accepted D3 HTTP/email verification;
+confirmation UI remains E2.
 Fresh-stack, stage/performance and
 complete integrated SESSION reconciliation remain F. No public test endpoints,
 raw credentials, diagnostic payloads or delete-all capture cleanup are introduced.
@@ -642,13 +643,68 @@ database/mail cleanup; unavailable capture fails, never skips.
 
 Direct message/validation and orchestration tests complement the runner's
 transaction evidence. This is provider/state integration, not Nest HTTP wiring,
-GraphQL transport or browser E2E. The existing live signup contract remains
-unchanged. See [Platform registration](platform-registration.md) for command
-prerequisites, limiter policy and delivery limits. D3 owns coordinated HTTP
-activation and email/HTTP verification, E2 owns browser confirmation, and F
+GraphQL transport or browser E2E. At D2 acceptance the live signup contract
+remained unchanged; D3's subsequent coordinated activation is recorded below.
+See [Platform registration](platform-registration.md) for command prerequisites,
+limiter policy and delivery limits. E2 owns browser confirmation, and F
 retains integrated acceptance. Historical handoff checklists remain in the
 working plan; the latest report does not supply separate fresh output for every
 earlier checklist item.
+
+### 8.7 Accepted D3 HTTP And Email Verification
+
+D3 was locally accepted by the human on 2026-10-10. Screenshots show focused
+`local:auth:verify -- --email --build` passing D3-EMAIL-01 through 07 and exact
+owned database/mail cleanup. A subsequent counter reset and default aggregate
+show C3-DB01-04, SESSION-01-04, HTTP-SESSION-00-05 (including 01A and 03A), then
+all seven email groups and the exact-cleanup summary. The human separately
+confirmed the remaining generation, formatting/lint, repository type-check,
+backend/Web tests, builds and applicable browser checks all passed. Exact fresh
+test counts/timings and CI/publication are not claimed; these are human-run
+results, not agent-run checks.
+
+The real Gateway/Platform/PostgreSQL/Mailpit email groups cover:
+
+- Generic signup, actual owned SMTP/link capture, digest-only persistence and
+  unverified sign-in rejection.
+- Duplicate signup preserving profile/password and durable cooldown.
+- Explicit replacement/confirmation, replaced/reused rejection and no cookie
+  changes; verified explicit login/logout preserving the unrelated session.
+- Generic unknown/verified/identity-suppressed responses without unwanted work.
+- Safe public/private malformed input, bounded real user-lock dependency failure,
+  Origin/batch protection and real identity/IP thresholds.
+- No registration cookie writes and original server-session authority after
+  success, suppression, rejection and dependency failure.
+
+Unit/composition tests complement live coverage with strict transport schemas,
+generic projections, mailbox/password boundaries, safe failure-stage output,
+bounded verifier bodies and pre-execution GraphQL rejection evidence. That
+rejection can carry HTTP 200: errors-only/no-data/no-execution-path assertions
+and a real in-memory Yoga resolver-call test distinguish it from success.
+Web tests cover neutral signup copy and generic/unverified MSW semantics.
+
+Use the initialized exclusive local stack with matching validated runtime/tool
+configuration and healthy Mailpit. The [registration runbook](platform-registration.md)
+gives the counter-reset prerequisites. No-mode `local:auth:verify` is fail-fast
+sessions -> HTTP -> email; explicit existing modes remain available. Missing
+prerequisites fail rather than skip, and conflicting/unknown modes exit 2.
+The final email group deliberately exhausts IP counters, so repeats/aggregates
+require a fresh counter reset and no parallel auth traffic.
+
+Only recorded run-owned recipients/rows/message IDs are cleaned; cleanup or pool
+closure failure keeps the command nonzero and withholds group pass output.
+Closed failure-stage labels never print credentials, raw responses, mail bodies,
+stacks or provider diagnostics. Replacement ages only an owned token timestamp
+past cooldown; accepted D2 SQL race/TTL/rollback evidence is reused, not duplicated.
+The accepted SMTP worker/phase bound is allowed to settle ambiguous local sends
+before cleanup. This exclusive-local assumption is not a durable outbox or proof
+against external queued delivery.
+
+D3 proves backend HTTP integration, not E2's browser link/fragment/resend UX or
+full email-to-login journey. External authenticated SMTP, distributed limits,
+fresh-stack rehearsal, stage/performance and the integrated SESSION matrix remain
+outside this local gate. No new migration, public fixture/debug endpoint, secret
+artifact capture or deployment authorization is introduced.
 
 ## 9. Reliability Rules
 

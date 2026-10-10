@@ -16,6 +16,7 @@ function resolveWebPort(rawWebPort: string | undefined) {
   return port;
 }
 
+/** Keeps linked CommonJS contracts browser-compatible without changing the shared package format. */
 export default defineConfig(({ command, mode }) => {
   const loadedEnv = loadEnv(mode, process.cwd(), '');
   const browserMockEnabled = command === 'serve' && loadedEnv.VITE_MOCK_GQL_RUNTIME === 'true';
@@ -43,6 +44,10 @@ export default defineConfig(({ command, mode }) => {
   return {
     define: {
       'import.meta.env.BROWSER_MOCK_ENABLED': JSON.stringify(browserMockEnabled),
+    },
+    optimizeDeps: {
+      // Linked workspace packages bypass automatic discovery; contracts currently emits CommonJS.
+      include: ['@aspectloop/contracts/platform'],
     },
     plugins: [react()],
     publicDir: command === 'build' ? false : 'public',

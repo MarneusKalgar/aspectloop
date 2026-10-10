@@ -1,15 +1,14 @@
 import { z } from 'zod';
 
 import { PLATFORM_IDENTITY_POLICY } from '../identity.constants';
-import { platformUserViewSchema } from '../users.contracts';
 import { platformIdentityEmailSchema, platformSignUpPasswordSchema } from './identity.contracts';
 
 export const PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH = 128;
 export const PLATFORM_REGISTRATION_EMAIL_MAX_LENGTH = 254;
 
-// Additive preparation only: live signup and sign-in retain their existing contracts until D3.
+// Registration mailbox admission is active; sign-in retains its existing identity bound.
 export const platformRegistrationEmailSchema = platformIdentityEmailSchema.refine(
-  /** Bounds prepared recipients without narrowing existing identity lookup. */
+  /** Bounds active registration recipients without narrowing existing sign-in identity lookup. */
   (email) => email.length <= PLATFORM_REGISTRATION_EMAIL_MAX_LENGTH,
 );
 
@@ -21,31 +20,20 @@ export const platformEmailConfirmationTokenSchema = z
 export const platformSignUpRequestSchema = z
   .object({
     displayName: z.string().trim().min(1).max(PLATFORM_IDENTITY_POLICY.DISPLAY_NAME_MAX_LENGTH),
-    email: platformIdentityEmailSchema,
+    email: platformRegistrationEmailSchema,
     password: platformSignUpPasswordSchema,
   })
   .strict();
 
-export const platformSignUpResponseSchema = z
-  .object({
-    success: z.literal(true),
-    user: platformUserViewSchema,
-  })
-  .strict();
-
-export const platformPreparedSignUpRequestSchema = platformSignUpRequestSchema.extend({
-  email: platformRegistrationEmailSchema,
-});
-
-export const platformPreparedResendEmailConfirmationRequestSchema = z
-  .object({ email: platformRegistrationEmailSchema })
-  .strict();
+export const platformPreparedSignUpRequestSchema = platformSignUpRequestSchema;
 
 export const platformPendingSignUpResponseSchema = z
   .object({
     success: z.literal(true),
   })
   .strict();
+
+export const platformSignUpResponseSchema = platformPendingSignUpResponseSchema;
 
 export const platformConfirmEmailRequestSchema = z
   .object({
@@ -61,9 +49,12 @@ export const platformConfirmEmailResponseSchema = z
 
 export const platformResendEmailConfirmationRequestSchema = z
   .object({
-    email: platformIdentityEmailSchema,
+    email: platformRegistrationEmailSchema,
   })
   .strict();
+
+export const platformPreparedResendEmailConfirmationRequestSchema =
+  platformResendEmailConfirmationRequestSchema;
 
 export const platformResendEmailConfirmationResponseSchema = z
   .object({

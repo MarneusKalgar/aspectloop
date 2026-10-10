@@ -4,9 +4,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Prints the intentionally narrow M04.2 session, prepared registration and mail surface.
+# Prints fixed M04.2 modes and the fail-fast sessions -> HTTP -> email aggregate.
 usage() {
-  echo "Usage: $0 (--sessions | --http | --registration | --mail | --mail-outage | --fixture-create | --fixture-cleanup UUID) [--build]"
+  echo "Usage: $0 [--sessions | --http | --email | --registration | --mail | --mail-outage | --fixture-create | --fixture-cleanup UUID] [--build]"
+  echo "No mode runs sessions -> HTTP -> email; requested modes fail if prerequisites are unavailable."
 }
 
 MODE=""
@@ -19,9 +20,9 @@ while [[ "$#" -gt 0 ]]; do
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
       MODE="sessions"
       ;;
-    --http)
+    --http | --email)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
-      MODE="http"
+      MODE="${argument#--}"
       ;;
     --registration)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
@@ -58,8 +59,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [[ -z "$MODE" ]]; then
-  usage >&2
-  exit 2
+  MODE="aggregate"
 fi
 
 if [[ "$MODE" == "fixture-cleanup" && ! "$FIXTURE_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]; then
@@ -77,11 +77,16 @@ if [[ "$BUILD" == "true" ]]; then
 fi
 
 case "$MODE" in
+  aggregate)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --http
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --email
+    ;;
   sessions)
     "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify
     ;;
-  http)
-    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --http
+  http | email)
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- "--$MODE"
     ;;
   registration)
     # The prepared runner fails if capture is unavailable; it never starts Mailpit implicitly.

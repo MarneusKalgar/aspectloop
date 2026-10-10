@@ -56,7 +56,7 @@ export const DEFAULT_PLATFORM_RESPONSE_POLICY: PlatformResponsePolicy = Object.f
   },
 });
 
-/** Applies the strict target-session contract without exposing upstream bodies. */
+/** Applies the shared six-code auth contract to session and registration endpoints only. */
 export const BROWSER_SESSION_RESPONSE_POLICY: PlatformResponsePolicy = Object.freeze({
   /** A malformed success cannot authenticate a browser request. */
   invalidSuccessResponse(): Error {

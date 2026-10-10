@@ -43,7 +43,7 @@ export const enResources = {
   'auth.signUp.hero.feature3': 'Evidence always available alongside each field',
   'auth.signUp.hero.title': 'Your review workspace, ready in seconds.',
   'auth.signUp.subtitle': 'Create an account to access the correction inbox.',
-  'auth.signUp.success': 'Account created. Sign in to continue.',
+  'auth.signUp.success': 'If confirmation is needed, check your email before signing in.',
   'auth.signUp.title': 'Create your review workspace',
   'auth.validation.displayName.required': 'Display name is required.',
   'auth.validation.email.invalid': 'Enter a valid email address.',

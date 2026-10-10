@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover, C3 retirement, E1 resilience and D1 mail transport locally accepted; D2 prepared state locally verified by human report; D3/E2/F pending
+Status: Accepted design; C2b cutover, C3 retirement, E1 resilience, D1 mail transport and D2/D3 registration state/HTTP locally accepted; E2/F pending
 
 Date: 2026-09-20
 
@@ -149,5 +149,11 @@ locally verified by human report on 2026-10-10. Atomic digest-only token
 transitions, post-commit best-effort mail and process-local fixed identity windows
 preserve session authority and do not issue sessions on registration/confirmation.
 [Platform registration](../platform-registration.md) records the policy and
-evidence limits. The live signup contract remains unchanged until coordinated
-D3 HTTP activation; E2 UI and F integrated acceptance remain separate work.
+evidence limits. D3 HTTP activation was locally accepted on 2026-10-10 after
+human checks and real session -> HTTP -> email verification. Private signup/
+resend responses are generic success only; public signup retains its deprecated
+user field as null. Registration, resend and confirmation do not write cookies,
+issue sessions or revoke existing ones. Verified sign-in remains explicit.
+Strict error/schema and Origin/batch/IP policies are retained. E2's browser
+confirmation UI and F integrated acceptance remain separate work; this is not
+external mailbox delivery or full M04.2 acceptance.
