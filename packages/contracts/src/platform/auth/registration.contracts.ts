@@ -5,6 +5,13 @@ import { platformUserViewSchema } from '../users.contracts';
 import { platformIdentityEmailSchema, platformSignUpPasswordSchema } from './identity.contracts';
 
 export const PLATFORM_EMAIL_CONFIRMATION_TOKEN_MAX_LENGTH = 128;
+export const PLATFORM_REGISTRATION_EMAIL_MAX_LENGTH = 254;
+
+// Additive preparation only: live signup and sign-in retain their existing contracts until D3.
+export const platformRegistrationEmailSchema = platformIdentityEmailSchema.refine(
+  /** Bounds prepared recipients without narrowing existing identity lookup. */
+  (email) => email.length <= PLATFORM_REGISTRATION_EMAIL_MAX_LENGTH,
+);
 
 export const platformEmailConfirmationTokenSchema = z
   .string()
@@ -24,6 +31,14 @@ export const platformSignUpResponseSchema = z
     success: z.literal(true),
     user: platformUserViewSchema,
   })
+  .strict();
+
+export const platformPreparedSignUpRequestSchema = platformSignUpRequestSchema.extend({
+  email: platformRegistrationEmailSchema,
+});
+
+export const platformPreparedResendEmailConfirmationRequestSchema = z
+  .object({ email: platformRegistrationEmailSchema })
   .strict();
 
 export const platformPendingSignUpResponseSchema = z
@@ -59,6 +74,10 @@ export const platformResendEmailConfirmationResponseSchema = z
 export type PlatformConfirmEmailRequest = z.infer<typeof platformConfirmEmailRequestSchema>;
 export type PlatformConfirmEmailResponse = z.infer<typeof platformConfirmEmailResponseSchema>;
 export type PlatformPendingSignUpResponse = z.infer<typeof platformPendingSignUpResponseSchema>;
+export type PlatformPreparedResendEmailConfirmationRequest = z.infer<
+  typeof platformPreparedResendEmailConfirmationRequestSchema
+>;
+export type PlatformPreparedSignUpRequest = z.infer<typeof platformPreparedSignUpRequestSchema>;
 export type PlatformResendEmailConfirmationRequest = z.infer<
   typeof platformResendEmailConfirmationRequestSchema
 >;

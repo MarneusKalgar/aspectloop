@@ -4,9 +4,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Prints the intentionally narrow M04.2 session and mail verification surface.
+# Prints the intentionally narrow M04.2 session, prepared registration and mail surface.
 usage() {
-  echo "Usage: $0 (--sessions | --http | --mail | --mail-outage | --fixture-create | --fixture-cleanup UUID) [--build]"
+  echo "Usage: $0 (--sessions | --http | --registration | --mail | --mail-outage | --fixture-create | --fixture-cleanup UUID) [--build]"
 }
 
 MODE=""
@@ -22,6 +22,10 @@ while [[ "$#" -gt 0 ]]; do
     --http)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
       MODE="http"
+      ;;
+    --registration)
+      if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
+      MODE="registration"
       ;;
     --mail | --mail-outage)
       if [[ -n "$MODE" ]]; then usage >&2; exit 2; fi
@@ -78,6 +82,10 @@ case "$MODE" in
     ;;
   http)
     "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:http:verify:local -- --http
+    ;;
+  registration)
+    # The prepared runner fails if capture is unavailable; it never starts Mailpit implicitly.
+    "${COMPOSE[@]}" "${RUN_ARGS[@]}" platform-auth-verify npm run db:auth:registration:verify:local
     ;;
   mail | mail-outage)
     # Capture absence fails --mail. This tool never starts or stops Mailpit implicitly.

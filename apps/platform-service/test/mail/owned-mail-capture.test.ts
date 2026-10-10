@@ -1,3 +1,7 @@
+import { ConfigService } from '@nestjs/config';
+import { OpaqueTokenService } from '@platform/auth/credentials/opaque-token.service';
+import { EMAIL_CONFIRMATION } from '@platform/auth/registration/registration.constants';
+import { createConfirmationMessage } from '@platform/auth/registration/registration.message';
 import { OwnedMailCapture } from '@platform/db/verify/mail/owned-mail-capture';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
@@ -40,6 +44,74 @@ async function testCaptureUnavailable(): Promise<void> {
   expect(request).toHaveBeenCalledOnce();
 }
 
+/** Captures multiple replacement links privately through fixed API destinations and canonical token parsing. */
+async function testConfirmationCapture(): Promise<void> {
+  const tokens = new OpaqueTokenService(
+    new ConfigService({ AUTH_TOKEN_HMAC_SECRET: 'capture-test-only-purpose-separated-key' }),
+  );
+  const first = `${ID}.${'A'.repeat(43)}`;
+  const second = `00000000-0000-4000-8000-000000000002.${'A'.repeat(43)}`;
+  const from = 'no-reply@example.test';
+  const webBase = 'http://localhost:5173';
+  const messages = [
+    { ...OWNED_MESSAGE, ID: 'confirmation-one', Subject: EMAIL_CONFIRMATION.SUBJECT },
+    { ...OWNED_MESSAGE, ID: 'confirmation-two', Subject: EMAIL_CONFIRMATION.SUBJECT },
+  ];
+  request.mockResolvedValueOnce(response({ messages, messages_count: 2 }));
+
+  for (const [index, token] of [first, second].entries()) {
+    request.mockResolvedValueOnce(
+      response({
+        ...messages[index],
+        From: { Address: from },
+        Text: createConfirmationMessage(webBase, { rawToken: token, to: RECIPIENT }).text,
+      }),
+    );
+  }
+
+  const capture = new OwnedMailCapture(RECIPIENT, EMAIL_CONFIRMATION.SUBJECT);
+  await expect(capture.readConfirmationTokens(2, from, webBase, tokens)).resolves.toEqual([
+    first,
+    second,
+  ]);
+
+  for (const [url, options] of request.mock.calls) {
+    expect(String(url).startsWith('http://mailpit:8025/api/v1/')).toBe(true);
+    expect(options?.redirect).toBe('error');
+  }
+}
+
+/** Rejects foreign origins, routes, query tokens and fragment additions without following a captured URL. */
+async function testConfirmationLinkBoundary(): Promise<void> {
+  const tokens = new OpaqueTokenService(
+    new ConfigService({ AUTH_TOKEN_HMAC_SECRET: 'capture-test-only-purpose-separated-key' }),
+  );
+  const token = `${ID}.${'A'.repeat(43)}`;
+  const message = { ...OWNED_MESSAGE, Subject: EMAIL_CONFIRMATION.SUBJECT };
+
+  for (const link of [
+    `http://foreign.test/confirm-email#token=${token}`,
+    `http://localhost:5173/other#token=${token}`,
+    `http://localhost:5173/confirm-email?token=${token}`,
+    `http://localhost:5173/confirm-email#token=${token}&extra=true`,
+  ]) {
+    request.mockReset();
+    request.mockResolvedValueOnce(response({ messages: [message], messages_count: 1 }));
+    request.mockResolvedValueOnce(
+      response({
+        ...message,
+        From: { Address: 'no-reply@example.test' },
+        Text: `Use this link to confirm your email:\n\n${link}\n\nIf you did not request this email, you can ignore it.`,
+      }),
+    );
+    const capture = new OwnedMailCapture(RECIPIENT, EMAIL_CONFIRMATION.SUBJECT);
+    await expect(
+      capture.readConfirmationTokens(1, 'no-reply@example.test', 'http://localhost:5173', tokens),
+    ).rejects.toThrow('MAIL-CAPTURE confirmation');
+    expect(request).toHaveBeenCalledTimes(2);
+  }
+}
+
 /** Proves an empty owned result never becomes Mailpit's delete-all request. */
 async function testEmptyCleanup(): Promise<void> {
   request.mockResolvedValueOnce(response({ messages: [], messages_count: 0 }));
@@ -62,6 +134,14 @@ async function testForeignMessages(): Promise<void> {
   await expect(new OwnedMailCapture(RECIPIENT, SUBJECT).cleanup()).rejects.toThrow('ownership');
 
   expect(request).toHaveBeenCalledOnce();
+}
+
+/** Fails verification if a provider acknowledges deletion but owned messages remain. */
+async function testIncompleteCleanup(): Promise<void> {
+  request.mockResolvedValueOnce(response({ messages: [OWNED_MESSAGE], messages_count: 1 }));
+  await expect(new OwnedMailCapture(RECIPIENT, SUBJECT).assertEmpty()).rejects.toThrow(
+    'cleanup incomplete',
+  );
 }
 
 /** Records a late-visible owned delivery for cleanup without deleting unrelated messages. */
@@ -148,3 +228,6 @@ test('cleans late-visible owned delivery without touching other subjects', testL
 test('fails instead of skipping unavailable capture', testCaptureUnavailable);
 test('rejects latest capture identifiers', testUnsafeCaptureId);
 test('refuses arbitrary capture ownership', testOwnershipBoundary);
+test('captures bounded confirmation replacement links without navigation', testConfirmationCapture);
+test('rejects malformed or foreign confirmation links', testConfirmationLinkBoundary);
+test('refuses to report cleanup complete while owned messages remain', testIncompleteCleanup);

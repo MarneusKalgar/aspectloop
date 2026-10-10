@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover, C3 retirement, E1 resilience and D1 mail transport locally accepted; D2-D3/E2/F pending
+Status: Accepted design; C2b cutover, C3 retirement, E1 resilience and D1 mail transport locally accepted; D2 prepared state locally verified by human report; D3/E2/F pending
 
 Date: 2026-09-20
 
@@ -141,6 +141,13 @@ D1 local mail transport was locally accepted by the human on 2026-10-08.
 SMTP availability does not enter Platform auth readiness or session validation;
 explicit Mailpit outage evidence preserves the same session before/after failed
 dispatch. [Platform mail transport](../platform-mail.md) records ownership,
-bounded dispatch, private capture and delivery limitations. D2-D3 registration
-confirmation, E2 UI and F integrated acceptance remain separate work. D1 changes
-neither the session authority nor the active registration contract.
+bounded dispatch, private capture and delivery limitations. D1 changes neither
+the session authority nor the active registration contract.
+
+D2 prepared registration state and active Platform sign-in identity limits are
+locally verified by human report on 2026-10-10. Atomic digest-only token
+transitions, post-commit best-effort mail and process-local fixed identity windows
+preserve session authority and do not issue sessions on registration/confirmation.
+[Platform registration](../platform-registration.md) records the policy and
+evidence limits. The live signup contract remains unchanged until coordinated
+D3 HTTP activation; E2 UI and F integrated acceptance remain separate work.

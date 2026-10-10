@@ -101,7 +101,10 @@ prove deletion of distinguishable account-owned product records; focused
 unit/integration cache-fencing evidence complements it. Injected capability
 faults are not broad unsupported-browser compatibility certification. Fresh-stack
 rehearsal, stage/performance evidence and the complete SESSION matrix remain with
-F; registration confirmation remains D2-D3/E2. D1 local mail transport was
+F. Prepared registration state and sign-in identity limits are locally verified
+by human report on 2026-10-10; HTTP activation and confirmation UI remain D3/E2.
+See [Platform registration](platform-registration.md) for scope and limits.
+D1 local mail transport was
 accepted on 2026-10-08 with session/readiness independence from Mailpit outage;
 see [Platform mail transport](platform-mail.md) for its evidence and limitations.
 

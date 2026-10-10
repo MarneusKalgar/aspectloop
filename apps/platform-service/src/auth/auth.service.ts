@@ -14,15 +14,18 @@ import {
   platformBrowserSessionSignInResponseSchema,
   platformBrowserSessionSignOutResponseSchema,
   platformBrowserSessionValidationResponseSchema,
+  platformSignInRequestSchema,
   platformSignUpResponseSchema,
 } from '@aspectloop/contracts/platform';
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
 
 import type { User } from '../users/user.entity';
 
 import { toPlatformUserView } from '../users/user-view';
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './credentials/password.service';
+import { AuthIdentityLimiter } from './limits/auth-identity-limiter';
+import { SIGN_IN_CHECK_OUTCOME } from './limits/identity-limit.constants';
 import { isAuthDatabaseUnavailableError } from './persistence/database.errors';
 import { PlatformAuthException } from './platform-auth.exception';
 import { AuthSessionStore } from './sessions/auth-session.store';
@@ -36,6 +39,7 @@ export class AuthService {
     private readonly authSessionStore: AuthSessionStore,
     private readonly passwordService: PasswordService,
     private readonly usersService: UsersService,
+    private readonly identityLimiter: AuthIdentityLimiter,
   ) {}
 
   /** Authenticates one verified reviewer and creates an opaque browser session. */
@@ -110,12 +114,45 @@ export class AuthService {
     });
   }
 
-  /** Applies uniform password work and verified-identity policy to browser sign-in. */
+  /** Reserves bounded work, resets at password success and preserves unverified/outage distinctions. */
   private async authenticateVerifiedUser(input: PlatformSignInRequest): Promise<User> {
-    let user: null | User;
+    const result = platformSignInRequestSchema.safeParse(input);
+
+    if (!result.success) {
+      throw new BadRequestException('Invalid Platform request');
+    }
+
+    const parsed = result.data;
+    const reservation = this.identityLimiter.reserveSignIn(parsed.email);
 
     try {
-      user = await this.usersService.findByEmailWithPassword(input.email);
+      const user = await this.usersService.findByEmailWithPassword(parsed.email);
+      const isPasswordValid = await this.passwordService.verifyOrDummy(
+        parsed.password,
+        user?.passwordHash ?? null,
+      );
+
+      if (!user?.passwordHash || !isPasswordValid) {
+        reservation.settle(SIGN_IN_CHECK_OUTCOME.REJECTED);
+        this.rejectInvalidCredentials();
+      }
+
+      reservation.settle(SIGN_IN_CHECK_OUTCOME.ACCEPTED);
+
+      if (!user.emailVerifiedAt) {
+        this.logger.warn({
+          event: 'auth.sign_in.failed',
+          outcome: 'failure',
+          reason: 'email_unverified',
+          userId: user.id,
+        });
+        throw new PlatformAuthException(
+          AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
+          'Email confirmation is required',
+        );
+      }
+
+      return user;
     } catch (error) {
       if (isAuthDatabaseUnavailableError(error)) {
         throw new PlatformAuthException(
@@ -125,31 +162,9 @@ export class AuthService {
       }
 
       throw error;
+    } finally {
+      reservation.settle(SIGN_IN_CHECK_OUTCOME.RELEASED);
     }
-
-    const isPasswordValid = await this.passwordService.verifyOrDummy(
-      input.password,
-      user?.passwordHash ?? null,
-    );
-
-    if (!user?.passwordHash || !isPasswordValid) {
-      this.rejectInvalidCredentials();
-    }
-
-    if (!user.emailVerifiedAt) {
-      this.logger.warn({
-        event: 'auth.sign_in.failed',
-        outcome: 'failure',
-        reason: 'email_unverified',
-        userId: user.id,
-      });
-      throw new PlatformAuthException(
-        AUTH_ERROR_CODE.EMAIL_UNVERIFIED,
-        'Email confirmation is required',
-      );
-    }
-
-    return user;
   }
 
   /** Emits the shared safe diagnostic and rejects credential mismatch uniformly. */

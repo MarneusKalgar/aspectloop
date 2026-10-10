@@ -1,3 +1,10 @@
+import type { OpaqueTokenService } from '#app/auth/credentials/opaque-token.service';
+
+import { OPAQUE_TOKEN_PURPOSE } from '#app/auth/credentials/opaque-token.service';
+import { EMAIL_CONFIRMATION } from '#app/auth/registration/registration.constants';
+import { createConfirmationMessage } from '#app/auth/registration/registration.message';
+import { MAIL_LIMITS } from '#app/mail/mail.port';
+
 const CAPTURE_ORIGIN = 'http://mailpit:8025';
 const REQUEST_TIMEOUT_MS = 2000;
 const MAX_RESPONSE_BYTES = 131_072;
@@ -13,7 +20,10 @@ export class OwnedMailCapture {
     private readonly recipient: string,
     private readonly subject: string,
   ) {
-    if (!OWNED_RECIPIENT.test(recipient) || subject !== `D1 mail ${recipient.slice(10, 46)}`) {
+    if (
+      !OWNED_RECIPIENT.test(recipient) ||
+      (subject !== `D1 mail ${recipient.slice(10, 46)}` && subject !== EMAIL_CONFIRMATION.SUBJECT)
+    ) {
       throw new Error('MAIL-CAPTURE ownership');
     }
   }
@@ -21,6 +31,13 @@ export class OwnedMailCapture {
   /** Requires capture availability before submission; missing capture is never a skip. */
   async assertAvailable(): Promise<void> {
     await this.search();
+  }
+
+  /** Confirms exact owned cleanup without granting any inbox-wide deletion capability. */
+  async assertEmpty(): Promise<void> {
+    if ((await this.search()).length !== 0) {
+      throw new Error('MAIL-CAPTURE cleanup incomplete');
+    }
   }
 
   /** Deletes only recorded IDs after checking ownership, including late-visible delivery. */
@@ -50,6 +67,97 @@ export class OwnedMailCapture {
     }
 
     this.ownedIds.clear();
+  }
+
+  /** Reads bounded confirmation links privately; never navigates a URL or exposes the token/body. */
+  async readConfirmationTokens(
+    expectedCount: number,
+    expectedFrom: string,
+    webBaseUrl: string,
+    tokens: OpaqueTokenService,
+  ): Promise<string[]> {
+    if (
+      this.subject !== EMAIL_CONFIRMATION.SUBJECT ||
+      !Number.isInteger(expectedCount) ||
+      expectedCount < 1 ||
+      expectedCount > 10
+    ) {
+      throw new Error('MAIL-CAPTURE confirmation request');
+    }
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const ids = await this.search();
+
+      if (ids.length === expectedCount) {
+        const result: string[] = [];
+
+        for (const id of ids) {
+          const message = await this.request(`/api/v1/message/${id}`);
+
+          if (
+            !isRecord(message) ||
+            typeof message.Text !== 'string' ||
+            message.Text.length > MAIL_LIMITS.TEXT_BYTES ||
+            !isRecord(message.From) ||
+            message.From.Address !== expectedFrom ||
+            message.Subject !== this.subject ||
+            !Array.isArray(message.To) ||
+            message.To.length !== 1 ||
+            !isRecord(message.To[0]) ||
+            message.To[0].Address !== this.recipient
+          ) {
+            throw new Error('MAIL-CAPTURE content');
+          }
+
+          const text = message.Text.replace(/\r\n/g, '\n').trimEnd();
+          const candidate = text.split('\n')[2];
+          let link: URL;
+
+          try {
+            link = new URL(candidate ?? '');
+          } catch {
+            throw new Error('MAIL-CAPTURE confirmation link');
+          }
+
+          if (
+            link.origin !== new URL(webBaseUrl).origin ||
+            link.pathname !== EMAIL_CONFIRMATION.PATH ||
+            link.search !== '' ||
+            link.username !== '' ||
+            link.password !== '' ||
+            !link.hash.startsWith('#token=')
+          ) {
+            throw new Error('MAIL-CAPTURE confirmation link');
+          }
+
+          const rawToken = link.hash.slice('#token='.length);
+
+          if (
+            !tokens.parse(rawToken, OPAQUE_TOKEN_PURPOSE.EMAIL_VERIFICATION) ||
+            createConfirmationMessage(webBaseUrl, { rawToken, to: this.recipient }).text !== text
+          ) {
+            throw new Error('MAIL-CAPTURE confirmation content');
+          }
+
+          result.push(rawToken);
+        }
+
+        if (new Set(result).size !== expectedCount) {
+          throw new Error('MAIL-CAPTURE duplicate');
+        }
+
+        return result;
+      }
+
+      if (ids.length > expectedCount) {
+        throw new Error('MAIL-CAPTURE duplicate');
+      }
+
+      /** Allows only a bounded capture visibility delay after private delivery completion. */
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    }
+
+    throw new Error('MAIL-CAPTURE missing');
   }
 
   /** Finds and checks owned text privately; raw recipient/body values never reach stdout. */

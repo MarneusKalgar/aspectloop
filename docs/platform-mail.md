@@ -6,8 +6,10 @@ Platform owns the provider-neutral mail port, bounded in-memory dispatcher,
 SMTP adapter, and configuration. Gateway and Web do not own or import SMTP
 mechanics. D1 provides transport infrastructure and private synthetic-message
 verification, not registration delivery or public confirmation commands.
-Registration message/link construction and post-commit enqueue belong to D2;
-coordinated HTTP activation belongs to D3 and confirmation UI to E2.
+D2's prepared registration message/link construction and post-commit enqueue
+are locally verified by human report on 2026-10-10; see
+[Platform registration](platform-registration.md). Coordinated HTTP activation
+belongs to D3 and confirmation UI to E2.
 
 ## Ownership
 
@@ -40,7 +42,8 @@ Admission returns immediately with `queued`, `queue-full`, `invalid-message`,
 or `stopped`. Admitted messages have a private, non-rejecting completion promise
 with `sent`, `smtp-failed`, `timeout`, or `stopped`. Registration callers must
 enqueue only after transaction commit and must not await recipient-specific
-completion in their HTTP response; D1 has not activated those callers.
+completion in their HTTP response. Prepared D2 commands follow this boundary;
+their live registration HTTP callers remain unactivated until D3.
 
 Only one bare recipient mailbox and the configured bare sender are permitted,
 with a shared 254-character mailbox bound. Subject is nonempty, rejects ASCII
@@ -64,7 +67,8 @@ booleans, unpaired/empty credentials, and unsafe sender values fail validation
 without echoing their contents. Authenticated SMTP requires implicit TLS or
 STARTTLS, with certificate validation enabled. `WEB_PUBLIC_BASE_URL` is a
 configured HTTP(S) origin without userinfo, query, fragment, or non-root path;
-confirmation-link construction is not yet active.
+prepared D2 commands use it for fixed fragment-based confirmation links. The
+public confirmation workflow remains pending D3/E2.
 
 The local stack uses Mailpit v1.31.4 pinned to image index
 `sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48`.

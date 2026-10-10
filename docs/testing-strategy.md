@@ -581,8 +581,9 @@ unit/integration fencing evidence complements live coverage. Failed marker
 persistence cannot guarantee peer/reload suppression; injected capabilities do
 not establish broad unsupported-browser compatibility. See
 [browser session recovery](browser-session.md) for those accepted limitations.
-D1 local mail transport is separately accepted as described below; registration
-confirmation remains D2-D3/E2. Fresh-stack, stage/performance and integrated
+D1 local mail transport is separately accepted as described below; D2 prepared
+registration is locally verified by human report, while HTTP activation and
+confirmation UI remain D3/E2. Fresh-stack, stage/performance and integrated
 closeout remain F gates.
 
 ### 8.5 Accepted D1 Local Mail Verification
@@ -614,10 +615,40 @@ do not establish external SMTP delivery or broad timing guarantees.
 The [mail runbook](platform-mail.md) gives the explicit commands and safe
 restoration sequence. The outage verifier establishes its session with Mailpit
 already stopped; it does not prove in-flight SMTP restart recovery. SMTP
-acknowledgement is not external mailbox delivery. Registration messages and
-confirmation commands/UI remain D2-D3/E2; fresh-stack, stage/performance and
+acknowledgement is not external mailbox delivery. D2 prepared registration
+evidence is recorded below; HTTP activation and confirmation UI remain D3/E2.
+Fresh-stack, stage/performance and
 complete integrated SESSION reconciliation remain F. No public test endpoints,
 raw credentials, diagnostic payloads or delete-all capture cleanup are introduced.
+
+### 8.6 D2 Prepared Registration Verification
+
+The human reported all checks passing on 2026-10-10 after the D2 helper
+extraction and lint corrections. The latest handoff listed `npm run lint:ci`,
+`npm run type-check`, `npm run test:backend:run`, `npm run build:platform`, and
+`npm run local:auth:verify -- --registration --build`. Individual outputs,
+test counts and timings were not supplied; this is human-reported local
+verification, not agent-run checks or a CI/publication claim.
+
+The implemented D2-REG-01 through 09 runner exercises production providers with
+two real PostgreSQL runtime pools and real SMTP/Mailpit capture. Its scope is
+atomic/duplicate signup, uniform invalid-token rejection and single consume,
+both replacement/consume lock orderings, rollback and purpose isolation,
+durable cooldown, bounded lock failure, live sign-in identity limits,
+post-commit fault cleanup and independent-session preservation. Controlled D1
+failure receipts retain real transactions but do not establish real external
+SMTP outages. Passing groups are emitted only after successful exact owned
+database/mail cleanup; unavailable capture fails, never skips.
+
+Direct message/validation and orchestration tests complement the runner's
+transaction evidence. This is provider/state integration, not Nest HTTP wiring,
+GraphQL transport or browser E2E. The existing live signup contract remains
+unchanged. See [Platform registration](platform-registration.md) for command
+prerequisites, limiter policy and delivery limits. D3 owns coordinated HTTP
+activation and email/HTTP verification, E2 owns browser confirmation, and F
+retains integrated acceptance. Historical handoff checklists remain in the
+working plan; the latest report does not supply separate fresh output for every
+earlier checklist item.
 
 ## 9. Reliability Rules
 
