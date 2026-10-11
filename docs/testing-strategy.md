@@ -2,7 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
-Last updated: M04.2 E1 local acceptance, 2026-10-05
+Last updated: M04.2 E2 local acceptance, 2026-10-11
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -583,8 +583,8 @@ not establish broad unsupported-browser compatibility. See
 [browser session recovery](browser-session.md) for those accepted limitations.
 D1 local mail transport is separately accepted as described below; D2 prepared
 registration and D3 HTTP activation are locally accepted by human verification;
-confirmation UI remains E2. Fresh-stack, stage/performance and integrated
-closeout remain F gates.
+E2 browser confirmation is separately accepted in section 8.8. Fresh-stack,
+stage/performance and integrated closeout remain F gates.
 
 ### 8.5 Accepted D1 Local Mail Verification
 
@@ -617,8 +617,7 @@ restoration sequence. The outage verifier establishes its session with Mailpit
 already stopped; it does not prove in-flight SMTP restart recovery. SMTP
 acknowledgement is not external mailbox delivery. D2 prepared registration
 evidence is recorded below, followed by accepted D3 HTTP/email verification;
-confirmation UI remains E2.
-Fresh-stack, stage/performance and
+E2 browser acceptance is recorded separately below. Fresh-stack, stage/performance and
 complete integrated SESSION reconciliation remain F. No public test endpoints,
 raw credentials, diagnostic payloads or delete-all capture cleanup are introduced.
 
@@ -646,7 +645,7 @@ transaction evidence. This is provider/state integration, not Nest HTTP wiring,
 GraphQL transport or browser E2E. At D2 acceptance the live signup contract
 remained unchanged; D3's subsequent coordinated activation is recorded below.
 See [Platform registration](platform-registration.md) for command prerequisites,
-limiter policy and delivery limits. E2 owns browser confirmation, and F
+limiter policy and delivery limits. E2's browser acceptance is recorded below; F
 retains integrated acceptance. Historical handoff checklists remain in the
 working plan; the latest report does not supply separate fresh output for every
 earlier checklist item.
@@ -705,6 +704,64 @@ full email-to-login journey. External authenticated SMTP, distributed limits,
 fresh-stack rehearsal, stage/performance and the integrated SESSION matrix remain
 outside this local gate. No new migration, public fixture/debug endpoint, secret
 artifact capture or deployment authorization is introduced.
+
+### 8.8 Accepted E2 Browser Confirmation Verification
+
+E2 was locally accepted on 2026-10-11 after human verification of the implemented
+browser flow and its follow-up corrections. Latest supplied evidence shows:
+
+- `npm run verify`: 93/93 Web unit tests across 21 files and 20/20 integration
+  tests across five files. Reaching the final integration step also supports
+  success of the chained format, lint, type-check and GraphQL checks.
+- `npm run test:e2e:mock -- test/e2e/auth`: all ten auth browser cases passed.
+- `npm run test:e2e:live:tools`: all nineteen tool/privacy tests passed, including
+  closed lock failure-stage reporting. This supersedes the earlier 18-test run.
+- `npm run test:e2e:live -- --allow-platform-outage --email-confirmation`:
+  E1 `passed=20 required=20 pending=0`, E2 `passed=1 required=1 pending=0`,
+  passed summary, exact owned E2 database/mail cleanup and exact E1 fixture/
+  artifact cleanup. The supplied screenshot does not separately show shell exit
+  status.
+
+The human separately reported the remaining generation, backend, build and D3
+verification commands passing; no additional fresh counts or timings are inferred.
+These are human-run local results, not agent-run checks or CI/publication evidence.
+
+The optional E2 case extends the existing private E1 runner, not a second harness.
+Default E1 still requires twenty cases; `--email-confirmation` adds the one
+required E2 case and does not itself authorize an outage. Both flags are required
+for the opt-in command. Use the existing healthy migrated stack and Mailpit,
+current shared packages and verifier image, free runner ports, and exclusive
+local auth/outage ownership. Follow the
+[live runbook](../apps/web/test/e2e-live/README.md); `--build` on the D3 verifier
+rebuilds only that image, not running services. No automatic installation,
+migration, limit bypass, capture startup or stack reset is added.
+
+The genuine flow covers generic signup, exact owned Mailpit link capture,
+startup URL sanitization with zero automatic consume, an explicit attempt during
+actual Platform outage, explicit retry after restoration, confirmation without
+a session, separate verified sign-in and empty protected inbox, reused-link
+rejection preserving the current session, then acknowledged sign-out. Mock and
+unit/integration evidence complements this with private-attempt remount/overlap
+behavior, safe presentation, malformed fresh-document links, local resend
+suppression and retained current-epoch unverified sign-in feedback.
+
+The parent owns an optional registration UUID in addition to the two E1 fixture
+IDs. Recipient ownership is reserved before ambiguous browser signup; private
+link exchange is bounded and never reported. Cleanup deletes only owned rows/
+message IDs and verifies absence after the accepted SMTP settling bound. Missing
+cases or cleanup failure cannot produce acceptance; interruption may require
+the printed exact recovery action. Traces, HAR, screenshots/video, DOM snapshots,
+storage exports, credentials, mail bodies and raw diagnostics remain prohibited.
+Only fixed status/counts, exact safe recovery metadata and allowlisted failure
+stages are emitted.
+
+Startup capture is not a same-document hash listener; reload of a sanitized link
+cannot restore its token. Mail acceptance/local countdowns are not delivery or
+cooldown authority. The existing empty-inbox, unknown-outcome, failed-persistence
+and unsupported-browser limits remain. External mailbox delivery, durable outbox,
+distributed limits, manual accessibility certification, fresh-stack rehearsal,
+stage/performance and full integrated SESSION reconciliation are not established
+by E2 acceptance. F remains separate and not started.
 
 ## 9. Reliability Rules
 

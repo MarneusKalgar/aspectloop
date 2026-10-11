@@ -4,6 +4,7 @@ import {
   SESSION_MARKER_KEY,
   type SessionMarker,
 } from '@app/auth/session-coordination/session-marker';
+import { GRAPHQL_OPERATION_NAME } from '@app/graphql/operation-names';
 import { type BrowserContext, expect, type Page } from '@playwright/test';
 
 import type { PrivateAccount } from './live-fixtures';
@@ -162,7 +163,7 @@ export function observeMe(page: Page): { ids: string[] } {
       try {
         const request = response.request().postDataJSON() as { operationName?: unknown };
 
-        if (request.operationName !== 'Me') {
+        if (request.operationName !== GRAPHQL_OPERATION_NAME.ME) {
           return;
         }
 
@@ -228,9 +229,12 @@ export async function signIn(page: Page, account: PrivateAccount): Promise<void>
   await identityVisible(page, account);
 }
 
-/** Opens the existing account menu and requests one explicit logout. */
-export async function signOut(page: Page): Promise<void> {
-  await page.getByRole('button', { name: FIXTURE_NAME }).click();
+/** Opens the intended fixture's account menu and requests logout; settlement is a separate barrier. */
+export async function signOut(
+  page: Page,
+  accountName: RegExp | string = FIXTURE_NAME,
+): Promise<void> {
+  await page.getByRole('button', { name: accountName }).click();
   await page.getByRole('menuitem', { exact: true, name: 'Sign out' }).click();
 }
 

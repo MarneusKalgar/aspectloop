@@ -28,9 +28,9 @@ correction draft/save/submit browser path is recorded as a manual verification
 limitation. M04.2 then stabilizes identity and browser sessions. The durable
 boundary is recorded in
 [`ADR 0004`](docs/decisions/0004-thin-gateway-and-platform-service.md).
-M04.2's browser-session cutover, C3 retirement, E1 resilience and D1 local mail
-transport and D2/D3 registration state/HTTP are locally accepted; E2 confirmation
-UI and final integrated acceptance remain pending. See
+M04.2's browser-session cutover, C3 retirement, E1 resilience, D1 local mail,
+D2/D3 registration state/HTTP and E2 browser confirmation are locally accepted.
+F final integrated acceptance remains pending. See
 [browser session behavior and recovery](docs/browser-session.md),
 [Platform registration](docs/platform-registration.md) and
 [Platform mail transport](docs/platform-mail.md).
@@ -263,8 +263,8 @@ The explicit `--mail-outage` mode requires Mailpit to be stopped separately and
 proves session/readiness independence from mail failure. Follow the stop,
 expected-failure, restoration and regression sequence in
 [Platform mail transport](docs/platform-mail.md); the verifier never stops or
-starts Mailpit implicitly. Registration mail and confirmation HTTP are active;
-browser confirmation UX remains E2.
+starts Mailpit implicitly. Registration mail, confirmation HTTP and the explicit
+browser confirmation/resend flow are active and locally accepted.
 
 `npm run local:verify -- --fresh` is the destructive end-to-end local matrix.
 It requires explicit typed confirmation, resets named local volumes, runs the
@@ -288,6 +288,18 @@ successful exact cleanup. This suite is separate from mock E2E, `verify` and CI;
 see the [live suite runbook](apps/web/test/e2e-live/README.md) for prerequisites,
 privacy rules and interrupted-run recovery.
 
+To include the genuine owned Mailpit-to-browser E2 confirmation journey, keep
+Mailpit healthy and prepare the current verifier image through the registration
+runbook, then opt in separately:
+
+```bash
+npm run test:e2e:live -- --allow-platform-outage --email-confirmation
+```
+
+Expect all twenty E1 cases plus `E2-LIVE-01`, zero pending, passed summary and
+exact owned database/mail, fixture and artifact cleanup. This does not replace
+F's fresh-stack, performance or integrated acceptance gates.
+
 For an optional manual smoke check, start the web app in a second terminal in
 live-backend mode:
 
@@ -299,8 +311,10 @@ Open `http://localhost:5173` and use a private verified fixture from
 `npm run local:auth:verify -- --fixture-create`. Confirm sign-in, reload, the empty
 correction inbox, and logout, then remove that fixture with
 `npm run local:auth:verify -- --fixture-cleanup <fixture-id>` using its printed ID.
-New sign-up accounts remain unverified and receive best-effort confirmation mail;
-confirmation HTTP is active, but the browser confirmation route/UI remains E2.
+New sign-up accounts remain unverified and receive best-effort confirmation mail.
+Signup opens `/registration-pending`; a genuine `/confirm-email#token=...` link
+is sanitized at document startup and consumed only after an explicit click.
+Confirmation never signs in automatically; verified sign-in is a separate action.
 Registration alone does not permit sign-in. Never publish fixture
 credentials or cookie values. Stop the web process, then stop the backend stack
 while preserving its local data:

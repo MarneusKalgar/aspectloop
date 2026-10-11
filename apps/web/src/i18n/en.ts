@@ -2,6 +2,42 @@ export const enResources = {
   'app.name': 'AspectLoop',
   'app.runtime.live': 'Live backend',
   'app.runtime.mock': 'Mock contract',
+  'auth.confirmation.busy': 'Confirming your email...',
+  'auth.confirmation.confirm': 'Confirm email',
+  'auth.confirmation.confirming': 'Confirming...',
+  'auth.confirmation.hero.description':
+    'Opening a link does not confirm your address or sign you in.',
+  'auth.confirmation.hero.eyebrow': 'Email confirmation',
+  'auth.confirmation.hero.feature1': 'Single-use confirmation links',
+  'auth.confirmation.hero.feature2': 'Your existing session stays unchanged',
+  'auth.confirmation.hero.feature3': 'Sign in only when you choose',
+  'auth.confirmation.hero.title': 'One explicit step before your first sign-in.',
+  'auth.confirmation.invalid':
+    'This link is unavailable. Reopen your latest email, or request another link below.',
+  'auth.confirmation.rateLimited':
+    'Too many confirmation attempts. Wait before explicitly trying again; the server controls when another attempt is allowed.',
+  'auth.confirmation.ready':
+    'Select Confirm email to use this link. Your current sign-in will not change.',
+  'auth.confirmation.resend': 'Request another confirmation email',
+  'auth.confirmation.retry': 'Try confirmation again',
+  'auth.confirmation.subtitle': 'Confirm explicitly, then sign in separately.',
+  'auth.confirmation.success':
+    'Email confirmed. Sign in when you are ready. Your current session has not changed.',
+  'auth.confirmation.title': 'Confirm your email',
+  'auth.confirmation.unknown':
+    'Confirmation could not be confirmed. It may already have completed. You can try signing in, or explicitly try this link again. Reopening the email may be needed after a reload.',
+  'auth.pending.accepted':
+    'If confirmation is needed, an email may be sent. A recent request may still be cooling down. This is not proof of delivery.',
+  'auth.pending.error':
+    'The request could not be confirmed. It may have completed. Wait before explicitly trying again.',
+  'auth.pending.guidance':
+    'Open the latest confirmation email and select Confirm email. If needed, enter your address to request another link. Check your spam folder too.',
+  'auth.pending.rateLimited': 'Too many requests. Wait before trying again.',
+  'auth.pending.sending': 'Requesting...',
+  'auth.pending.subtitle': 'Registration does not sign you in.',
+  'auth.pending.title': 'Check your email',
+  'auth.pending.wait':
+    'You can request again in {{seconds}} seconds. The server may require a longer wait.',
   'auth.session.emailRequired': 'Email confirmation is required',
   'auth.session.localSignOut': 'Sign out locally',
   'auth.session.logoutUnconfirmed':

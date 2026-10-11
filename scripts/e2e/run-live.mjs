@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   isSafeReportLine,
+  LIVE_TOOL_ACTION,
   liveRunnerEnvironment,
   runTool,
 } from '../../apps/web/test/e2e-live/support/local-tool.mjs';
@@ -19,10 +20,15 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
  */
 async function main() {
   const args = process.argv.slice(2);
+  const emailConfirmation = args.length === 2 && args[1] === '--email-confirmation';
 
-  if (args.length !== 1 || args[0] !== '--allow-platform-outage' || process.env.CI) {
+  if (
+    (args.length !== 1 && !emailConfirmation) ||
+    args[0] !== '--allow-platform-outage' ||
+    process.env.CI
+  ) {
     console.error(
-      'E1 live requires an exclusive local window: npm run test:e2e:live -- --allow-platform-outage',
+      'Live browser verification requires an exclusive local window: npm run test:e2e:live -- --allow-platform-outage [--email-confirmation]',
     );
     console.error(
       'It temporarily stops/restores only Platform; stop the Web dev server on localhost:5173 first. No CI, downloads, migrations or resets.',
@@ -31,10 +37,11 @@ async function main() {
     return;
   }
 
-  await runTool('check');
+  await runTool(LIVE_TOOL_ACTION.CHECK);
 
   const runDir = await mkdtemp(join(tmpdir(), 'aspectloop-e1-'));
   const ids = [randomUUID(), randomUUID()];
+  const registrationId = emailConfirmation ? randomUUID() : undefined;
   let child;
   let interrupted = false;
   let cleanupFailed = false;
@@ -64,7 +71,15 @@ async function main() {
   process.on('SIGTERM', interrupt);
 
   try {
-    await writeFile(join(runDir, 'scope.json'), JSON.stringify({ ids }), { mode: 0o600 });
+    await writeFile(join(runDir, 'scope.json'), JSON.stringify({ ids, registrationId }), {
+      mode: 0o600,
+    });
+
+    if (registrationId) {
+      console.log(
+        `E2 owned registration ID: ${registrationId} (exact recovery: bash infra/local/scripts/local-e1-tool.sh registration-cleanup ${registrationId})`,
+      );
+    }
 
     for (const id of ids) {
       console.log(
@@ -172,7 +187,7 @@ async function main() {
 
     try {
       await readFile(join(runDir, 'platform-stop-intent'));
-      await runTool('restore-platform', { allowOutage: true });
+      await runTool(LIVE_TOOL_ACTION.RESTORE_PLATFORM, { allowOutage: true });
     } catch (error) {
       if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
         cleanupFailed = true;
@@ -184,10 +199,29 @@ async function main() {
 
     for (const id of ids) {
       try {
-        await runTool('cleanup', { id });
+        await runTool(LIVE_TOOL_ACTION.CLEANUP, { id });
       } catch {
         cleanupFailed = true;
         console.error(`E1 exact fixture cleanup failed: ${id}`);
+      }
+    }
+
+    if (registrationId) {
+      try {
+        await readFile(join(runDir, 'registration-owned'));
+        const output = await runTool(LIVE_TOOL_ACTION.REGISTRATION_CLEANUP, { id: registrationId });
+
+        if (!output.split('\n').includes('E2_CLEANED')) {
+          cleanupFailed = true;
+          console.error(`E2 exact registration cleanup failed: ${registrationId}`);
+        } else {
+          console.log('E2 exact owned database/mail cleanup completed.');
+        }
+      } catch (error) {
+        if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) {
+          cleanupFailed = true;
+          console.error(`E2 exact registration cleanup failed: ${registrationId}`);
+        }
       }
     }
 

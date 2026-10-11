@@ -1,9 +1,12 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 
+import { AuthSessionBoundary } from './auth/AuthProvider';
 import { BROWSER_AUTH_STATUS } from './auth/session.types';
 import { useAuth } from './auth/useAuth';
+import { ConfirmEmailPage } from './pages/ConfirmEmailPage';
 import { CorrectionsInboxPage } from './pages/CorrectionsInboxPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { RegistrationPendingPage } from './pages/RegistrationPendingPage';
 import { RootRedirectPage } from './pages/RootRedirectPage';
 import { SignInPage } from './pages/SignInPage';
 import { SignUpPage } from './pages/SignUpPage';
@@ -31,36 +34,47 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 export const router = createBrowserRouter([
+  { element: <ConfirmEmailPage />, path: '/confirm-email' },
+  { element: <RegistrationPendingPage />, path: '/registration-pending' },
   {
-    element: <RootRedirectPage />,
-    path: '/',
-  },
-  {
+    children: [
+      {
+        element: <RootRedirectPage />,
+        path: '/',
+      },
+      {
+        element: (
+          <PublicOnlyRoute>
+            <SignInPage />
+          </PublicOnlyRoute>
+        ),
+        path: '/signin',
+      },
+      {
+        element: (
+          <PublicOnlyRoute>
+            <SignUpPage />
+          </PublicOnlyRoute>
+        ),
+        path: '/signup',
+      },
+      {
+        element: (
+          <ProtectedRoute>
+            <CorrectionsInboxPage />
+          </ProtectedRoute>
+        ),
+        path: '/corrections',
+      },
+      {
+        element: <NotFoundPage />,
+        path: '*',
+      },
+    ],
     element: (
-      <PublicOnlyRoute>
-        <SignInPage />
-      </PublicOnlyRoute>
+      <AuthSessionBoundary>
+        <Outlet />
+      </AuthSessionBoundary>
     ),
-    path: '/signin',
-  },
-  {
-    element: (
-      <PublicOnlyRoute>
-        <SignUpPage />
-      </PublicOnlyRoute>
-    ),
-    path: '/signup',
-  },
-  {
-    element: (
-      <ProtectedRoute>
-        <CorrectionsInboxPage />
-      </ProtectedRoute>
-    ),
-    path: '/corrections',
-  },
-  {
-    element: <NotFoundPage />,
-    path: '*',
   },
 ]);

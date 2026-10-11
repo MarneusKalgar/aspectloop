@@ -3,9 +3,11 @@ import { cleanup } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 
+import { initializeConfirmationAttempt } from '../auth/email-confirmation/confirmation-attempt';
 import { SESSION_MARKER_KEY } from '../auth/session-coordination/session-marker';
-import { clearMockSessionUser } from '../mocks/data';
+import { clearMockRegistrations, clearMockSessionUser } from '../mocks/data';
 import { graphqlHandlers } from '../mocks/handlers/graphql';
+import { clearMockConfirmations } from '../mocks/registration';
 import { createQueuedTestLocks } from './session-environment';
 
 export const server = setupServer(...graphqlHandlers);
@@ -33,6 +35,9 @@ afterEach(
   () => {
     cleanup();
     clearMockSessionUser();
+    clearMockRegistrations();
+    clearMockConfirmations();
+    initializeConfirmationAttempt(null);
     server.resetHandlers();
     window.history.pushState({}, '', '/');
     window.localStorage.removeItem(SESSION_MARKER_KEY);

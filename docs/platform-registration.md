@@ -1,11 +1,11 @@
 # Platform Registration State And Identity Limits
 
-Status: M04.2 D2/D3 locally accepted by human verification, 2026-10-10; E2 UI pending
+Status: M04.2 D2/D3 locally accepted 2026-10-10; E2 browser confirmation locally accepted 2026-10-11
 
 D2 supplies generic signup, resend and email-confirmation state in Platform,
 with identity limiting on sign-in. D3 activates the private/public commands and
-their shared contracts and signup callers together. E2 still owns the browser
-confirmation route, pending/resend screens and explicit email-to-login journey.
+their shared contracts and signup callers together. E2 supplies the accepted
+browser confirmation route, pending/resend screens and explicit email-to-login journey.
 D3 reuses D2 persistence without a new migration, grant or dependency.
 
 ## Ownership And Transactions
@@ -96,13 +96,21 @@ must still be explicit. Gateway IP windows are process-local: signup/resend shar
 IP exhaustion returns bounded `AUTH_RATE_LIMITED` metadata, distinct from generic
 Platform registration-identity suppression.
 
-Web signup requests success only and uses neutral instructions to check email
-before sign-in. Validation preserves exact password bytes and uses the active
+Web signup requests success only and routes to neutral `/registration-pending`
+instructions without carrying credentials or an email through navigation.
+Validation preserves exact password bytes and uses the active
 254-character signup bound. MSW mirrors generic duplicates and unverified new
 accounts while retaining its verified default reviewer. Linked CommonJS contracts
 are explicitly optimized by Vite; this does not migrate the shared package format.
-The emailed `/confirm-email#token=...` link construction is active, but browser
-fragment handling, confirmation/resend UI and its live acceptance remain E2.
+The emailed `/confirm-email#token=...` link is sanitized at fresh document startup,
+before asynchronous router loading. Only a bounded valid fragment enters private
+memory; confirmation needs an explicit click, never mount/bootstrap/reload.
+Success/invalidity discards it; unknown/rate-limited outcomes allow only explicit
+retry. Pending/resend and confirmation routes remain public during session
+unavailability. Resend starts with an empty form and presents only generic
+acceptance or safe bounded failure feedback. The local countdown cannot override
+Platform cooldown or establish delivery. See
+[browser confirmation behavior](browser-session.md#public-registration-and-confirmation).
 
 ## Local Verification And Retained Limits
 
@@ -166,5 +174,8 @@ delivery guarantee. Terminal-history retention maintenance, distributed limits,
 external-provider delivery and stage/performance certification are not proved by
 these gates. The HTTP verifier permits the accepted SMTP worker/phase bound to
 settle ambiguous local completions before exact cleanup; this exclusive-local
-assumption is not a guarantee against externally queued late delivery. E2 retains
-browser UX; F retains fresh-stack and integrated SESSION acceptance.
+assumption is not a guarantee against externally queued late delivery. E2's
+genuine local Mailpit-to-browser acceptance passed on 2026-10-11 with explicit
+outage/recovery, separate verified login and exact owned cleanup; see
+[E2 testing evidence](testing-strategy.md#88-accepted-e2-browser-confirmation-verification).
+F retains fresh-stack and integrated SESSION acceptance.

@@ -9,8 +9,9 @@ verification, not registration delivery or public confirmation commands.
 D2's prepared registration message/link construction and post-commit enqueue
 are locally verified by human report on 2026-10-10; see
 [Platform registration](platform-registration.md). D3 registration HTTP activation
-and real owned confirmation-mail capture are locally accepted on 2026-10-10;
-confirmation UI remains E2.
+and real owned confirmation-mail capture are locally accepted on 2026-10-10.
+E2's genuine local mail-to-browser confirmation journey was separately accepted
+on 2026-10-11; see [browser confirmation behavior](browser-session.md).
 
 ## Ownership
 
@@ -69,7 +70,10 @@ without echoing their contents. Authenticated SMTP requires implicit TLS or
 STARTTLS, with certificate validation enabled. `WEB_PUBLIC_BASE_URL` is a
 configured HTTP(S) origin without userinfo, query, fragment, or non-root path;
 active registration commands use it for fixed fragment-based confirmation links.
-Public confirmation HTTP is active; browser fragment handling and UI remain E2.
+Public confirmation HTTP and browser confirmation/resend UI are active. Web
+captures the bounded confirmation fragment into private memory and strips the URL
+at fresh document startup; only an explicit click consumes it. Confirmation is
+cookie-neutral and does not automatically sign in.
 
 The local stack uses Mailpit v1.31.4 pinned to image index
 `sha256:b68349e3a014b90c5610bfb26b2ae36f3892d7b8cf25ee140c6c71c98d2fcf48`.
@@ -124,6 +128,8 @@ All restored commands must exit zero. See [testing strategy](testing-strategy.md
 for accepted evidence. D3's separately accepted `--email` verifier covers actual
 owned confirmation mail and real registration HTTP, with exact cleanup; its
 prerequisites and counter-reset runbook are in
-[Platform registration](platform-registration.md). External authenticated SMTP
-delivery, E2's browser confirmation journey, stage/performance evidence and full
-M04.2 integrated acceptance are not established by these local gates.
+[Platform registration](platform-registration.md). E2's separately accepted
+opt-in browser suite uses genuine owned Mailpit capture and exact database/mail
+cleanup; see [E2 testing evidence](testing-strategy.md#88-accepted-e2-browser-confirmation-verification).
+These local gates do not establish external authenticated SMTP delivery,
+stage/performance evidence or full M04.2 integrated acceptance.

@@ -1,3 +1,5 @@
+import { GRAPHQL_OPERATION_NAME } from '#app/graphql/operation-names';
+
 import { LIVE_TOPOLOGY } from './live-topology.ts';
 
 const MAX_RESPONSE_BYTES = 4096;
@@ -13,7 +15,10 @@ export async function originalSessionState(
 
   try {
     const response = await fetch(LIVE_TOPOLOGY.gate.graphqlUrl, {
-      body: JSON.stringify({ operationName: 'Me', query: 'query Me { me { id } }' }),
+      body: JSON.stringify({
+        operationName: GRAPHQL_OPERATION_NAME.ME,
+        query: 'query Me { me { id } }',
+      }),
       headers: {
         'content-type': 'application/json',
         cookie: `aspectloop_session=${credential}`,

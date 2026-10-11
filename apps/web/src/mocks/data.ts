@@ -43,6 +43,15 @@ const mockSessions = new Map<string, CorrectionSessionSummary>([
   [defaultSession.id, defaultSession],
 ]);
 
+/** Removes only test-created accounts so watch/repeated runs cannot reuse verified fixture state. */
+export function clearMockRegistrations(): void {
+  for (const email of mockUsers.keys()) {
+    if (email !== defaultUser.email) {
+      mockUsers.delete(email);
+    }
+  }
+}
+
 /** Removes the mock session between tests or after sign-out. */
 export function clearMockSessionUser(): void {
   currentSessionUserId = null;

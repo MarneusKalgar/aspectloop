@@ -7,8 +7,9 @@ import type {
 } from '@playwright/test/reporter';
 
 import { isSafeReportLine } from './local-tool.mjs';
+import { readRunScope } from './run-scope.ts';
 
-/** Reports fixed scenario status and cookie failure stages; raw errors, steps and output are omitted. */
+/** Reports fixed scenario status and closed failure stages; raw errors and output are omitted. */
 export default class SafeReporter implements Reporter {
   private readonly required = [
     'E1-LIVE-01',
@@ -40,9 +41,20 @@ export default class SafeReporter implements Reporter {
       /** Missing/skipped scenarios are pending evidence, never an accepted subset. */
       (id) => this.results.get(id) === 'passed',
     ).length;
-    const complete = passed === this.required.length && this.results.size === this.required.length;
+    const registrationRequired = Boolean(readRunScope().registrationId);
+    const registrationPassed = this.results.get('E2-LIVE-01') === 'passed' ? 1 : 0;
+    const complete =
+      passed === this.required.length &&
+      this.results.size === this.required.length + Number(registrationRequired) &&
+      (!registrationRequired || registrationPassed === 1);
     const status = result.status === 'passed' && !complete ? 'failed' : result.status;
     process.stdout.write(`E1-LIVE-COUNTS passed=${passed} required=20 pending=${20 - passed}\n`);
+    if (registrationRequired) {
+      process.stdout.write(
+        `E2-LIVE-COUNTS passed=${registrationPassed} required=1 pending=${1 - registrationPassed}\n`,
+      );
+    }
+
     process.stdout.write(`E1-LIVE-SUMMARY ${status}\n`);
 
     return Promise.resolve({ status });
@@ -63,13 +75,13 @@ export default class SafeReporter implements Reporter {
     // Intentionally discard raw stdout; only safe reporter records are emitted.
   }
 
-  /** Emits only closed cookie-scenario failure labels; no error field or arbitrary step is printed. */
+  /** Delegates exact scenario/stage admission to the shared allowlist, never printing raw errors. */
   onStepEnd(test: TestCase, _result: TestResult, step: TestStep): void {
-    if (test.title !== 'E1-LIVE-09' || step.category !== 'test.step' || !step.error) {
+    if (step.category !== 'test.step' || !step.error) {
       return;
     }
 
-    const line = `E1-LIVE-09-STAGE ${step.title} failed`;
+    const line = `${test.title}-STAGE ${step.title} failed`;
 
     if (isSafeReportLine(line)) {
       process.stdout.write(`${line}\n`);
@@ -78,7 +90,7 @@ export default class SafeReporter implements Reporter {
 
   /** Emits only an allowlisted ID and a Playwright result category. */
   onTestEnd(test: TestCase, result: TestResult): void {
-    const id = test.title.match(/^E1-LIVE-\d{2}(?:-[A-Z]+)?\b/)?.[0];
+    const id = test.title.match(/^(?:E1-LIVE-\d{2}(?:-[A-Z]+)?|E2-LIVE-01)\b/)?.[0];
 
     if (id) {
       this.results.set(id, result.status);

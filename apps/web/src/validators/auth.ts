@@ -3,6 +3,15 @@ import { z } from 'zod';
 
 type Translate = (key: string) => string;
 
+/** Applies the active registration mailbox bound to generic resend requests. */
+export function createResendConfirmationSchema(t: Translate) {
+  return z.object({
+    email: z
+      .email({ message: t('auth.validation.email.invalid') })
+      .max(PLATFORM_REGISTRATION_EMAIL_MAX_LENGTH, { message: t('auth.validation.email.invalid') }),
+  });
+}
+
 export function createSignInSchema(t: Translate) {
   return z.object({
     email: z.email({ message: t('auth.validation.email.invalid') }),

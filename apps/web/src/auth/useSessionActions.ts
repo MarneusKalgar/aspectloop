@@ -16,11 +16,12 @@ import { getSignInRejectionMessageKey, type SessionView } from './session-view';
 import { BROWSER_AUTH_STATUS } from './session.types';
 
 export interface SignInRejection {
+  code: null | string;
   epoch: string;
   message: string;
 }
 
-/** Owns imperative account actions and transient feedback, never authoritative identity. */
+/** Owns imperative actions and epoch-bound rejection codes/copy, never authoritative identity. */
 export function useSessionActions(
   coordinator: SessionCoordinator,
   revision: number,
@@ -36,7 +37,7 @@ export function useSessionActions(
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [rejection, setRejection] = useState<null | SignInRejection>(null);
 
-  /** Starts current anonymous login and retains expected feedback only while account retry is allowed. */
+  /** Retains expected rejection codes/copy across form remounts only while current retry is allowed. */
   async function signIn(input: SignInInput): Promise<void> {
     if (
       actionInProgress.current ||
@@ -81,9 +82,12 @@ export function useSessionActions(
         current?.epoch === error.epoch &&
         coordinator.canRegister()
       ) {
+        const code = getSessionErrorCode(error);
+
         setRejection({
+          code,
           epoch: current.epoch,
-          message: t(getSignInRejectionMessageKey(getSessionErrorCode(error))),
+          message: t(getSignInRejectionMessageKey(code)),
         });
       }
 

@@ -1,3 +1,12 @@
+import type {
+  ConfirmEmailMutation,
+  ConfirmEmailMutationVariables,
+  ResendEmailConfirmationMutation,
+  ResendEmailConfirmationMutationVariables,
+  SignUpMutation,
+  SignUpMutationVariables,
+} from '@app/graphql/generated/graphql';
+
 import { graphql, HttpResponse } from 'msw';
 
 import { BROWSER_SESSION_ERROR_CODE } from '../../auth/session-error';
@@ -11,28 +20,54 @@ import {
   setMockSessionUser,
   toMockPublicUser,
 } from '../data';
+import { consumeMockConfirmation, requestMockConfirmation } from '../registration';
 
 export const graphqlHandlers = [
-  graphql.mutation(
+  graphql.mutation<SignUpMutation, SignUpMutationVariables>(
     'SignUp',
     /** Acknowledges new/duplicate registration generically, retaining unverified state. */ ({
       variables,
     }) => {
-      const input = variables.input as {
-        displayName: string;
-        email: string;
-        password: string;
-      };
-
-      createMockUser(input);
+      createMockUser(variables.input);
+      requestMockConfirmation(variables.input.email);
 
       return HttpResponse.json({
         data: {
           signUp: {
             success: true,
-            user: null,
           },
         },
+      });
+    },
+  ),
+  graphql.mutation<ResendEmailConfirmationMutation, ResendEmailConfirmationMutationVariables>(
+    'ResendEmailConfirmation',
+    /** Always acknowledges acceptance, including unknown, verified and cooling-down mailboxes. */
+    ({ variables }) => {
+      requestMockConfirmation(variables.input.email);
+
+      return HttpResponse.json<{ data: ResendEmailConfirmationMutation }>({
+        data: { resendEmailConfirmation: { success: true } },
+      });
+    },
+  ),
+  graphql.mutation<ConfirmEmailMutation, ConfirmEmailMutationVariables>(
+    'ConfirmEmail',
+    /** Returns one safe invalid response for used, expired, replaced and malformed links. */
+    ({ variables }) => {
+      if (!consumeMockConfirmation(variables.input.token)) {
+        return HttpResponse.json({
+          errors: [
+            {
+              extensions: { code: 'AUTH_CONFIRMATION_INVALID' },
+              message: 'Confirmation link is unavailable',
+            },
+          ],
+        });
+      }
+
+      return HttpResponse.json<{ data: ConfirmEmailMutation }>({
+        data: { confirmEmail: { success: true } },
       });
     },
   ),

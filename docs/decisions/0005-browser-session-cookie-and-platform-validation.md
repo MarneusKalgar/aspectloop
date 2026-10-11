@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover, C3 retirement, E1 resilience, D1 mail transport and D2/D3 registration state/HTTP locally accepted; E2/F pending
+Status: Accepted design; C2b cutover, C3 retirement, E1 resilience, D1 mail transport, D2/D3 registration state/HTTP and E2 browser confirmation locally accepted; F pending
 
 Date: 2026-09-20
 
@@ -154,6 +154,17 @@ human checks and real session -> HTTP -> email verification. Private signup/
 resend responses are generic success only; public signup retains its deprecated
 user field as null. Registration, resend and confirmation do not write cookies,
 issue sessions or revoke existing ones. Verified sign-in remains explicit.
-Strict error/schema and Origin/batch/IP policies are retained. E2's browser
-confirmation UI and F integrated acceptance remain separate work; this is not
-external mailbox delivery or full M04.2 acceptance.
+Strict error/schema and Origin/batch/IP policies are retained.
+
+E2 browser confirmation was locally accepted on 2026-10-11. Web sanitizes the
+confirmation URL before asynchronous router startup and owns the bounded token
+only in private memory. Public confirmation/resend routes require explicit,
+uncached actions and remain independent of session validation availability.
+Remounts, bootstrap and reload cannot consume or replay confirmation; successful
+confirmation never replaces a session or signs in automatically. The genuine
+owned Mailpit-to-browser flow passed with actual Platform outage/restoration,
+explicit retry, separate verified sign-in, reused-link session preservation and
+exact cleanup. [Browser behavior](../browser-session.md) and
+[testing evidence](../testing-strategy.md#88-accepted-e2-browser-confirmation-verification)
+record ownership and limits. F fresh-stack/performance/integrated acceptance
+remains separate; this is not external mailbox delivery or full M04.2 acceptance.

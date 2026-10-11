@@ -8,6 +8,10 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { validateEnv } from '#app/config/env.validation';
 import { User } from '#app/users/user.entity';
 
+import {
+  BROWSER_REGISTRATION_MODES,
+  browserRegistrationFixture,
+} from './auth-http/browser-registration-fixture';
 import { assertLocalHttpDestinations } from './auth-http/client';
 import {
   createOwnedAuthFixture,
@@ -43,7 +47,12 @@ async function main(): Promise<void> {
   const cleanupUrl = readCleanupDatabaseUrl();
   assertLocalVerificationTarget(environment.DATABASE_URL, cleanupUrl);
   assertLocalHttpDestinations();
-  const needsFixtureId = mode === '--fixture-cleanup' || mode === '--fixture-create-stdin';
+  const browserRegistrationMode = BROWSER_REGISTRATION_MODES.some(
+    /** Selects only closed verifier actions, never arbitrary input dispatch. */ (candidate) =>
+      candidate === mode,
+  );
+  const needsFixtureId =
+    mode === '--fixture-cleanup' || mode === '--fixture-create-stdin' || browserRegistrationMode;
   const mailMode = mode === '--mail' || mode === '--mail-outage';
   const emailMode = mode === '--email';
 
@@ -74,6 +83,11 @@ async function main(): Promise<void> {
       if (initialization.status === 'rejected') {
         throw initialization.reason;
       }
+    }
+
+    if (browserRegistrationMode) {
+      await browserRegistrationFixture(mode ?? '', process.argv[3] ?? '', cleanup, environment);
+      return;
     }
 
     if (mode === '--fixture-cleanup') {

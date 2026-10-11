@@ -21,7 +21,7 @@ interface SignInLocationState {
   successMessage?: string;
 }
 
-/** Disables unsupported cookie-changing login while preserving ordinary form validation. */
+/** Presents form validation; the session boundary owns rejection recovery across pending remounts. */
 export function SignInPage() {
   const { accountActionsAvailable, signIn } = useAuth();
   const location = useLocation();
@@ -45,20 +45,24 @@ export function SignInPage() {
     resolver: zodResolver(signInSchema),
   });
 
-  const onSubmit = handleSubmit(async (values: SignInFormValues) => {
-    clearErrors('root');
+  const onSubmit = handleSubmit(
+    /** Submits explicit login; provider-owned recovery survives this form's pending unmount. */ async (
+      values: SignInFormValues,
+    ) => {
+      clearErrors('root');
 
-    try {
-      await signIn(values);
+      try {
+        await signIn(values);
 
-      void navigate('/corrections', { replace: true });
-    } catch (error) {
-      setError('root', {
-        message: getOperationErrorMessage(error) ?? t('auth.signIn.error'),
-        type: 'server',
-      });
-    }
-  });
+        void navigate('/corrections', { replace: true });
+      } catch (error) {
+        setError('root', {
+          message: getOperationErrorMessage(error) ?? t('auth.signIn.error'),
+          type: 'server',
+        });
+      }
+    },
+  );
 
   return (
     <AuthLayout

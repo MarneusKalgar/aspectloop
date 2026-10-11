@@ -9,7 +9,7 @@ case "${1:-}" in
   check | stop-platform | restore-platform)
     [[ "$#" -eq 1 ]] || exit 2
     ;;
-  create | cleanup)
+  create | cleanup | registration-reserve | registration-token | registration-cleanup)
     [[ "$#" -eq 2 && "$2" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] || exit 2
     ;;
   *) exit 2 ;;
@@ -51,6 +51,12 @@ case "$1" in
       docker stop --timeout 10 "$tool_container" >/dev/null
     fi
     "${COMPOSE[@]}" run --rm -T --no-deps platform-auth-verify npm run db:auth:http:verify:local -- --fixture-cleanup "$2"
+    ;;
+  registration-reserve | registration-token | registration-cleanup)
+    # Only exact run-owned recipients; capture tokens may cross a private worker pipe, never a terminal.
+    [[ "$1" != "registration-token" || ( "${ASPECTLOOP_E2_PRIVATE_PIPE:-}" == "1" && ! -t 1 ) ]] || exit 2
+    check_prepared
+    "${COMPOSE[@]}" run --rm -T --no-deps -e "ASPECTLOOP_E2_PRIVATE_PIPE=${ASPECTLOOP_E2_PRIVATE_PIPE:-0}" platform-auth-verify npm run db:auth:http:verify:local -- "--browser-$1" "$2"
     ;;
   stop-platform)
     [[ "${ASPECTLOOP_E1_ALLOW_OUTAGE:-}" == "1" ]] || exit 2

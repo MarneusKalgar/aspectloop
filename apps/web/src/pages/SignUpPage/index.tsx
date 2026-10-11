@@ -1,9 +1,9 @@
+import { BROWSER_SESSION_ERROR_CODE, getSessionErrorCode } from '@app/auth/session-error';
 import { useAuth } from '@app/auth/useAuth';
 import { AuthFormCard } from '@app/components/auth/AuthFormCard';
 import { PasswordField } from '@app/components/auth/PasswordField';
 import { FormAlert } from '@app/components/feedback/FormAlert';
 import { AuthLayout } from '@app/components/layout/AuthLayout';
-import { getOperationErrorMessage } from '@app/graphql/utils/getOperationErrorMessage';
 import { createSignUpSchema } from '@app/validators/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Stack, TextField } from '@mui/material';
@@ -17,6 +17,7 @@ interface SignUpFormValues {
   password: string;
 }
 
+/** Routes generic acceptance to pending instructions without retaining profile or credentials. */
 export function SignUpPage() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -38,23 +39,26 @@ export function SignUpPage() {
     resolver: zodResolver(signUpSchema),
   });
 
-  const onSubmit = handleSubmit(async (values: SignUpFormValues) => {
-    clearErrors('root');
+  const onSubmit = handleSubmit(
+    /** Submits once and never asserts session issuance. */ async (values: SignUpFormValues) => {
+      clearErrors('root');
 
-    try {
-      await signUp(values);
+      try {
+        await signUp(values);
 
-      void navigate('/signin', {
-        replace: true,
-        state: { successMessage: t('auth.signUp.success') },
-      });
-    } catch (error) {
-      setError('root', {
-        message: getOperationErrorMessage(error) ?? t('auth.signUp.error'),
-        type: 'server',
-      });
-    }
-  });
+        void navigate('/registration-pending', { replace: true });
+      } catch (error) {
+        setError('root', {
+          message: t(
+            getSessionErrorCode(error) === BROWSER_SESSION_ERROR_CODE.RATE_LIMITED
+              ? 'auth.pending.rateLimited'
+              : 'auth.signUp.error',
+          ),
+          type: 'server',
+        });
+      }
+    },
+  );
 
   return (
     <AuthLayout
