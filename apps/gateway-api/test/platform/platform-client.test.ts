@@ -192,7 +192,7 @@ async function testRejectedRequest(): Promise<void> {
   );
 
   const error = await createClient()
-    .signUp({ displayName: 'Reviewer', email: 'reviewer@example.test', password: 'wrong-password' })
+    .getUser('9d30c36d-5ae4-4f1b-b127-15f32de2f7cb')
     .catch((reason: unknown) => reason);
 
   expect(error).toBeInstanceOf(PlatformRejectedRequestException);
@@ -203,15 +203,6 @@ async function testRejectedRequest(): Promise<void> {
 async function testSignUpContract(): Promise<void> {
   const response = {
     success: true,
-    user: {
-      createdAt: '2026-09-12T00:00:00.000Z',
-      displayName: 'Reviewer',
-      email: 'reviewer@example.test',
-      id: '9d30c36d-5ae4-4f1b-b127-15f32de2f7cb',
-      roles: ['CORRECTOR'],
-      scopes: ['corrections:write'],
-      updatedAt: '2026-09-12T00:00:00.000Z',
-    },
   };
   const fetchMock = vi
     .fn()

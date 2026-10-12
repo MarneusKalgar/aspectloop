@@ -1,4 +1,10 @@
-import { createContext, type PropsWithChildren, useContext, useSyncExternalStore } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  type PropsWithChildren,
+  useContext,
+  useSyncExternalStore,
+} from 'react';
 
 import type { AuthContextValue } from './session.types';
 
@@ -10,9 +16,16 @@ import { useSessionBootstrap } from './useSessionBootstrap';
 
 export type { AuthContextValue } from './session.types';
 const AuthContext = createContext<AuthContextValue | null>(null);
+const BoundaryContext = createContext<null | Omit<
+  ComponentProps<typeof SessionBoundary>,
+  'children'
+>>(null);
 
 /** Composes coordination, bootstrap, account actions, and presentation without owning their policy. */
-export function AuthProvider({ children }: PropsWithChildren) {
+export function AuthProvider({
+  children,
+  routedBoundary = false,
+}: PropsWithChildren<{ routedBoundary?: boolean }>) {
   const coordinator = useSessionCoordinator();
   const snapshot = useSyncExternalStore(coordinator.subscribe, coordinator.getSnapshot);
   const resolution = useSessionBootstrap(coordinator, snapshot);
@@ -22,8 +35,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     snapshot.revision,
     view,
   );
-  const rejectionMessage =
-    rejection?.epoch === snapshot.marker?.epoch ? (rejection?.message ?? null) : null;
+  const currentRejection = rejection?.epoch === snapshot.marker?.epoch ? rejection : null;
 
   /** Retries ordinary reads/cache retirement, never uncertain cookie writes. */
   function retryBootstrap(): void {
@@ -38,6 +50,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     );
   }
 
+  const boundary = {
+    logoutBusy,
+    onRecoverSignOut: recoverSignOut,
+    onRetryBootstrap: retryBootstrap,
+    rejectionCode: currentRejection?.code ?? null,
+    rejectionMessage: currentRejection?.message ?? null,
+    view,
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -49,17 +70,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
         ...view.session,
       }}
     >
-      <SessionBoundary
-        logoutBusy={logoutBusy}
-        onRecoverSignOut={recoverSignOut}
-        onRetryBootstrap={retryBootstrap}
-        rejectionMessage={rejectionMessage}
-        view={view}
-      >
-        {children}
-      </SessionBoundary>
+      <BoundaryContext.Provider value={boundary}>
+        {routedBoundary ? children : <SessionBoundary {...boundary}>{children}</SessionBoundary>}
+      </BoundaryContext.Provider>
     </AuthContext.Provider>
   );
+}
+
+/** Applies unchanged session presentation to every route except explicit public registration pages. */
+export function AuthSessionBoundary({ children }: PropsWithChildren) {
+  const boundary = useContext(BoundaryContext);
+
+  if (!boundary) {
+    throw new Error('AuthSessionBoundary must be used within AuthProvider');
+  }
+
+  return <SessionBoundary {...boundary}>{children}</SessionBoundary>;
 }
 
 /** Provides only the current generation's user and explicit session actions. */

@@ -5,6 +5,7 @@ import type { UsersService } from '@platform/users/users.service';
 
 import { AUTH_ERROR_CODE } from '@aspectloop/contracts/platform';
 import { AuthService } from '@platform/auth/auth.service';
+import { AuthIdentityLimiter } from '@platform/auth/limits/auth-identity-limiter';
 import { expect, test, vi } from 'vitest';
 
 const ISSUED_AT = new Date('2026-09-12T00:00:00.000Z');
@@ -73,6 +74,7 @@ function createFixture(
       authSessionStore as unknown as AuthSessionStore,
       passwordService as unknown as PasswordService,
       usersService as unknown as UsersService,
+      new AuthIdentityLimiter(),
     ),
     usersService,
   };
@@ -143,6 +145,23 @@ async function testSignIn(): Promise<void> {
   expect(response.user).not.toHaveProperty('passwordHash');
 }
 
+/** Proves the actual service performs only five wrong-password checks before returning a rate rejection. */
+async function testSignInIdentityThreshold(): Promise<void> {
+  const fixture = createFixture({ passwordValid: false });
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await expect(
+      fixture.service.signInBrowserSession({ email: USER.email, password: 'wrong-password' }),
+    ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.INVALID_CREDENTIALS } });
+  }
+
+  await expect(
+    fixture.service.signInBrowserSession({ email: USER.email, password: 'wrong-password' }),
+  ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.RATE_LIMITED } });
+  expect(fixture.passwordService.verifyOrDummy).toHaveBeenCalledTimes(5);
+  expect(fixture.usersService.findByEmailWithPassword).toHaveBeenCalledTimes(5);
+}
+
 /** Verifies supported lookup failures retain the public dependency-unavailable envelope. */
 async function testSignInLookupDatabaseFailure(): Promise<void> {
   const fixture = createFixture();
@@ -169,6 +188,26 @@ async function testSignInLookupUnexpectedFailure(): Promise<void> {
     fixture.service.signInBrowserSession({ email: USER.email, password: ' password ' }),
   ).rejects.toBe(failure);
   expect(fixture.authSessionStore.createBrowserSession).not.toHaveBeenCalled();
+}
+
+/** Proves repeated database failures do not poison credential accounting or strand pending slots. */
+async function testSignInReservationRelease(): Promise<void> {
+  const fixture = createFixture({ passwordValid: false });
+  fixture.usersService.findByEmailWithPassword.mockRejectedValue(
+    Object.assign(new Error('private failure'), { code: 'ECONNRESET' }),
+  );
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await expect(
+      fixture.service.signInBrowserSession({ email: USER.email, password: 'wrong-password' }),
+    ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.DEPENDENCY_UNAVAILABLE } });
+  }
+
+  fixture.usersService.findByEmailWithPassword.mockResolvedValue(USER);
+  await expect(
+    fixture.service.signInBrowserSession({ email: USER.email, password: 'wrong-password' }),
+  ).rejects.toMatchObject({ response: { code: AUTH_ERROR_CODE.INVALID_CREDENTIALS } });
+  expect(fixture.passwordService.verifyOrDummy).toHaveBeenCalledOnce();
 }
 
 /** Verifies unknown identities use the same dummy comparison and credential envelope. */
@@ -198,6 +237,11 @@ test('returns the persisted Platform sign-in session contract', testSignIn);
 test('rejects invalid credentials without identity disclosure', testInvalidCredentials);
 test('performs a dummy password comparison for unknown identities', testUnknownIdentity);
 test('rejects unverified identities after correct credentials', testUnverifiedIdentity);
+test('live sign-in enforces the five-failure identity budget', testSignInIdentityThreshold);
+test(
+  'sign-in database failures release without counting credential failures',
+  testSignInReservationRelease,
+);
 test('delegates browser-session operations', testBrowserSessionDelegation);
 test(
   'maps sign-in lookup connectivity failures to dependency unavailable',

@@ -1,8 +1,12 @@
 import type {
+  PlatformConfirmEmailRequest,
+  PlatformConfirmEmailResponse,
   PlatformDocumentTypeResponse,
   PlatformDocumentTypesResponse,
   PlatformHealthResponse,
   PlatformReadinessResponse,
+  PlatformResendEmailConfirmationRequest,
+  PlatformResendEmailConfirmationResponse,
   PlatformSignUpRequest,
   PlatformSignUpResponse,
   PlatformUserResponse,
@@ -30,6 +34,14 @@ export type { PlatformRequestContext } from './platform-http-transport';
 export class PlatformClient {
   /** Creates the Platform facade over its internal HTTP transport. */
   constructor(private readonly transport: PlatformHttpTransport) {}
+
+  /** Consumes an explicit confirmation token without any Gateway cookie effects. */
+  async confirmEmail(
+    input: PlatformConfirmEmailRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformConfirmEmailResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.confirmEmail, input, context);
+  }
 
   /** Reads one Platform-owned document-type configuration. */
   async getDocumentType(
@@ -72,7 +84,15 @@ export class PlatformClient {
     return this.transport.get(PLATFORM_ENDPOINTS.documentTypes, context);
   }
 
-  /** Creates a Platform-owned user through the internal contract. */
+  /** Requests confirmation mail through the generic bounded registration contract. */
+  async resendEmailConfirmation(
+    input: PlatformResendEmailConfirmationRequest,
+    context: PlatformRequestContext = {},
+  ): Promise<PlatformResendEmailConfirmationResponse> {
+    return this.transport.post(PLATFORM_ENDPOINTS.resendEmailConfirmation, input, context);
+  }
+
+  /** Requests registration using a strict generic response without identity disclosure. */
   async signUp(
     input: PlatformSignUpRequest,
     context: PlatformRequestContext = {},

@@ -2,14 +2,54 @@ import type { IncomingMessage } from 'node:http';
 
 import { getOperationAST, Kind, OperationTypeNode, parse } from 'graphql';
 
-export type LiveOperation = 'CorrectionSessions' | 'Me' | 'SignIn' | 'SignOut';
-const OPERATIONS: LiveOperation[] = ['CorrectionSessions', 'Me', 'SignIn', 'SignOut'];
-const ROOTS = {
-  CorrectionSessions: { kind: OperationTypeNode.QUERY, root: 'correctionSessions' },
-  Me: { kind: OperationTypeNode.QUERY, root: 'me' },
-  SignIn: { kind: OperationTypeNode.MUTATION, root: 'signIn' },
-  SignOut: { kind: OperationTypeNode.MUTATION, root: 'signOut' },
-};
+import { GRAPHQL_OPERATION_NAME, type GraphqlOperationName } from '#app/graphql/operation-names';
+
+interface LiveOperationPolicy {
+  kind: OperationTypeNode;
+  registrationRequired: boolean;
+  root: string;
+}
+
+// Admission stays local and explicit; adding a shared name never enables live forwarding.
+const LIVE_OPERATION_POLICY = Object.freeze({
+  [GRAPHQL_OPERATION_NAME.CONFIRM_EMAIL]: {
+    kind: OperationTypeNode.MUTATION,
+    registrationRequired: true,
+    root: 'confirmEmail',
+  },
+  [GRAPHQL_OPERATION_NAME.CORRECTION_SESSIONS]: {
+    kind: OperationTypeNode.QUERY,
+    registrationRequired: false,
+    root: 'correctionSessions',
+  },
+  [GRAPHQL_OPERATION_NAME.ME]: {
+    kind: OperationTypeNode.QUERY,
+    registrationRequired: false,
+    root: 'me',
+  },
+  [GRAPHQL_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION]: {
+    kind: OperationTypeNode.MUTATION,
+    registrationRequired: true,
+    root: 'resendEmailConfirmation',
+  },
+  [GRAPHQL_OPERATION_NAME.SIGN_IN]: {
+    kind: OperationTypeNode.MUTATION,
+    registrationRequired: false,
+    root: 'signIn',
+  },
+  [GRAPHQL_OPERATION_NAME.SIGN_OUT]: {
+    kind: OperationTypeNode.MUTATION,
+    registrationRequired: false,
+    root: 'signOut',
+  },
+  [GRAPHQL_OPERATION_NAME.SIGN_UP]: {
+    kind: OperationTypeNode.MUTATION,
+    registrationRequired: true,
+    root: 'signUp',
+  },
+} as const satisfies Partial<Record<GraphqlOperationName, LiveOperationPolicy>>);
+
+export type LiveOperation = keyof typeof LIVE_OPERATION_POLICY;
 
 /** Collects one size-bounded private request; raw bytes never enter diagnostics. */
 export async function readRequestBody(incoming: IncomingMessage): Promise<Buffer> {
@@ -31,14 +71,15 @@ export async function readRequestBody(incoming: IncomingMessage): Promise<Buffer
 }
 
 /** Checks the selected kind/root, not merely a caller-supplied operation label. */
-export function selectedOperation(body: Buffer): LiveOperation {
+export function selectedOperation(body: Buffer, registrationEnabled = false): LiveOperation {
   const input = JSON.parse(body.toString('utf8')) as { operationName?: unknown; query?: unknown };
-  const name = OPERATIONS.find(
-    /** Selects one of the four fixed local operations. */
-    (candidate) => candidate === input.operationName,
-  );
+  const name = input.operationName;
 
-  if (!name || typeof input.query !== 'string') {
+  if (
+    !isLiveOperation(name) ||
+    typeof input.query !== 'string' ||
+    (!registrationEnabled && LIVE_OPERATION_POLICY[name].registrationRequired)
+  ) {
     throw new Error('E1 operation rejected');
   }
 
@@ -47,13 +88,18 @@ export function selectedOperation(body: Buffer): LiveOperation {
 
   if (
     !operation ||
-    operation.operation !== ROOTS[name].kind ||
+    operation.operation !== LIVE_OPERATION_POLICY[name].kind ||
     operation.selectionSet.selections.length !== 1 ||
     root?.kind !== Kind.FIELD ||
-    root.name.value !== ROOTS[name].root
+    root.name.value !== LIVE_OPERATION_POLICY[name].root
   ) {
     throw new Error('E1 operation rejected');
   }
 
   return name;
+}
+
+/** Admits only own catalog keys, never unknown values or inherited object properties. */
+function isLiveOperation(value: unknown): value is LiveOperation {
+  return typeof value === 'string' && Object.hasOwn(LIVE_OPERATION_POLICY, value);
 }

@@ -3,10 +3,15 @@ import {
   PLATFORM_IDENTITY_POLICY,
   platformSignInPasswordSchema,
 } from '@aspectloop/contracts/platform';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import { validateEnv } from '#app/config/env.validation';
+import { User } from '#app/users/user.entity';
 
+import {
+  BROWSER_REGISTRATION_MODES,
+  browserRegistrationFixture,
+} from './auth-http/browser-registration-fixture';
 import { assertLocalHttpDestinations } from './auth-http/client';
 import {
   createOwnedAuthFixture,
@@ -15,12 +20,16 @@ import {
   removeOwnedAuthFixture,
 } from './auth-http/fixture';
 import { readPrivateFixtureInput } from './auth-http/private-fixture-input';
+import { verifyRegistrationHttpScenarios } from './auth-http/registration-http.scenarios';
 import { verifyAuthHttpScenarios } from './auth-http/scenarios';
 import {
   assertLocalVerificationTarget,
   createVerificationDataSource,
   readCleanupDatabaseUrl,
+  reportScenario,
 } from './auth-sessions/verification-support';
+import { verifyMailScenarios } from './mail/scenarios';
+import { assertLocalRegistrationMail } from './registration/verification-support';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -31,17 +40,32 @@ function handleFailure(error: unknown): void {
   process.exitCode = 1;
 }
 
-/** Runs only the requested local HTTP or private-browser fixture action. */
+/** Runs explicit local HTTP/email/mail or private-browser fixture actions, with exact cleanup. */
 async function main(): Promise<void> {
   const mode = process.argv[2];
   const environment = validateEnv(process.env);
   const cleanupUrl = readCleanupDatabaseUrl();
   assertLocalVerificationTarget(environment.DATABASE_URL, cleanupUrl);
   assertLocalHttpDestinations();
-  const needsFixtureId = mode === '--fixture-cleanup' || mode === '--fixture-create-stdin';
+  const browserRegistrationMode = BROWSER_REGISTRATION_MODES.some(
+    /** Selects only closed verifier actions, never arbitrary input dispatch. */ (candidate) =>
+      candidate === mode,
+  );
+  const needsFixtureId =
+    mode === '--fixture-cleanup' || mode === '--fixture-create-stdin' || browserRegistrationMode;
+  const mailMode = mode === '--mail' || mode === '--mail-outage';
+  const emailMode = mode === '--email';
+
+  if (emailMode) {
+    assertLocalRegistrationMail(environment);
+  }
 
   if (
-    (mode !== '--http' && mode !== '--fixture-create' && !needsFixtureId) ||
+    (mode !== '--http' &&
+      mode !== '--fixture-create' &&
+      !needsFixtureId &&
+      !mailMode &&
+      !emailMode) ||
     (needsFixtureId && !UUID_PATTERN.test(process.argv[3] ?? '')) ||
     process.argv.length !== (needsFixtureId ? 4 : 3)
   ) {
@@ -51,9 +75,20 @@ async function main(): Promise<void> {
   const runtime = createVerificationDataSource(environment.DATABASE_URL, environment, 2);
   const cleanup = createVerificationDataSource(cleanupUrl, environment, 1);
   let fixture: null | OwnedAuthFixture = null;
+  let emailEvidence: [string, string][] = [];
 
   try {
-    await Promise.all([runtime.initialize(), cleanup.initialize()]);
+    const initializations = await Promise.allSettled([runtime.initialize(), cleanup.initialize()]);
+    for (const initialization of initializations) {
+      if (initialization.status === 'rejected') {
+        throw initialization.reason;
+      }
+    }
+
+    if (browserRegistrationMode) {
+      await browserRegistrationFixture(mode ?? '', process.argv[3] ?? '', cleanup, environment);
+      return;
+    }
 
     if (mode === '--fixture-cleanup') {
       await removeOwnedAuthFixture(cleanup, process.argv[3] ?? '');
@@ -83,7 +118,18 @@ async function main(): Promise<void> {
       );
     }
 
-    fixture = await createOwnedAuthFixture(runtime, environment, password, privateInput?.id);
+    const fixtureId = privateInput?.id ?? randomUUID();
+    const fixtureEmail = `auth-http-${fixtureId}@example.test`;
+    if (
+      await runtime
+        .getRepository(User)
+        .exists({ where: [{ id: fixtureId }, { email: fixtureEmail }] })
+    ) {
+      throw new Error('Private fixture already exists; ownership not acquired');
+    }
+
+    fixture = { email: fixtureEmail, id: fixtureId };
+    await createOwnedAuthFixture(runtime, environment, password, fixtureId);
 
     if (mode === '--fixture-create-stdin') {
       console.log(`E1_FIXTURE ${JSON.stringify(fixture)}`);
@@ -99,8 +145,20 @@ async function main(): Promise<void> {
       return;
     }
 
-    await verifyAuthHttpScenarios(cleanup, fixture, password);
-    console.log('Default-stack browser-session HTTP verification passed.');
+    if (emailMode) {
+      emailEvidence = await verifyRegistrationHttpScenarios(
+        cleanup,
+        environment,
+        fixture,
+        password,
+      );
+    } else if (mailMode) {
+      await verifyMailScenarios(environment, fixture, password, mode === '--mail-outage');
+      console.log('D1 local mail verification completed.');
+    } else {
+      await verifyAuthHttpScenarios(cleanup, fixture, password);
+      console.log('Default-stack browser-session HTTP verification passed.');
+    }
   } finally {
     try {
       if (fixture && cleanup.isInitialized) {
@@ -115,6 +173,15 @@ async function main(): Promise<void> {
           .map((dataSource) => dataSource.destroy()),
       );
     }
+  }
+
+  if (emailMode) {
+    for (const [id, summary] of emailEvidence) {
+      reportScenario(id, summary);
+    }
+    console.log(
+      'D3 email HTTP verification passed; exact owned database and mail cleanup completed.',
+    );
   }
 }
 

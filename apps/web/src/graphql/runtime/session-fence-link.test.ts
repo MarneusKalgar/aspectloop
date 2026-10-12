@@ -312,6 +312,61 @@ async function testProductTransportFailure(): Promise<void> {
   }
 }
 
+/** Confirmation/resend remain usable through an auth outage without publishing identity or private cache data. */
+async function testPublicRegistrationIsolation(): Promise<void> {
+  for (const operationName of ['ConfirmEmail', 'ResendEmailConfirmation']) {
+    const shared = createSharedSessionEnvironment();
+    const coordinator = new SessionCoordinator(shared.environment());
+    coordinator.fail('unavailable', coordinator.getSnapshot().revision);
+    const harness = transportHarness(coordinator);
+    const snapshot = coordinator.getSnapshot();
+    const controller = new AbortController();
+    const mutation = gql(
+      `mutation ${operationName} { ${operationName === 'ConfirmEmail' ? 'confirmEmail' : 'resendEmailConfirmation'} { success } }`,
+    );
+    const result = harness.client.mutate({
+      context: { fetchOptions: { signal: controller.signal } },
+      fetchPolicy: 'no-cache',
+      mutation,
+    });
+    const rejected = expect(result).rejects.toBeInstanceOf(CombinedGraphQLErrors);
+    await vi.waitFor(
+      /** Observes actual dispatch despite the unavailable identity generation. */ () =>
+        expect(harness.observers).toHaveLength(1),
+    );
+    harness.observers[0].error(
+      new CombinedGraphQLErrors({
+        errors: [{ extensions: { code: 'AUTH_DEPENDENCY_UNAVAILABLE' }, message: 'Unavailable' }],
+      }),
+    );
+    await rejected;
+    expect(coordinator.getSnapshot()).toBe(snapshot);
+    expect(harness.client.cache.extract()).toEqual({});
+    expect(harness.signals[0]).toBe(controller.signal);
+    const success = harness.client.mutate({
+      context: { fetchOptions: { signal: controller.signal } },
+      fetchPolicy: 'no-cache',
+      mutation,
+    });
+    await vi.waitFor(
+      /** Waits for another explicit command, never a retry of the earlier failure. */ () =>
+        expect(harness.observers).toHaveLength(2),
+    );
+    harness.observers[1].next({
+      data: {
+        [operationName === 'ConfirmEmail' ? 'confirmEmail' : 'resendEmailConfirmation']: {
+          success: true,
+        },
+      },
+    });
+    harness.observers[1].complete();
+    await success;
+    expect(coordinator.getSnapshot()).toBe(snapshot);
+    expect(harness.client.cache.extract()).toEqual({});
+    harness.client.stop();
+  }
+}
+
 /** Neither late data nor late errors can reach the old query promise or normalized cache. */
 async function testRetiredQuery(): Promise<void> {
   const shared = createSharedSessionEnvironment();
@@ -367,6 +422,10 @@ function transportHarness(coordinator: SessionCoordinator) {
 }
 
 describe('Apollo session fence' /** Exercises pre-cache cancellation and delivery guards, not browser Set-Cookie semantics. */, () => {
+  it(
+    'isolates public registration from session failure and cache state',
+    testPublicRegistrationIsolation,
+  );
   it('cancels old data and errors before cache delivery', testRetiredQuery);
   it('fences mutation completion even without a notification', testMissedNotificationMutation);
   it('does not deduplicate queries across auth epochs', testNoCrossEpochDeduplication);

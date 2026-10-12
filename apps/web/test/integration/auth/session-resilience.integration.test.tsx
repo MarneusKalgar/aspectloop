@@ -74,7 +74,7 @@ async function testDispatchedLogoutFailure(): Promise<void> {
   expect(me).toHaveBeenCalledTimes(reads);
 }
 
-/** Expected rejection preserves feedback and corrected-login permission with or without prior logout. */
+/** Invalid credentials retain retry permission but never offer unverified-account recovery. */
 async function testExpectedRejection(afterLogout: boolean): Promise<void> {
   const user = userEvent.setup();
 
@@ -103,6 +103,9 @@ async function testExpectedRejection(afterLogout: boolean): Promise<void> {
   ).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Correction inbox' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+  expect(
+    screen.queryByRole('link', { name: 'Request another confirmation email' }),
+  ).not.toBeInTheDocument();
 
   // Pending account actions retire the old form; refill whichever current form is rendered.
   const email = await screen.findByRole('textbox', { name: 'Email' });

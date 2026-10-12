@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { LIVE_TOPOLOGY } from './test/e2e-live/support/live-topology';
 import { readRunScope } from './test/e2e-live/support/run-scope';
 
-const { runDir } = readRunScope();
+const { registrationId, runDir } = readRunScope();
 
 export default defineConfig({
   captureGitInfo: { commit: false, diff: false },
@@ -19,6 +19,7 @@ export default defineConfig({
   reporter: [['./test/e2e-live/support/safe-reporter.ts']],
   retries: 0,
   testDir: './test/e2e-live',
+  testIgnore: registrationId ? [] : ['**/email-confirmation.spec.ts'],
   testMatch: '**/*.spec.ts',
   timeout: 120_000,
   use: {

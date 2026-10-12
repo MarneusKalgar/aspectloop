@@ -13,6 +13,7 @@ import { DocumentRegistryModule } from './document-registry/document-registry.mo
 import { DocumentsModule } from './documents/documents.module';
 import { HealthController } from './internal/health.controller';
 import { PlatformHttpExceptionFilter } from './internal/platform-http-exception.filter';
+import { MailModule } from './mail/mail.module';
 
 /** Composes the Platform-owned runtime, persistence, and internal HTTP boundary. */
 @Module({
@@ -36,6 +37,7 @@ import { PlatformHttpExceptionFilter } from './internal/platform-http-exception.
     AuthModule,
     DocumentRegistryModule,
     DocumentsModule,
+    MailModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: PlatformHttpExceptionFilter }],
 })

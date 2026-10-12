@@ -18,6 +18,11 @@ const VALID_ENVIRONMENT = {
   S3_ENDPOINT: 'http://garage:3900',
   S3_FORCE_PATH_STYLE: 'true',
   S3_REGION: 'garage',
+  SMTP_FROM: 'no-reply@example.test',
+  SMTP_HOST: 'mailpit',
+  SMTP_PORT: '1025',
+  SMTP_SECURE: 'false',
+  WEB_PUBLIC_BASE_URL: 'http://localhost:5173',
 };
 
 /** Creates Platform datasource options without connecting to PostgreSQL. */

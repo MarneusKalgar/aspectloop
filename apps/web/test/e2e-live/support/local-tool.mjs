@@ -1,6 +1,29 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+/** Closed command vocabulary shared by the private Node runner and TypeScript fixtures. */
+export const LIVE_TOOL_ACTION = Object.freeze({
+  CHECK: 'check',
+  CLEANUP: 'cleanup',
+  CREATE: 'create',
+  REGISTRATION_CLEANUP: 'registration-cleanup',
+  REGISTRATION_RESERVE: 'registration-reserve',
+  REGISTRATION_TOKEN: 'registration-token',
+  RESTORE_PLATFORM: 'restore-platform',
+  STOP_PLATFORM: 'stop-platform',
+});
+
+const ACTION_REQUIRES_ID = Object.freeze({
+  [LIVE_TOOL_ACTION.CHECK]: false,
+  [LIVE_TOOL_ACTION.CLEANUP]: true,
+  [LIVE_TOOL_ACTION.CREATE]: true,
+  [LIVE_TOOL_ACTION.REGISTRATION_CLEANUP]: true,
+  [LIVE_TOOL_ACTION.REGISTRATION_RESERVE]: true,
+  [LIVE_TOOL_ACTION.REGISTRATION_TOKEN]: true,
+  [LIVE_TOOL_ACTION.RESTORE_PLATFORM]: false,
+  [LIVE_TOOL_ACTION.STOP_PLATFORM]: false,
+});
+
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const tool = fileURLToPath(
@@ -19,6 +42,24 @@ const cookieStages = new Set([
   'SIGN_OUT',
   'SIGN_OUT_HEADERS',
 ]);
+const confirmationStages = new Set([
+  'LINK_CAPTURE',
+  'MAIL_CAPTURE',
+  'OUTAGE_CONFIRMATION',
+  'RESTORE_CONFIRMATION',
+  'REUSED_LINK',
+  'SIGN_IN',
+  'SIGN_OUT',
+  'SIGN_UP',
+]);
+const lockStages = new Set([
+  'ACQUISITION_TIMEOUT',
+  'BOOTSTRAP',
+  'HOLD_LOCK',
+  'NO_DISPATCH',
+  'RELEASE_LOCK',
+  'WAITING_LOGIN',
+]);
 
 /**
  * Allows only fixed safe reporter records through the runner's output boundary.
@@ -27,12 +68,18 @@ const cookieStages = new Set([
  */
 export function isSafeReportLine(line) {
   const stage = /^E1-LIVE-09-STAGE ([A-Z_]+) failed$/.exec(line)?.[1];
+  const confirmationStage = /^E2-LIVE-01-STAGE ([A-Z_]+) failed$/.exec(line)?.[1];
+  const lockStage = /^E1-LIVE-08-LOCK-STAGE ([A-Z_]+) failed$/.exec(line)?.[1];
 
   return (
     /^E1-LIVE-\d{2}(?:-[A-Z]+)? (?:passed|failed|timedOut|interrupted|skipped)$/.test(line) ||
     /^E1-LIVE-SUMMARY (?:passed|failed|timedout|interrupted)$/.test(line) ||
     /^E1-LIVE-COUNTS passed=\d{1,2} required=20 pending=\d{1,2}$/.test(line) ||
-    (stage !== undefined && cookieStages.has(stage))
+    /^E2-LIVE-01 (?:passed|failed|timedOut|interrupted|skipped)$/.test(line) ||
+    /^E2-LIVE-COUNTS passed=[01] required=1 pending=[01]$/.test(line) ||
+    (stage !== undefined && cookieStages.has(stage)) ||
+    (confirmationStage !== undefined && confirmationStages.has(confirmationStage)) ||
+    (lockStage !== undefined && lockStages.has(lockStage))
   );
 }
 
@@ -59,7 +106,7 @@ export function liveRunnerEnvironment(environment, runDir) {
 
 /**
  * Executes fixed tooling with bounded private pipes and credential-free failures.
- * @param {string} action A fixed E1 action.
+ * @param {string} action A fixed live action validated before spawning.
  * @param {{ id?: string, input?: string, allowOutage?: boolean }} options Private input and exact ownership.
  * @returns {Promise<string>} Captured output for private metadata parsing, never raw reporting.
  */
@@ -68,7 +115,7 @@ export async function runTool(action, options = {}) {
 
   if (
     options.input !== undefined &&
-    (action !== 'create' || Buffer.byteLength(options.input) > 256)
+    (action !== LIVE_TOOL_ACTION.CREATE || Buffer.byteLength(options.input) > 256)
   ) {
     throw new Error('E1 private input rejected');
   }
@@ -82,7 +129,11 @@ export async function runTool(action, options = {}) {
      */
     (resolve, reject) => {
       const child = spawn('bash', args, {
-        env: { ...process.env, ASPECTLOOP_E1_ALLOW_OUTAGE: options.allowOutage ? '1' : '0' },
+        env: {
+          ...process.env,
+          ASPECTLOOP_E1_ALLOW_OUTAGE: options.allowOutage ? '1' : '0',
+          ASPECTLOOP_E2_PRIVATE_PIPE: action === LIVE_TOOL_ACTION.REGISTRATION_TOKEN ? '1' : '0',
+        },
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       let output = '';
@@ -170,18 +221,26 @@ export async function runTool(action, options = {}) {
 
 /**
  * Validates the closed local tool surface before spawning anything.
- * @param {string} action A fixed E1 action.
- * @param {string | undefined} id The exact fixture ID for creation/cleanup only.
+ * @param {string} action An untrusted command name checked against the closed vocabulary.
+ * @param {string | undefined} id The exact fixture ID for fixture commands only.
  * @returns {string[]} Validated shell arguments.
  */
 export function toolArguments(action, id) {
-  if (['cleanup', 'create'].includes(action) && typeof id === 'string' && UUID_PATTERN.test(id)) {
+  if (typeof action !== 'string' || !Object.hasOwn(ACTION_REQUIRES_ID, action)) {
+    throw new Error('E1 tool arguments rejected');
+  }
+
+  if (ACTION_REQUIRES_ID[action]) {
+    if (typeof id !== 'string' || !UUID_PATTERN.test(id)) {
+      throw new Error('E1 tool arguments rejected');
+    }
+
     return [tool, action, id];
   }
 
-  if (['check', 'restore-platform', 'stop-platform'].includes(action) && id === undefined) {
-    return [tool, action];
+  if (id !== undefined) {
+    throw new Error('E1 tool arguments rejected');
   }
 
-  throw new Error('E1 tool arguments rejected');
+  return [tool, action];
 }

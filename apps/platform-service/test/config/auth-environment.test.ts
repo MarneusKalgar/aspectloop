@@ -13,6 +13,11 @@ const VALID_ENVIRONMENT = {
   S3_FORCE_PATH_STYLE: 'true',
   S3_REGION: 'garage',
   S3_REQUEST_TIMEOUT_MS: '5000',
+  SMTP_FROM: 'no-reply@example.test',
+  SMTP_HOST: 'mailpit',
+  SMTP_PORT: '1025',
+  SMTP_SECURE: 'false',
+  WEB_PUBLIC_BASE_URL: 'http://localhost:5173',
 };
 
 /** Verifies auth defaults are transformed into the browser-session contract. */

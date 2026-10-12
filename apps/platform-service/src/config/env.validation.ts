@@ -2,6 +2,7 @@ import { validateEnvironment } from '@aspectloop/backend-platform/config';
 
 import { DatabaseEnvironmentVariables } from './database-env.schema';
 import { EnvironmentVariables } from './env.schema';
+import { validateMailEnvironment } from './mail-env.validation';
 
 /**
  * Validates only the configuration required by Platform TypeORM CLI commands.
@@ -20,7 +21,10 @@ export function validateDatabaseEnv(config: Record<string, unknown>): DatabaseEn
  * @returns A transformed and validated Platform-service configuration.
  */
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {
+  validateMailEnvironment(config);
+
   const environment = validateEnvironment(EnvironmentVariables, config);
+
   if (environment.AUTH_SESSION_IDLE_TTL_MS > environment.AUTH_SESSION_ABSOLUTE_TTL_MS) {
     throw new Error(
       'Environment validation failed: AUTH_SESSION_IDLE_TTL_MS must not exceed AUTH_SESSION_ABSOLUTE_TTL_MS',

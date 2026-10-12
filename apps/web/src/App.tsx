@@ -15,7 +15,7 @@ export function App() {
       <AppThemeProvider>
         <SessionCoordinatorProvider>
           <ApolloAppProvider>
-            <AuthProvider>
+            <AuthProvider routedBoundary>
               <Box sx={{ minHeight: '100vh' }}>
                 <RouterProvider router={router} />
               </Box>

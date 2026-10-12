@@ -12,6 +12,8 @@ import {
   NotEquals,
 } from 'class-validator';
 
+import { MAIL_ADDRESS_MAX_LENGTH } from '#app/mail/message/mail.constants';
+
 import { S3_BUCKET_NAME_PATTERN } from '../storage/artifact-storage.constants';
 import { DatabaseEnvironmentVariables } from './database-env.schema';
 import {
@@ -109,4 +111,35 @@ export class EnvironmentVariables extends DatabaseEnvironmentVariables {
   @Min(1)
   @Type(() => Number)
   S3_REQUEST_TIMEOUT_MS = 5000;
+
+  @IsString()
+  @Length(1, MAIL_ADDRESS_MAX_LENGTH)
+  SMTP_FROM!: string;
+
+  @IsString()
+  @Length(1, 253)
+  SMTP_HOST!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 1024)
+  SMTP_PASSWORD?: string;
+
+  @IsInt()
+  @Max(65535)
+  @Min(1)
+  @Type(() => Number)
+  SMTP_PORT!: number;
+
+  @Matches(/^(true|false)$/)
+  SMTP_SECURE!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 256)
+  SMTP_USER?: string;
+
+  @IsString()
+  @Length(1, 2048)
+  WEB_PUBLIC_BASE_URL!: string;
 }

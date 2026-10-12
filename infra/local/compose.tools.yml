@@ -80,6 +80,8 @@ services:
       - ../../apps/platform-service/.env.local
     environment:
       AUTH_VERIFY_CLEANUP_DATABASE_URL: postgresql://${PLATFORM_MIGRATOR_USER:-platform_migrator}:${PLATFORM_MIGRATOR_PASSWORD:-platform_migrator}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
       DATABASE_URL: postgresql://${PLATFORM_RUNTIME_USER:-platform_runtime}:${PLATFORM_RUNTIME_PASSWORD:-platform_runtime}@postgres:5432/${PLATFORM_DATABASE_NAME:-platform_db}
       DB_POOL_SIZE: 5
       NODE_ENV: development

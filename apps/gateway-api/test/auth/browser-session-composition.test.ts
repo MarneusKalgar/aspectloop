@@ -64,10 +64,14 @@ interface TestGraphqlBody {
         type AuthPayload { user: User! }
         type SignOutPayload { success: Boolean! }
         type SignUpPayload { success: Boolean! user: User }
+        type EmailConfirmationPayload { success: Boolean! }
+        type EmailConfirmationRequestPayload { success: Boolean! }
         type CorrectionSession { id: ID! }
         scalar JSON
         input SignInInput { email: String! password: String! }
         input SignUpInput { email: String! password: String! displayName: String! }
+        input ConfirmEmailInput { token: String! }
+        input ResendEmailConfirmationInput { email: String! }
         input OpenCorrectionSessionInput { documentId: ID! documentType: String! }
         input SaveCorrectionSessionDraftInput {
           sessionId: ID! expectedVersion: Int! draftPayload: JSON!
@@ -78,6 +82,8 @@ interface TestGraphqlBody {
         }
         type Mutation { signIn(input: SignInInput!): AuthPayload!
           signOut: SignOutPayload! signUp(input: SignUpInput!): SignUpPayload!
+          confirmEmail(input: ConfirmEmailInput!): EmailConfirmationPayload!
+          resendEmailConfirmation(input: ResendEmailConfirmationInput!): EmailConfirmationRequestPayload!
           openCorrectionSession(input: OpenCorrectionSessionInput!): CorrectionSession!
           saveCorrectionSessionDraft(input: SaveCorrectionSessionDraftInput!): CorrectionSession!
         }
@@ -181,6 +187,14 @@ async function testNestSessionComposition(): Promise<void> {
     }
 
     if (path.endsWith('/sign-out')) {
+      return json({ success: true });
+    }
+
+    if (
+      path.endsWith('/sign-up') ||
+      path.endsWith('/confirm-email') ||
+      path.endsWith('/resend-email-confirmation')
+    ) {
       return json({ success: true });
     }
 
@@ -292,7 +306,44 @@ async function testNestSessionComposition(): Promise<void> {
       });
     }
 
+    const registrationCases = [
+      {
+        query:
+          'mutation { signUp(input: { email: "new@example.test", password: "password", displayName: "New" }) { success user { id } } }',
+        root: 'signUp',
+      },
+      {
+        query:
+          'mutation { resendEmailConfirmation(input: { email: "new@example.test" }) { success } }',
+        root: 'resendEmailConfirmation',
+      },
+      {
+        query: `mutation { confirmEmail(input: { token: "${CREDENTIAL}" }) { success } }`,
+        root: 'confirmEmail',
+      },
+    ];
+
+    for (const { query, root } of registrationCases) {
+      const before = upstreamCalls.length;
+      const result = await post(baseUrl, query, cookie);
+      expect(result.body.errors).toBeUndefined();
+      expect(readPath(result.body, root, 'success')).toBe(true);
+      expect(result.response.headers.has('set-cookie')).toBe(false);
+      expect(upstreamCalls.slice(before)).toHaveLength(1);
+      expect(upstreamCalls.at(-1)?.path).not.toContain('session/validate');
+      if (root === 'signUp') {
+        expect(readPath(result.body, root, 'user')).toBeNull();
+      }
+    }
+
     failValidation = true;
+    const publicDuringOutage = await post(
+      baseUrl,
+      'mutation { resendEmailConfirmation(input: { email: "new@example.test" }) { success } }',
+      cookie,
+    );
+    expect(publicDuringOutage.body.errors).toBeUndefined();
+    expect(publicDuringOutage.response.headers.has('set-cookie')).toBe(false);
     const outage = await post(baseUrl, 'query { me { id } }', cookie);
     expect(outage.body.errors?.[0]?.extensions?.code).toBe('AUTH_DEPENDENCY_UNAVAILABLE');
     expect(outage.response.headers.has('set-cookie')).toBe(false);

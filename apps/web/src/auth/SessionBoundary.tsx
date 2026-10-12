@@ -2,9 +2,11 @@ import type { PropsWithChildren } from 'react';
 
 import { Alert, Box, Button, CircularProgress, Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router-dom';
 
 import type { SessionRecovery, SessionView } from './session-view';
 
+import { BROWSER_SESSION_ERROR_CODE } from './session-error';
 import { BROWSER_AUTH_STATUS } from './session.types';
 
 interface RecoveryActionProps {
@@ -18,16 +20,18 @@ interface SessionBoundaryProps extends PropsWithChildren {
   logoutBusy: boolean;
   onRecoverSignOut: () => void;
   onRetryBootstrap: () => void;
+  rejectionCode: null | string;
   rejectionMessage: null | string;
   view: SessionView;
 }
 
-/** Withholds protected children during retirement and presents the selected session outcome. */
+/** Withholds protected children and retains current rejection recovery across form remounts. */
 export function SessionBoundary({
   children,
   logoutBusy,
   onRecoverSignOut,
   onRetryBootstrap,
+  rejectionCode,
   rejectionMessage,
   view,
 }: SessionBoundaryProps) {
@@ -80,7 +84,19 @@ export function SessionBoundary({
     <>
       {view.unsupported && <Alert severity="warning">{t('auth.session.unsupported')}</Alert>}
       {view.session.status === BROWSER_AUTH_STATUS.ANONYMOUS && rejectionMessage && (
-        <Alert severity="error">{rejectionMessage}</Alert>
+        <Alert
+          action={
+            rejectionCode === BROWSER_SESSION_ERROR_CODE.EMAIL_UNVERIFIED &&
+            view.accountActionsAvailable ? (
+              <Button color="inherit" component={RouterLink} to="/registration-pending">
+                {t('auth.confirmation.resend')}
+              </Button>
+            ) : undefined
+          }
+          severity="error"
+        >
+          {rejectionMessage}
+        </Alert>
       )}
       {children}
     </>

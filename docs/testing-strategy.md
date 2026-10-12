@@ -2,7 +2,7 @@
 
 Status: Confirmed direction  
 Date: 2026-07-26  
-Last updated: M04.2 E1 local acceptance, 2026-10-05
+Last updated: M04.2 E2 local acceptance, 2026-10-11
 Scope: Frontend, backend, contracts, local infrastructure, and deployed stage
 
 ## Table Of Contents
@@ -581,8 +581,187 @@ unit/integration fencing evidence complements live coverage. Failed marker
 persistence cannot guarantee peer/reload suppression; injected capabilities do
 not establish broad unsupported-browser compatibility. See
 [browser session recovery](browser-session.md) for those accepted limitations.
-Email delivery/confirmation remains D1-D3/E2; fresh-stack, stage/performance and
-integrated closeout remain F gates.
+D1 local mail transport is separately accepted as described below; D2 prepared
+registration and D3 HTTP activation are locally accepted by human verification;
+E2 browser confirmation is separately accepted in section 8.8. Fresh-stack,
+stage/performance and integrated closeout remain F gates.
+
+### 8.5 Accepted D1 Local Mail Verification
+
+D1 was locally accepted by the human on 2026-10-08. Supplied screenshots show
+the full backend suite passing 45 files/173 tests, Platform build completion,
+and successful `local:up` with the default graph healthy. The human separately
+confirmed formatting, lint and repository type-check passed. These are
+human-run results, not agent-run verification or a D1 CI/publication claim.
+
+Live evidence covers:
+
+- `local:auth:verify -- --mail`: synthetic SMTP delivery, sender/text capture
+  and owned cleanup, with `D1-MAIL-CAPTURE passed` before and after restoration.
+- Explicit Mailpit stop followed by `--mail-outage`:
+  `D1-MAIL-SESSION-12 passed`, retaining the same session's `me`, protected inbox
+  and Platform readiness before/after failed dispatch.
+- Ordinary `--mail` while Mailpit is stopped: fixed capture failure and nonzero
+  exit, as required; unavailable capture is never silently skipped.
+- Mailpit restoration followed by successful `--sessions` and `--http`
+  regression verification, including C3-DB01-04, SESSION-01-04 and the existing
+  HTTP-SESSION cases.
+
+Deterministic mail/config tests cover capacity, deadlines, snapshots, shutdown
+loss, owned-resource disposal and late errors, safe outcomes, TLS settings,
+configuration boundaries, and exact capture ownership/cleanup. Those test doubles
+do not establish external SMTP delivery or broad timing guarantees.
+
+The [mail runbook](platform-mail.md) gives the explicit commands and safe
+restoration sequence. The outage verifier establishes its session with Mailpit
+already stopped; it does not prove in-flight SMTP restart recovery. SMTP
+acknowledgement is not external mailbox delivery. D2 prepared registration
+evidence is recorded below, followed by accepted D3 HTTP/email verification;
+E2 browser acceptance is recorded separately below. Fresh-stack, stage/performance and
+complete integrated SESSION reconciliation remain F. No public test endpoints,
+raw credentials, diagnostic payloads or delete-all capture cleanup are introduced.
+
+### 8.6 D2 Prepared Registration Verification
+
+The human reported all checks passing on 2026-10-10 after the D2 helper
+extraction and lint corrections. The latest handoff listed `npm run lint:ci`,
+`npm run type-check`, `npm run test:backend:run`, `npm run build:platform`, and
+`npm run local:auth:verify -- --registration --build`. Individual outputs,
+test counts and timings were not supplied; this is human-reported local
+verification, not agent-run checks or a CI/publication claim.
+
+The implemented D2-REG-01 through 09 runner exercises production providers with
+two real PostgreSQL runtime pools and real SMTP/Mailpit capture. Its scope is
+atomic/duplicate signup, uniform invalid-token rejection and single consume,
+both replacement/consume lock orderings, rollback and purpose isolation,
+durable cooldown, bounded lock failure, live sign-in identity limits,
+post-commit fault cleanup and independent-session preservation. Controlled D1
+failure receipts retain real transactions but do not establish real external
+SMTP outages. Passing groups are emitted only after successful exact owned
+database/mail cleanup; unavailable capture fails, never skips.
+
+Direct message/validation and orchestration tests complement the runner's
+transaction evidence. This is provider/state integration, not Nest HTTP wiring,
+GraphQL transport or browser E2E. At D2 acceptance the live signup contract
+remained unchanged; D3's subsequent coordinated activation is recorded below.
+See [Platform registration](platform-registration.md) for command prerequisites,
+limiter policy and delivery limits. E2's browser acceptance is recorded below; F
+retains integrated acceptance. Historical handoff checklists remain in the
+working plan; the latest report does not supply separate fresh output for every
+earlier checklist item.
+
+### 8.7 Accepted D3 HTTP And Email Verification
+
+D3 was locally accepted by the human on 2026-10-10. Screenshots show focused
+`local:auth:verify -- --email --build` passing D3-EMAIL-01 through 07 and exact
+owned database/mail cleanup. A subsequent counter reset and default aggregate
+show C3-DB01-04, SESSION-01-04, HTTP-SESSION-00-05 (including 01A and 03A), then
+all seven email groups and the exact-cleanup summary. The human separately
+confirmed the remaining generation, formatting/lint, repository type-check,
+backend/Web tests, builds and applicable browser checks all passed. Exact fresh
+test counts/timings and CI/publication are not claimed; these are human-run
+results, not agent-run checks.
+
+The real Gateway/Platform/PostgreSQL/Mailpit email groups cover:
+
+- Generic signup, actual owned SMTP/link capture, digest-only persistence and
+  unverified sign-in rejection.
+- Duplicate signup preserving profile/password and durable cooldown.
+- Explicit replacement/confirmation, replaced/reused rejection and no cookie
+  changes; verified explicit login/logout preserving the unrelated session.
+- Generic unknown/verified/identity-suppressed responses without unwanted work.
+- Safe public/private malformed input, bounded real user-lock dependency failure,
+  Origin/batch protection and real identity/IP thresholds.
+- No registration cookie writes and original server-session authority after
+  success, suppression, rejection and dependency failure.
+
+Unit/composition tests complement live coverage with strict transport schemas,
+generic projections, mailbox/password boundaries, safe failure-stage output,
+bounded verifier bodies and pre-execution GraphQL rejection evidence. That
+rejection can carry HTTP 200: errors-only/no-data/no-execution-path assertions
+and a real in-memory Yoga resolver-call test distinguish it from success.
+Web tests cover neutral signup copy and generic/unverified MSW semantics.
+
+Use the initialized exclusive local stack with matching validated runtime/tool
+configuration and healthy Mailpit. The [registration runbook](platform-registration.md)
+gives the counter-reset prerequisites. No-mode `local:auth:verify` is fail-fast
+sessions -> HTTP -> email; explicit existing modes remain available. Missing
+prerequisites fail rather than skip, and conflicting/unknown modes exit 2.
+The final email group deliberately exhausts IP counters, so repeats/aggregates
+require a fresh counter reset and no parallel auth traffic.
+
+Only recorded run-owned recipients/rows/message IDs are cleaned; cleanup or pool
+closure failure keeps the command nonzero and withholds group pass output.
+Closed failure-stage labels never print credentials, raw responses, mail bodies,
+stacks or provider diagnostics. Replacement ages only an owned token timestamp
+past cooldown; accepted D2 SQL race/TTL/rollback evidence is reused, not duplicated.
+The accepted SMTP worker/phase bound is allowed to settle ambiguous local sends
+before cleanup. This exclusive-local assumption is not a durable outbox or proof
+against external queued delivery.
+
+D3 proves backend HTTP integration, not E2's browser link/fragment/resend UX or
+full email-to-login journey. External authenticated SMTP, distributed limits,
+fresh-stack rehearsal, stage/performance and the integrated SESSION matrix remain
+outside this local gate. No new migration, public fixture/debug endpoint, secret
+artifact capture or deployment authorization is introduced.
+
+### 8.8 Accepted E2 Browser Confirmation Verification
+
+E2 was locally accepted on 2026-10-11 after human verification of the implemented
+browser flow and its follow-up corrections. Latest supplied evidence shows:
+
+- `npm run verify`: 93/93 Web unit tests across 21 files and 20/20 integration
+  tests across five files. Reaching the final integration step also supports
+  success of the chained format, lint, type-check and GraphQL checks.
+- `npm run test:e2e:mock -- test/e2e/auth`: all ten auth browser cases passed.
+- `npm run test:e2e:live:tools`: all nineteen tool/privacy tests passed, including
+  closed lock failure-stage reporting. This supersedes the earlier 18-test run.
+- `npm run test:e2e:live -- --allow-platform-outage --email-confirmation`:
+  E1 `passed=20 required=20 pending=0`, E2 `passed=1 required=1 pending=0`,
+  passed summary, exact owned E2 database/mail cleanup and exact E1 fixture/
+  artifact cleanup. The supplied screenshot does not separately show shell exit
+  status.
+
+The human separately reported the remaining generation, backend, build and D3
+verification commands passing; no additional fresh counts or timings are inferred.
+These are human-run local results, not agent-run checks or CI/publication evidence.
+
+The optional E2 case extends the existing private E1 runner, not a second harness.
+Default E1 still requires twenty cases; `--email-confirmation` adds the one
+required E2 case and does not itself authorize an outage. Both flags are required
+for the opt-in command. Use the existing healthy migrated stack and Mailpit,
+current shared packages and verifier image, free runner ports, and exclusive
+local auth/outage ownership. Follow the
+[live runbook](../apps/web/test/e2e-live/README.md); `--build` on the D3 verifier
+rebuilds only that image, not running services. No automatic installation,
+migration, limit bypass, capture startup or stack reset is added.
+
+The genuine flow covers generic signup, exact owned Mailpit link capture,
+startup URL sanitization with zero automatic consume, an explicit attempt during
+actual Platform outage, explicit retry after restoration, confirmation without
+a session, separate verified sign-in and empty protected inbox, reused-link
+rejection preserving the current session, then acknowledged sign-out. Mock and
+unit/integration evidence complements this with private-attempt remount/overlap
+behavior, safe presentation, malformed fresh-document links, local resend
+suppression and retained current-epoch unverified sign-in feedback.
+
+The parent owns an optional registration UUID in addition to the two E1 fixture
+IDs. Recipient ownership is reserved before ambiguous browser signup; private
+link exchange is bounded and never reported. Cleanup deletes only owned rows/
+message IDs and verifies absence after the accepted SMTP settling bound. Missing
+cases or cleanup failure cannot produce acceptance; interruption may require
+the printed exact recovery action. Traces, HAR, screenshots/video, DOM snapshots,
+storage exports, credentials, mail bodies and raw diagnostics remain prohibited.
+Only fixed status/counts, exact safe recovery metadata and allowlisted failure
+stages are emitted.
+
+Startup capture is not a same-document hash listener; reload of a sanitized link
+cannot restore its token. Mail acceptance/local countdowns are not delivery or
+cooldown authority. The existing empty-inbox, unknown-outcome, failed-persistence
+and unsupported-browser limits remain. External mailbox delivery, durable outbox,
+distributed limits, manual accessibility certification, fresh-stack rehearsal,
+stage/performance and full integrated SESSION reconciliation are not established
+by E2 acceptance. F remains separate and not started.
 
 ## 9. Reliability Rules
 

@@ -28,14 +28,14 @@ type SignOutPayload {
   success: Boolean!
 }
 
-"""Current sign-up result retained until the D3 confirmation cutover."""
+"""Generic registration acknowledgement that does not disclose account existence."""
 type SignUpPayload {
-  """True when the account-creation request succeeded."""
+  """True when the registration request was accepted; not proof of creation or delivery."""
   success: Boolean!
-  """Current user projection; D3 will replace this with a generic response."""
+  """Always null; registration does not disclose a user projection."""
   user: User
     @deprecated(
-      reason: "D3 will remove identity details from the sign-up response."
+      reason: "Registration returns generic acceptance without identity details."
     )
 }
 
@@ -100,6 +100,6 @@ extend type Mutation {
   cookie.
   """
   signIn(input: SignInInput!): AuthPayload!
-  """Creates an unverified account; D3 adds generic confirmation delivery."""
+  """Accepts registration generically; confirmation delivery and account existence are not disclosed."""
   signUp(input: SignUpInput!): SignUpPayload!
 }

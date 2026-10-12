@@ -165,26 +165,44 @@ test('E1-LIVE-07' /** Actual Platform stop proves local reset-required suppressi
   await unchangedRequests(live.gate, count + 1);
 });
 
-test('E1-LIVE-08-LOCK' /** Holds a native cookie lock until the unchanged ten-second acquisition bound rejects login. */, async ({
+test('E1-LIVE-08-LOCK' /** Settles both bootstraps before measuring native lock timeout without cookie dispatch. */, async ({
   context,
   live,
   page,
 }) => {
   const peer = await context.newPage();
 
-  await page.goto('/signin');
-  await peer.goto('/signin');
-  const releaseLock = await holdCookieLock(peer);
+  await test.step('BOOTSTRAP', /** Waits for both actual anonymous resolutions before the no-request baseline. */ async () => {
+    await page.goto('/signin');
+    await peer.goto('/signin');
+    await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toBeEnabled();
+    await expect(peer.getByRole('button', { exact: true, name: 'Sign in' })).toBeEnabled();
+  });
+
+  const releaseLock =
+    await test.step('HOLD_LOCK', /** Returns only the test-owned release barrier after native acquisition. */ async () => {
+      return await holdCookieLock(peer);
+    });
 
   const count = live.gate.observations.length;
-  await fillLogin(page, live.accounts[0]);
-  await page.getByRole('button', { exact: true, name: 'Sign in' }).click();
-  await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toBeDisabled();
-  await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toBeEnabled();
+  await test.step('WAITING_LOGIN', /** Starts one explicit login while the peer retains the native lock. */ async () => {
+    await fillLogin(page, live.accounts[0]);
+    await page.getByRole('button', { exact: true, name: 'Sign in' }).click();
+    await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toBeDisabled();
+  });
 
-  await unchangedRequests(live.gate, count);
-  await releaseLock();
+  await test.step('ACQUISITION_TIMEOUT', /** Keeps the production ten-second deadline and requires visible retry permission. */ async () => {
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { exact: true, name: 'Sign in' })).toBeEnabled();
+  });
+
+  await test.step('NO_DISPATCH', /** Requires the settled request count to remain unchanged, never accepting a subset. */ async () => {
+    await unchangedRequests(live.gate, count);
+  });
+
+  await test.step('RELEASE_LOCK', /** Releases only the test-owned native lock; context disposal remains the failure fallback. */ async () => {
+    await releaseLock();
+  });
 });
 
 test('E1-LIVE-08-UNSUPPORTED' /** Injected missing Locks permits existing real reads but dispatches only local logout. */, async ({

@@ -1,7 +1,7 @@
 # AspectLoop General Architecture Plan
 
 Status: Active roadmap  
-Last updated: 2026-10-05
+Last updated: 2026-10-11
 
 ## Table Of Contents
 
@@ -603,8 +603,17 @@ records this accepted 2026-09-20 target. A/B JWT/refresh implementation and
 passing rotation tests are historical foundations, not evidence for the new
 flow. C2b's basic browser-session cutover passed its human verification gate on
 2026-09-27; C3 retirement was locally accepted on 2026-10-03; E1 browser resilience
-and legacy-cookie cleanup were locally accepted on 2026-10-05. D1-D3 email and
-confirmation, E2 confirmation UI and F integrated acceptance remain pending.
+and legacy-cookie cleanup were locally accepted on 2026-10-05. D1 local mail
+transport was locally accepted on 2026-10-08. D2 prepared registration state and
+sign-in identity limits are locally verified by human report on 2026-10-10.
+D3 HTTP activation is locally accepted on 2026-10-10 after human checks and real
+session -> HTTP -> email verification. E2 browser confirmation was locally
+accepted on 2026-10-11 after human repository, mock and full E1/E2 live verification
+with exact owned cleanup. F integrated acceptance remains pending.
+See [Platform registration](platform-registration.md) for the active command
+boundary and retained limiter/delivery limitations.
+See [Platform mail transport](platform-mail.md) for bounded dispatch, private
+capture, outage verification and retained delivery limitations.
 [Browser session behavior and recovery](browser-session.md) records the active
 coordination, cache fencing and conservative recovery rules. The SPA
 and separately deployed GraphQL Gateway form a BFF arrangement; SSR or a
@@ -647,8 +656,18 @@ type-checking and relevant tests with its actual consumers. Breaking session
 contracts activate together with their callers in C2b; preparation retains
 explicitly temporary contracts until their consumers migrate. Historical A/B
 remains complete only under the old design. B1, B2, C1, C2a, and C2b have
-passed their task gates; C3 retirement and E1 resilience are locally accepted,
-with D1 next in the requested E1 -> D1 -> D2 -> D3 -> E2 order and F still pending.
+passed their task gates; C3 retirement, E1 resilience and D1 mail transport are
+locally accepted. D2's provider/state checks pass by human report on 2026-10-10;
+D3's subsequent coordinated HTTP/caller activation is also locally accepted
+after quality/build/browser checks and focused/default real email verification.
+Generic signup/resend and explicit confirmation do not issue sessions or change
+existing cookies; new users must confirm before explicit sign-in. E2's public
+pending/resend/confirmation routes, startup-only private link capture and explicit
+email-to-login journey are locally accepted. The requested E1 -> D1 -> D2 -> D3 ->
+E2 sequence is complete; F remains a separately authorized acceptance task.
+D1's human gate includes quality checks, the full
+backend suite, Platform build, local capture, explicit Mailpit outage/restoration,
+and session/HTTP regression. It activates no registration or confirmation flow.
 C3 acceptance uses the supplied human verification;
 fresh replay, direct pre-retirement session-preservation proof, and unshown outage
 cookie/retry details were not recorded as C3 passes. E1 supplies the subsequently
@@ -779,9 +798,12 @@ host. A frontend Docker image/Compose service is not required.
 
 ### Local Infrastructure
 
-Local operation is the first deployment target. The React application runs
+Local development is the current operational target. The React application runs
 directly through Vite; backend applications and dependencies run on one Docker
-Compose network.
+Compose network. This stack is not a shared LAN, stage, or production deployment.
+The browser Gateway's host publication is loopback-only; container-to-container
+communication remains on the Compose network. Stage/cloud deployment begins in
+M11 after M10 hardening, not during the current local milestones.
 
 The target local command surface uses root npm commands backed by dedicated
 shell scripts, following the useful operational pattern from `rd_shop`:
@@ -1274,6 +1296,10 @@ and milestone responsibilities are maintained in
 - roles/scopes at public operations;
 - service authentication when processes are remotely deployed;
 - GraphQL operation budgets and request rate limits before stage exposure;
+- in M10, reassess bounded auth identity admission against distributed
+  unauthenticated traffic before M11 deployment, including capacity exhaustion
+  that can deny unrelated new identities; preserve bounded memory, per-identity
+  quotas and pending-request accounting in any approved redesign;
 - in M10, evaluate modular GraphQL Armor limits for tokens, aliases, depth,
   directives, and cost against Yoga-native/Envelop alternatives;
 - for the first-party web client, evaluate persisted-operation allowlisting as
@@ -1286,6 +1312,12 @@ and milestone responsibilities are maintained in
 - no secrets or sensitive document contents in logs/events;
 - dependency, secret, and image scanning in CI;
 - explicit AI prompt-injection and PII threat model before AI tools are exposed.
+
+The M04.2 process-local identity limits are accepted for local development with
+documented capacity constraints; they do not establish abuse-resistant stage
+admission. Public/shared deployment requires the M10 assessment and an approved
+mitigation or explicit risk decision before M11 exposure. This does not authorize
+a distributed limiter or change the accepted local auth policy now.
 
 #### Observability
 
@@ -1588,33 +1620,33 @@ The plan may be removed or archived after completion once durable decisions and
 behavior are captured in ADRs and feature documentation. Status is updated here
 only at milestone granularity.
 
-| ID    | Milestone                                      | Track          | Priority | Status                 | Depends on      | Outcome                                                                                                                                                            |
-| ----- | ---------------------------------------------- | -------------- | -------- | ---------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M00   | Architecture and execution governance          | Governance     | P0       | Completed              | Existing PoC    | Roadmap, agent/model conventions, and decision process established                                                                                                 |
-| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed              | M00             | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior                                                                  |
-| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed              | M01             | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned                                                                  |
-| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed              | M02             | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared                                                               |
-| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed              | M03-A           | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                                                                     |
-| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed              | M03-A, M03-B    | Scoped development images, healthy Compose services, and blocking Dockerfile policy                                                                                |
-| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed              | M03-B           | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                                                                 |
-| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress            | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory                                                       |
-| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed              | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred                                                          |
-| M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | In Progress (closeout) | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles; manual correction draft/submit setup remains unavailable |
-| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Browser-session cutover, C3 retirement and E1 resilience locally accepted; D1-D3/E2 confirmation and F integrated acceptance pending                               |
-| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned                | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                                                                           |
-| M06   | Correction domain and service hardening        | BE             | P0       | Planned                | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                                                                      |
-| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned                | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                                                                                |
-| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned                | M05, M06        | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                                                                              |
-| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned                | M07, M08        | Socket.IO notifications; Redis only when multi-instance is tested                                                                                                  |
-| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned                | M07, M08        | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing                                                           |
-| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned                | M10             | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback                                                             |
-| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned                | M07, M10        | Provider-neutral schemas and measurable acceptance baseline                                                                                                        |
-| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned                | AI00, M05       | One document type extracted from digital PDFs with structured output                                                                                               |
-| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned                | AI10            | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                                                                              |
-| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned                | AI11            | Evidence-based expansion to scans/images and repeated rows                                                                                                         |
-| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned                | AI00, M06, M07  | Typed read/proposal tools and optional MCP exposure                                                                                                                |
-| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned                | AI20            | Human-approved suggestions, validation explanations, trace/eval loop                                                                                               |
-| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned                | AI10, AI21      | Cost, latency, safety, drift, fallback, and model comparison                                                                                                       |
+| ID    | Milestone                                      | Track          | Priority | Status                 | Depends on      | Outcome                                                                                                                                                                     |
+| ----- | ---------------------------------------------- | -------------- | -------- | ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M00   | Architecture and execution governance          | Governance     | P0       | Completed              | Existing PoC    | Roadmap, agent/model conventions, and decision process established                                                                                                          |
+| M01   | Monorepo boundary refactor                     | Platform/BE/FE | P0       | Completed              | M00             | Flat `apps/*` workspaces, contracts package, independent NestJS targets, unchanged local behavior                                                                           |
+| M02   | Product rebrand and namespace migration        | Rebrand        | P0       | Completed              | M01             | AspectLoop identity, source namespace, repository, UI assets, and canonical documentation aligned                                                                           |
+| M03-A | Toolchain and dependency security              | Platform/Sec   | P0       | Completed              | M02             | Node/npm contract, strict install policy, reviewed scripts, and critical/high audit baseline cleared                                                                        |
+| M03-B | Verification and pull-request gates            | Governance/QA  | P0       | Completed              | M03-A           | Non-mutating verification, GraphQL drift, CI sentinel, branch rules, and local review workflow                                                                              |
+| M03-C | Local container hardening                      | Infra/QA       | P0/P1    | Completed              | M03-A, M03-B    | Scoped development images, healthy Compose services, and blocking Dockerfile policy                                                                                         |
+| M03-D | Logging and privacy baseline                   | BE/Security    | P0       | Completed              | M03-B           | Correlated bounded logs without full requests, raw identity, GraphQL payloads, or document content                                                                          |
+| M03-E | Review and dependency automation pilot         | Governance/QA  | P1       | In Progress            | M03-B           | Renovate retained with tiered approvals and bounded PR volume; Greptile evidence collection remains advisory                                                                |
+| M04   | Local data and artifact foundation             | BE/Infra       | P0/P1    | Completed              | M03-A, B, C, D  | Three databases, Garage/S3 artifacts, migrations, seed, and one-command stack; optional recovery deferred                                                                   |
+| M04.1 | Platform service ownership extraction          | BE/Infra       | P0       | In Progress (closeout) | M04             | Platform owns identity, documents, source artifacts, reservations, `platform_db`, and separated DB roles; manual correction draft/submit setup remains unavailable          |
+| M04.2 | Identity and session stabilization             | FE/BE/Infra    | P0       | In Progress            | M04.1           | Browser-session cutover, C3 retirement, E1 resilience, D1 mail, D2/D3 registration state/HTTP and E2 browser confirmation locally accepted; F integrated acceptance pending |
+| M05   | Extraction service with contract mock          | BE/Infra       | P0       | Planned                | M04.1           | Async job lifecycle, deterministic provider, artifacts, events, failures                                                                                                    |
+| M06   | Correction domain and service hardening        | BE             | P0       | Planned                | M05 contracts   | Overlay model, pure assembler, immutable submit, audit/outbox                                                                                                               |
+| M07   | End-to-end frontend workflow                   | FE/BE          | P0       | Planned                | M04.2, M05, M06 | Authenticated upload/status/inbox/editor/draft/submit works locally                                                                                                         |
+| M08   | Async reliability and integration              | BE/Infra       | P0       | Planned                | M05, M06        | Retry, DLQ, idempotency, outbox relay, reprocess flow                                                                                                                       |
+| M09   | Realtime status                                | FE/BE/Infra    | P1       | Planned                | M07, M08        | Socket.IO notifications; Redis only when multi-instance is tested                                                                                                           |
+| M10   | Quality, security, and observability hardening | Cross-cutting  | P0/P1    | Planned                | M07, M08        | Contract/E2E confidence, GraphQL budgets, threat model, telemetry, recovery runbook, and failure testing                                                                    |
+| M11   | Stage CI/CD and cloud deployment               | Cloud          | P1       | Planned                | M10             | Immutable stage delivery, probes/gates, backups/retention, RPO/RTO, demonstrated restore, and rollback                                                                      |
+| AI00  | AI contract, fixtures, and eval foundation     | AI shared      | P0 AI    | Planned                | M07, M10        | Provider-neutral schemas and measurable acceptance baseline                                                                                                                 |
+| AI10  | Text-based extraction provider                 | AI extraction  | P0 AI    | Planned                | AI00, M05       | One document type extracted from digital PDFs with structured output                                                                                                        |
+| AI11  | Extraction provenance and reliability          | AI extraction  | P1       | Planned                | AI10            | Prompt/replay metadata, provenance, confidence evaluation, guardrails                                                                                                       |
+| AI12  | Vision and line-item extraction                | AI extraction  | P1/P2    | Planned                | AI11            | Evidence-based expansion to scans/images and repeated rows                                                                                                                  |
+| AI20  | Correction tool layer and MCP                  | AI correction  | P1       | Planned                | AI00, M06, M07  | Typed read/proposal tools and optional MCP exposure                                                                                                                         |
+| AI21  | Agentic correction workflow                    | AI correction  | P1       | Planned                | AI20            | Human-approved suggestions, validation explanations, trace/eval loop                                                                                                        |
+| AI30  | AI operations and provider evaluation          | AI shared      | P1       | Planned                | AI10, AI21      | Cost, latency, safety, drift, fallback, and model comparison                                                                                                                |
 
 #### Dependency view
 

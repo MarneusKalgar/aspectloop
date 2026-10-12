@@ -1,12 +1,16 @@
 import { App } from '@app/App';
+import { findMockUserByEmail } from '@app/mocks/data';
 import { defaultMockReviewerCredentials } from '@app/mocks/fixtures/default-reviewer';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+/** Exercises generic signup acceptance through the actual app and typed mock boundary. */
 describe('sign-up integration', () => {
-  it('surfaces the server error when the email already exists', async () => {
+  /** Keeps duplicate registration neutral and preserves the verified reviewer profile. */
+  it('acknowledges duplicate registration without disclosing existence or changing its profile', async () => {
     const user = userEvent.setup();
+    const original = findMockUserByEmail(defaultMockReviewerCredentials.email);
 
     render(<App />);
 
@@ -24,8 +28,11 @@ describe('sign-up integration', () => {
     await user.type(passwordInput, defaultMockReviewerCredentials.password);
     await user.click(screen.getByTestId('submit-button'));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'User with this email already exists',
-    );
+    expect(
+      await screen.findByText('If confirmation is needed, check your email before signing in.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('User with this email already exists')).not.toBeInTheDocument();
+    expect(findMockUserByEmail(defaultMockReviewerCredentials.email)).toBe(original);
+    expect(original?.displayName).toBe('Correction Tester');
   });
 });

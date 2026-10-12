@@ -12,7 +12,7 @@ interface CorrectionSessionSummary {
 }
 
 type MockPublicUser = NonNullable<MeQuery['me']>;
-type MockUserRecord = MockPublicUser & { password: string };
+type MockUserRecord = MockPublicUser & { emailVerified: boolean; password: string };
 
 const now = new Date().toISOString();
 
@@ -20,6 +20,7 @@ const defaultUser: MockUserRecord = {
   createdAt: now,
   displayName: 'Correction Tester',
   email: defaultMockReviewerCredentials.email,
+  emailVerified: true,
   id: 'mock-user-1',
   password: defaultMockReviewerCredentials.password,
   roles: ['CORRECTOR'],
@@ -42,22 +43,39 @@ const mockSessions = new Map<string, CorrectionSessionSummary>([
   [defaultSession.id, defaultSession],
 ]);
 
+/** Removes only test-created accounts so watch/repeated runs cannot reuse verified fixture state. */
+export function clearMockRegistrations(): void {
+  for (const email of mockUsers.keys()) {
+    if (email !== defaultUser.email) {
+      mockUsers.delete(email);
+    }
+  }
+}
+
 /** Removes the mock session between tests or after sign-out. */
 export function clearMockSessionUser(): void {
   currentSessionUserId = null;
 }
 
-/** Adds a mock account without creating an authenticated session. */
+/** Adds an unverified mock account without creating a session or overwriting duplicates. */
 export function createMockUser(input: {
   displayName: string;
   email: string;
   password: string;
 }): MockUserRecord {
+  const email = input.email.trim().toLowerCase();
+  const existing = mockUsers.get(email);
+
+  if (existing) {
+    return existing;
+  }
+
   const timestamp = new Date().toISOString();
   const user: MockUserRecord = {
     createdAt: timestamp,
     displayName: input.displayName,
-    email: input.email,
+    email,
+    emailVerified: false,
     id: `mock-user-${mockUsers.size + 1}`,
     password: input.password,
     roles: ['CORRECTOR'],
@@ -72,7 +90,7 @@ export function createMockUser(input: {
 
 /** Finds only the mock account required to verify sign-in credentials. */
 export function findMockUserByEmail(email: string): MockUserRecord | undefined {
-  return mockUsers.get(email);
+  return mockUsers.get(email.trim().toLowerCase());
 }
 
 /** Finds one stable correction fixture without changing authentication state. */

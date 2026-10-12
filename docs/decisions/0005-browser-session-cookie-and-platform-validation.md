@@ -1,6 +1,6 @@
 # 0005 Browser Session Cookie And Platform Validation
 
-Status: Accepted design; C2b cutover, C3 retirement and E1 resilience locally accepted; D1-D3/E2/F pending
+Status: Accepted design; C2b cutover, C3 retirement, E1 resilience, D1 mail transport, D2/D3 registration state/HTTP and E2 browser confirmation locally accepted; F pending
 
 Date: 2026-09-20
 
@@ -127,13 +127,47 @@ E1 browser resilience and proven legacy-cookie cleanup were locally accepted by
 the human on 2026-10-05. Separate marker/cookie Web Locks, revision-fenced
 bootstrap and pre-cache transport delivery, durable logout intent and explicit
 recovery preserve Platform authority without a new server protocol. Ordinary
-read failure permits Retry; completed revocation failure permits explicit Retry
-sign out; unknown/abandoned cookie actions require the approved manual reset.
+read failure permits Retry; only proven pre-dispatch logout intent permits Retry
+sign out. Completed failed dispatched logout, unknown/abandoned cookie actions
+and legacy ambiguous logout state require the approved manual reset. Gateway may
+already have cleared the cookie while the original server session remains valid;
+a later cookie-less logout cannot prove that session's revocation.
 There is no weaker lock fallback or automatic cookie-action replay.
 
 [Browser session behavior and recovery](../browser-session.md) records the active
 ownership, recovery rules and limitations. Human evidence includes `verify`,
 eight live-tool checks and twenty live scenarios with successful exact cleanup.
 The empty-inbox/cache-evidence and failed-persistence limits remain explicit.
-This is E1 local acceptance, not full M04.2 or SESSION-16 completion; email
-delivery/confirmation and F integrated acceptance remain separate work.
+This is E1 local acceptance, not full M04.2 or SESSION-16 completion.
+
+D1 local mail transport was locally accepted by the human on 2026-10-08.
+SMTP availability does not enter Platform auth readiness or session validation;
+explicit Mailpit outage evidence preserves the same session before/after failed
+dispatch. [Platform mail transport](../platform-mail.md) records ownership,
+bounded dispatch, private capture and delivery limitations. D1 changes neither
+the session authority nor the active registration contract.
+
+D2 prepared registration state and active Platform sign-in identity limits are
+locally verified by human report on 2026-10-10. Atomic digest-only token
+transitions, post-commit best-effort mail and process-local fixed identity windows
+preserve session authority and do not issue sessions on registration/confirmation.
+[Platform registration](../platform-registration.md) records the policy and
+evidence limits. D3 HTTP activation was locally accepted on 2026-10-10 after
+human checks and real session -> HTTP -> email verification. Private signup/
+resend responses are generic success only; public signup retains its deprecated
+user field as null. Registration, resend and confirmation do not write cookies,
+issue sessions or revoke existing ones. Verified sign-in remains explicit.
+Strict error/schema and Origin/batch/IP policies are retained.
+
+E2 browser confirmation was locally accepted on 2026-10-11. Web sanitizes the
+confirmation URL before asynchronous router startup and owns the bounded token
+only in private memory. Public confirmation/resend routes require explicit,
+uncached actions and remain independent of session validation availability.
+Remounts, bootstrap and reload cannot consume or replay confirmation; successful
+confirmation never replaces a session or signs in automatically. The genuine
+owned Mailpit-to-browser flow passed with actual Platform outage/restoration,
+explicit retry, separate verified sign-in, reused-link session preservation and
+exact cleanup. [Browser behavior](../browser-session.md) and
+[testing evidence](../testing-strategy.md#88-accepted-e2-browser-confirmation-verification)
+record ownership and limits. F fresh-stack/performance/integrated acceptance
+remains separate; this is not external mailbox delivery or full M04.2 acceptance.

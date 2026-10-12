@@ -3,6 +3,8 @@ import type { AddressInfo } from 'node:net';
 
 import { createServer } from 'node:http';
 
+import { GRAPHQL_OPERATION_NAME } from '#app/graphql/operation-names';
+
 import type { LiveOperation } from './gate-operations.ts';
 import type { SafeObservation } from './response-observation.ts';
 
@@ -19,6 +21,7 @@ export class ResponseGate {
   private readonly active = new Set<HeldResponse>();
   private activeActions = 0;
   private readonly holds: HeldResponse[] = [];
+  private readonly registrationEnabled: boolean;
   private readonly server = createServer(
     /** Separates safe observations from transient request/response bytes. */
     (incoming, outgoing) => {
@@ -26,6 +29,11 @@ export class ResponseGate {
     },
   );
   private readonly upstreams = new Set<ClientRequest>();
+
+  /** Keeps E1's original closed operation set unless the parent explicitly enables email verification. */
+  constructor(registrationEnabled = false) {
+    this.registrationEnabled = registrationEnabled;
+  }
 
   /** Returns a safe count without exposing request bodies or auth headers. */
   count(operation: LiveOperation): number {
@@ -112,7 +120,7 @@ export class ResponseGate {
 
       if (incoming.method === 'POST') {
         try {
-          operation = selectedOperation(body);
+          operation = selectedOperation(body, this.registrationEnabled);
         } catch {
           this.unexpectedRequests += 1;
           outgoing.writeHead(403).end();
@@ -158,7 +166,8 @@ export class ResponseGate {
 
   /** Starts safe overlap accounting and returns an idempotent browser-settlement callback. */
   private trackCookieAction(operation: LiveOperation | null): () => void {
-    const cookieAction = operation === 'SignIn' || operation === 'SignOut';
+    const cookieAction =
+      operation === GRAPHQL_OPERATION_NAME.SIGN_IN || operation === GRAPHQL_OPERATION_NAME.SIGN_OUT;
     let finished = false;
 
     if (cookieAction) {

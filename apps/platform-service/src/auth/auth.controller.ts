@@ -4,9 +4,10 @@ import type {
   PlatformBrowserSessionSignOutResponse,
   PlatformBrowserSessionValidationRequest,
   PlatformBrowserSessionValidationResponse,
+  PlatformConfirmEmailResponse,
+  PlatformPendingSignUpResponse,
+  PlatformResendEmailConfirmationResponse,
   PlatformSignInRequest,
-  PlatformSignUpRequest,
-  PlatformSignUpResponse,
 } from '@aspectloop/contracts/platform';
 
 import {
@@ -14,18 +15,33 @@ import {
   platformBrowserSessionSignOutRequestSchema,
   platformBrowserSessionValidationRequestSchema,
   platformSignInRequestSchema,
-  platformSignUpRequestSchema,
 } from '@aspectloop/contracts/platform';
 import { Body, Controller, Post } from '@nestjs/common';
 
 import { parsePlatformRequest } from '../internal/parse-platform-request';
 import { AuthService } from './auth.service';
+import { RegistrationService } from './registration/registration.service';
 
 /** Accepts only validated gateway-to-Platform authentication commands. */
 @Controller(`${PLATFORM_INTERNAL_API_PREFIX.slice(1)}/auth`)
 export class AuthController {
   /** Creates the internal authentication transport boundary. */
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly registration: RegistrationService,
+  ) {}
+
+  /** Consumes an explicit token using D2's uniform token and structural validation. */
+  @Post('confirm-email')
+  confirmEmail(@Body() body: unknown): Promise<PlatformConfirmEmailResponse> {
+    return this.registration.confirm(body);
+  }
+
+  /** Acknowledges resend generically without exposing identity or delivery state. */
+  @Post('resend-email-confirmation')
+  resendEmailConfirmation(@Body() body: unknown): Promise<PlatformResendEmailConfirmationResponse> {
+    return this.registration.resend(body);
+  }
 
   /** Validates credentials and issues one opaque browser session. */
   @Post('sign-in')
@@ -46,12 +62,10 @@ export class AuthController {
     return this.authService.signOutBrowserSession(request);
   }
 
-  /** Validates and delegates one account-creation command. */
+  /** Activates validated generic registration without issuing a session. */
   @Post('sign-up')
-  signUp(@Body() body: unknown): Promise<PlatformSignUpResponse> {
-    const request: PlatformSignUpRequest = parsePlatformRequest(platformSignUpRequestSchema, body);
-
-    return this.authService.signUp(request);
+  signUp(@Body() body: unknown): Promise<PlatformPendingSignUpResponse> {
+    return this.registration.signUp(body);
   }
 
   /** Validates current browser-session state and optionally records activity. */

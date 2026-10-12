@@ -9,15 +9,6 @@ const signUpMutationDocument = graphql(`
   mutation SignUp($input: SignUpInput!) {
     signUp(input: $input) {
       success
-      user {
-        id
-        email
-        displayName
-        roles
-        scopes
-        createdAt
-        updatedAt
-      }
     }
   }
 `);

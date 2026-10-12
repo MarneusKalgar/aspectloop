@@ -58,17 +58,20 @@ artifacts after all workspace builds. Registry-signature verification runs last
 with a two-minute step timeout and remains advisory, so registry latency cannot
 delay required verification or builds beyond that bound.
 
-Mocked web E2E is required for `apps/web/**`, root toolchain/dependency inputs,
-the owning workflow, and the fixed CI change-detector files. Backend-only and
-documentation-only changes complete the scope job and intentionally skip the
-heavy browser job. The aggregate sentinel accepts that skip only when the scope
-output is exactly `false`; a required, cancelled, failed, or unexpectedly
-skipped browser job fails the merge gate. Manual dispatch can force the browser
-workflow with `run_web_e2e`.
+Mocked web E2E is required for `apps/web/**`, `packages/contracts/**`, root
+toolchain/dependency inputs, the owning workflow, and the fixed CI change-detector
+files. Backend-only and documentation-only changes complete the scope job and
+intentionally skip the heavy browser job. The aggregate sentinel accepts that
+skip only when the scope output is exactly `false`; a required, cancelled,
+failed, or unexpectedly skipped browser job fails the merge gate. Manual
+dispatch can force the browser workflow with `run_web_e2e`.
 
 Web-relevant runs use the exact Playwright version resolved by the lockfile and
 the matching digest-pinned Noble image. The job asserts the package/image
 version contract and does not run host `apt` or download a browser at runtime.
+Web's mocked-test prehook builds the contracts workspace before starting Vite,
+including direct workspace invocations. The isolated browser job does not rely
+on generated `dist` files from a prior local run or the separate `Quality` job.
 
 The Docker job is isolated in
 `.github/workflows/reusable-docker-policy.yml` and reports a successful

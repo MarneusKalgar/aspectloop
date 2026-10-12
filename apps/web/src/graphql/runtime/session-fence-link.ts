@@ -5,22 +5,39 @@ import { SessionOperationCancelledError } from '@app/auth/session-coordination/s
 import { BROWSER_SESSION_ERROR_CODE, getSessionErrorCode } from '@app/auth/session-error';
 import { OperationTypeNode } from 'graphql';
 
-type FencedOperation = 'bootstrap' | 'product' | 'registration';
+import { GRAPHQL_OPERATION_NAME } from '../operation-names';
+
+const SESSION_OPERATION = Object.freeze({
+  BOOTSTRAP: 'bootstrap',
+  COOKIE_ACTION: 'cookie-action',
+  PRODUCT: 'product',
+  PUBLIC_REGISTRATION: 'public-registration',
+  REGISTRATION: 'registration',
+} as const);
+
+type FencedOperation = Exclude<
+  SessionOperation,
+  typeof SESSION_OPERATION.COOKIE_ACTION | typeof SESSION_OPERATION.PUBLIC_REGISTRATION
+>;
 interface SessionLinkContext {
   fetchOptions?: RequestInit;
   sessionCookieAction?: boolean;
 }
 
-type SessionOperation = 'cookie-action' | FencedOperation;
+type SessionOperation = (typeof SESSION_OPERATION)[keyof typeof SESSION_OPERATION];
 
 /** Cancels obsolete results before Apollo writes cache or delivers them to hook consumers. */
 export function createSessionFenceLink(coordinator: SessionCoordinator): ApolloLink {
   return new ApolloLink(
-    /** Cookie executors settle uncached under their lock; ordinary work gets a revision fence. */
+    /** Cookie executors keep their lock; public registration stays uncached and identity-neutral. */
     (operation, forward) => {
       const context = operation.getContext() as SessionLinkContext;
       const kind = classifyOperation(operation, context);
-      if (kind === 'cookie-action') {
+
+      if (
+        kind === SESSION_OPERATION.COOKIE_ACTION ||
+        kind === SESSION_OPERATION.PUBLIC_REGISTRATION
+      ) {
         return forward(operation);
       }
 
@@ -29,28 +46,38 @@ export function createSessionFenceLink(coordinator: SessionCoordinator): ApolloL
   );
 }
 
-/** Uses the GraphQL operation enum to bypass only explicitly marked cookie mutations. */
+/** Separates fixed public confirmation commands from explicitly marked cookie mutations. */
 function classifyOperation(
   operation: ApolloLink.Operation,
   context: SessionLinkContext,
 ): SessionOperation {
   if (
+    operation.operationType === OperationTypeNode.MUTATION &&
+    (operation.operationName === GRAPHQL_OPERATION_NAME.CONFIRM_EMAIL ||
+      operation.operationName === GRAPHQL_OPERATION_NAME.RESEND_EMAIL_CONFIRMATION)
+  ) {
+    // Public, uncached operations neither consume nor publish a browser session generation.
+    return SESSION_OPERATION.PUBLIC_REGISTRATION;
+  }
+
+  if (
     context.sessionCookieAction === true &&
     operation.operationType === OperationTypeNode.MUTATION &&
-    (operation.operationName === 'SignIn' || operation.operationName === 'SignOut')
+    (operation.operationName === GRAPHQL_OPERATION_NAME.SIGN_IN ||
+      operation.operationName === GRAPHQL_OPERATION_NAME.SIGN_OUT)
   ) {
-    return 'cookie-action';
+    return SESSION_OPERATION.COOKIE_ACTION;
   }
 
-  if (operation.operationName === 'SignUp') {
-    return 'registration';
+  if (operation.operationName === GRAPHQL_OPERATION_NAME.SIGN_UP) {
+    return SESSION_OPERATION.REGISTRATION;
   }
 
-  if (operation.operationName === 'Me') {
-    return 'bootstrap';
+  if (operation.operationName === GRAPHQL_OPERATION_NAME.ME) {
+    return SESSION_OPERATION.BOOTSTRAP;
   }
 
-  return 'product';
+  return SESSION_OPERATION.PRODUCT;
 }
 
 /** Stable session/dependency codes retire reads; ordinary product errors do not sign out users. */
@@ -129,7 +156,7 @@ function createFencedObservable(
 
           classifySessionFailure(coordinator, revision, error);
 
-          if (current() && kind === 'bootstrap' && !getSessionErrorCode(error)) {
+          if (current() && kind === SESSION_OPERATION.BOOTSTRAP && !getSessionErrorCode(error)) {
             coordinator.fail('unavailable', revision);
           }
 
@@ -174,9 +201,12 @@ function isCurrentOperation(
   if (!coordinator.isCurrent(revision)) {
     return false;
   }
-  if (kind === 'registration') {
+  if (kind === SESSION_OPERATION.REGISTRATION) {
     return coordinator.canRegister();
   }
 
-  return coordinator.canRead() && (kind === 'bootstrap' || !coordinator.getSnapshot().failure);
+  return (
+    coordinator.canRead() &&
+    (kind === SESSION_OPERATION.BOOTSTRAP || !coordinator.getSnapshot().failure)
+  );
 }
