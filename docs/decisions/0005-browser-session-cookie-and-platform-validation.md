@@ -127,8 +127,11 @@ E1 browser resilience and proven legacy-cookie cleanup were locally accepted by
 the human on 2026-10-05. Separate marker/cookie Web Locks, revision-fenced
 bootstrap and pre-cache transport delivery, durable logout intent and explicit
 recovery preserve Platform authority without a new server protocol. Ordinary
-read failure permits Retry; completed revocation failure permits explicit Retry
-sign out; unknown/abandoned cookie actions require the approved manual reset.
+read failure permits Retry; only proven pre-dispatch logout intent permits Retry
+sign out. Completed failed dispatched logout, unknown/abandoned cookie actions
+and legacy ambiguous logout state require the approved manual reset. Gateway may
+already have cleared the cookie while the original server session remains valid;
+a later cookie-less logout cannot prove that session's revocation.
 There is no weaker lock fallback or automatic cookie-action replay.
 
 [Browser session behavior and recovery](../browser-session.md) records the active

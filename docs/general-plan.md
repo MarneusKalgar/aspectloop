@@ -798,9 +798,12 @@ host. A frontend Docker image/Compose service is not required.
 
 ### Local Infrastructure
 
-Local operation is the first deployment target. The React application runs
+Local development is the current operational target. The React application runs
 directly through Vite; backend applications and dependencies run on one Docker
-Compose network.
+Compose network. This stack is not a shared LAN, stage, or production deployment.
+The browser Gateway's host publication is loopback-only; container-to-container
+communication remains on the Compose network. Stage/cloud deployment begins in
+M11 after M10 hardening, not during the current local milestones.
 
 The target local command surface uses root npm commands backed by dedicated
 shell scripts, following the useful operational pattern from `rd_shop`:
@@ -1293,6 +1296,10 @@ and milestone responsibilities are maintained in
 - roles/scopes at public operations;
 - service authentication when processes are remotely deployed;
 - GraphQL operation budgets and request rate limits before stage exposure;
+- in M10, reassess bounded auth identity admission against distributed
+  unauthenticated traffic before M11 deployment, including capacity exhaustion
+  that can deny unrelated new identities; preserve bounded memory, per-identity
+  quotas and pending-request accounting in any approved redesign;
 - in M10, evaluate modular GraphQL Armor limits for tokens, aliases, depth,
   directives, and cost against Yoga-native/Envelop alternatives;
 - for the first-party web client, evaluate persisted-operation allowlisting as
@@ -1305,6 +1312,12 @@ and milestone responsibilities are maintained in
 - no secrets or sensitive document contents in logs/events;
 - dependency, secret, and image scanning in CI;
 - explicit AI prompt-injection and PII threat model before AI tools are exposed.
+
+The M04.2 process-local identity limits are accepted for local development with
+documented capacity constraints; they do not establish abuse-resistant stage
+admission. Public/shared deployment requires the M10 assessment and an approved
+mitigation or explicit risk decision before M11 exposure. This does not authorize
+a distributed limiter or change the accepted local auth policy now.
 
 #### Observability
 

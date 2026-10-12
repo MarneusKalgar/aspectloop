@@ -156,8 +156,11 @@ abort wording through its cause. Include that wording in the human UX review;
 this verification amendment does not change the production error-selection policy.
 
 The human accepted E1 after the results/cleanup and recovery-wording review on
-2026-10-05. Retain the distinction between ordinary Retry, completed-failure Retry
-sign out and reset-required guidance in future changes. D1-D3 and E2 were later
-accepted separately. Local E2 evidence does not establish external mailbox
+2026-10-05. Retain the distinction between ordinary Retry, Retry sign out only for
+proven pre-dispatch intent, and manual reset for completed failed dispatched
+logout, unknown outcomes or legacy ambiguous logout state. Gateway may already
+have cleared the cookie while the original server session remains valid; browser
+reset does not prove revocation. D1-D3 and E2 were later accepted separately.
+Local E2 evidence does not establish external mailbox
 delivery, broad browser/accessibility certification, a fresh-stack rehearsal,
 performance baseline or full integrated SESSION acceptance. F remains pending.

@@ -81,7 +81,8 @@ services:
       DB_POOL_SIZE: ${GATEWAY_DB_POOL_SIZE:-5}
       PLATFORM_BASE_URL: http://platform-service:${PLATFORM_SERVICE_PORT:-8083}
     ports:
-      - '${API_PORT:-8080}:${API_PORT:-8080}'
+      # The browser Gateway is published only to the local development host.
+      - '127.0.0.1:${API_PORT:-8080}:${API_PORT:-8080}'
     volumes:
       - ../../apps/gateway-api/src:/app/apps/gateway-api/src
       - ../../apps/gateway-api/tsconfig.app.json:/app/apps/gateway-api/tsconfig.app.json:ro

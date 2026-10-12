@@ -49,13 +49,19 @@ new explicit successful sign-in. Peer tabs do not independently repeat logout.
 
 - Ordinary validation/dependency failure offers **Retry**. It retires cache and
   revalidates through `me`; it neither rewrites cookies nor replays a mutation.
-- A known-completed logout failure offers **Retry sign out**. This is explicit
-  revocation recovery, not proof that the earlier revocation succeeded. New login
-  remains blocked until revocation is confirmed.
+- **Retry sign out** is permitted only for proven pre-dispatch logout intent.
+  Storage or lock failure before dispatch can leave this explicit revocation
+  recovery available; it is not proof of successful revocation.
+- A completed failed dispatched logout requires manual reset. Gateway may have
+  already cleared the cookie while the original server session remains valid,
+  so another cookie-less logout cannot prove its revocation. Access, automatic
+  bootstrap, mutation replay and new login remain blocked.
 - A transport failure, request timeout or abandoned pending cookie action has an
   unknown outcome. Access, automatic bootstrap, mutation replay and new login
   remain blocked across reload. Connectivity returning or elapsed time cannot
   resolve that uncertainty.
+- Legacy unconfirmed logout markers without a proven action also require reset;
+  recording intent again cannot turn ambiguous state into retry permission.
 - Corrupt, deleted-after-initialization or unreadable coordination storage fails
   closed. If only a logout marker write fails, the tab keeps local suppression
   and still attempts cache retirement without dispatching sign-out. Rereading the

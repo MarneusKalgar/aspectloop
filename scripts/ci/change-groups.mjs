@@ -39,6 +39,7 @@ export const CHANGE_GROUPS = Object.freeze({
       'apps/web/**',
       'package.json',
       'package-lock.json',
+      'packages/contracts/**',
       'scripts/ci/change-groups.mjs',
       'scripts/ci/detect-changes.mjs',
       'scripts/ci/toolchain-contract.mjs',
